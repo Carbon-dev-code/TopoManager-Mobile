@@ -46,6 +46,12 @@
 
 .demandeur-label {
   font-size: 0.9rem;
+   margin-top: 0 !important; /* Force la suppression */
+}
+
+.ion-list {
+   padding-top: 0 !important; /* Force la suppression */
+   padding-bottom: 0 !important; /* Force la suppression */
 }
 
 .sync-button {

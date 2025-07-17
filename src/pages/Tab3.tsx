@@ -436,7 +436,7 @@ const Tab3: React.FC = () => {
                   {/* Col 2 : Demandeurs */}
                   <div className="col-12 col-md-8">
                     {parcelle.demandeurs.length > 0 ? (
-                      <IonList lines="none">
+                      <IonList className="ion-list" lines="none">
                         {parcelle.demandeurs.map((d) => (
                           <IonItem key={d.id} style={{ padding: "0.2rem 0" }}>
                             <IonIcon
