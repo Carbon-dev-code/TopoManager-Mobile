@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   IonButtons,
   IonContent,
@@ -20,19 +20,23 @@ import {
   IonToast,
   IonInput,
   IonModal,
-  IonHeader as ModalHeader,
-  IonToolbar as ModalToolbar,
-  IonTitle as ModalTitle,
-  IonContent as ModalContent,
-  IonButtons as ModalButtons,
-  IonButton as ModalButton
-} from '@ionic/react';
-import { Preferences } from '@capacitor/preferences';
-import { refresh, person, business, sync, checkmarkCircle, closeCircle, server } from 'ionicons/icons';
+  IonLoading,
+} from "@ionic/react";
+import { Preferences } from "@capacitor/preferences";
+import {
+  refresh,
+  person,
+  business,
+  sync,
+  checkmarkCircle,
+  server,
+  wifi,
+} from "ionicons/icons";
+import "./Tab3.css";
 
 interface Demandeur {
   id: string;
-  type: 'physique' | 'morale';
+  type: "physique" | "morale";
   nom?: string;
   prenom?: string;
   denomination?: string;
@@ -51,33 +55,34 @@ interface Parcelle {
 interface ApiResponse {
   success: boolean;
   message?: string;
-  received?: any;
+  received?: unknown;
   server_time?: string;
 }
 
-const DEFAULT_IP_PORT = '192.168.88.85:80';
-const API_BASE_PATH = '/havelo_mandrare';
+const DEFAULT_IP_PORT = "192.168.88.85:80";
+const API_BASE_PATH = "/havelo_mandrare";
 
 const Tab3: React.FC = () => {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastColor, setToastColor] = useState('success');
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">(
+    "success"
+  );
   const [serverIpPort, setServerIpPort] = useState(DEFAULT_IP_PORT);
   const [showServerModal, setShowServerModal] = useState(false);
   const [tempServerIpPort, setTempServerIpPort] = useState(DEFAULT_IP_PORT);
+  const [testingConnection, setTestingConnection] = useState(false);
 
-  const STORAGE_KEY = 'parcelles_data';
-  const SERVER_URL_KEY = 'server_url';
+  const STORAGE_KEY = "parcelles_data";
+  const SERVER_URL_KEY = "server_url";
 
-  // Fonction pour construire l'URL complète
   const buildServerUrl = (ipPort: string) => {
     return `http://${ipPort}${API_BASE_PATH}`;
   };
 
-  // Charger les données au montage du composant
   useEffect(() => {
     const init = async () => {
       await loadServerUrl();
@@ -109,7 +114,7 @@ const Tab3: React.FC = () => {
       const result = await Preferences.get({ key: SERVER_URL_KEY });
       if (result.value) {
         const url = new URL(result.value);
-        const ipPort = `${url.hostname}${url.port ? `:${url.port}` : ''}`;
+        const ipPort = `${url.hostname}${url.port ? `:${url.port}` : ""}`;
         setServerIpPort(ipPort);
         setTempServerIpPort(ipPort);
       }
@@ -119,9 +124,7 @@ const Tab3: React.FC = () => {
   };
 
   const saveServerUrl = async (ipPort: string) => {
-    const cleanedIpPort = ipPort.trim().replace(/^https?:\/\//, '');
-
-    // Validation basique
+    const cleanedIpPort = ipPort.trim().replace(/^https?:\/\//, "");
     if (!cleanedIpPort.match(/^[\w\.-]+(:\d+)?$/)) {
       showError("Format invalide. Utilisez IP:port (ex: 192.168.1.100:80)");
       return false;
@@ -146,7 +149,7 @@ const Tab3: React.FC = () => {
     try {
       await Preferences.set({
         key: STORAGE_KEY,
-        value: JSON.stringify(updatedParcelles)
+        value: JSON.stringify(updatedParcelles),
       });
       setParcelles(updatedParcelles);
     } catch (e) {
@@ -157,13 +160,13 @@ const Tab3: React.FC = () => {
 
   const showSuccess = (message: string) => {
     setToastMessage(message);
-    setToastColor('success');
+    setToastColor("success");
     setShowToast(true);
   };
 
   const showError = (message: string) => {
     setToastMessage(message);
-    setToastColor('danger');
+    setToastColor("danger");
     setShowToast(true);
   };
 
@@ -176,13 +179,10 @@ const Tab3: React.FC = () => {
     try {
       const endpoint = `${buildServerUrl(serverIpPort)}/api_parcelle_demandeur`;
       const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Ajoutez d'autres headers si nécessaire
-        },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parcelleData),
-        mode: 'cors' // Explicitement demande un mode CORS
+        mode: "cors",
       });
 
       if (!response.ok) {
@@ -193,8 +193,8 @@ const Tab3: React.FC = () => {
       return data.success;
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch')) {
-          throw new Error("Serveur inaccessible. Vérifiez:\n1. L'adresse du serveur\n2. Votre connexion réseau\n3. Les logs du serveur");
+        if (error.message.includes("Failed to fetch")) {
+          throw new Error("Serveur inaccessible. Vérifiez votre connexion.");
         }
         throw error;
       }
@@ -203,46 +203,41 @@ const Tab3: React.FC = () => {
   };
 
   const synchroniserParcelle = async (parcelleId: string) => {
-    const parcelle = parcelles.find(p => p.id === parcelleId);
+    const parcelle = parcelles.find((p) => p.id === parcelleId);
     if (!parcelle) return;
 
     try {
-      // Mise à jour de l'état "en cours"
-      const tempParcelles = parcelles.map(p =>
-        p.id === parcelleId ? {
-          ...p,
-          synchronise: false,
-          syncError: undefined,
-          syncing: true
-        } : p
+      const tempParcelles = parcelles.map((p) =>
+        p.id === parcelleId
+          ? { ...p, synchronise: false, syncError: undefined, syncing: true }
+          : p
       );
       await saveParcelles(tempParcelles);
 
-      // Appel API
       const success = await syncWithAPI(parcelle);
 
       if (success) {
-        const updated = parcelles.map(p =>
-          p.id === parcelleId ? {
-            ...p,
-            synchronise: true,
-            syncError: undefined,
-            syncing: false,
-            lastSync: new Date().toISOString()
-          } : p
+        const updated = parcelles.map((p) =>
+          p.id === parcelleId
+            ? {
+                ...p,
+                synchronise: true,
+                syncError: undefined,
+                syncing: false,
+                lastSync: new Date().toISOString(),
+              }
+            : p
         );
         await saveParcelles(updated);
         showSuccess(`Parcelle ${parcelle.code} synchronisée!`);
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erreur inconnue';
-      const updated = parcelles.map(p =>
-        p.id === parcelleId ? {
-          ...p,
-          synchronise: false,
-          syncError: errorMsg,
-          syncing: false
-        } : p
+      const errorMsg =
+        error instanceof Error ? error.message : "Erreur inconnue";
+      const updated = parcelles.map((p) =>
+        p.id === parcelleId
+          ? { ...p, synchronise: false, syncError: errorMsg, syncing: false }
+          : p
       );
       await saveParcelles(updated);
       showError(`Échec sync: ${errorMsg}`);
@@ -255,47 +250,85 @@ const Tab3: React.FC = () => {
       return;
     }
 
-    const nonSyncParcelles = parcelles.filter(p => !p.synchronise);
-    if (nonSyncParcelles.length === 0) return;
+    const nonSyncParcelles = parcelles.filter((p) => !p.synchronise);
+    if (nonSyncParcelles.length === 0) {
+      showSuccess("Toutes les parcelles sont déjà synchronisées.");
+      return;
+    }
 
     setSyncingAll(true);
+    let updatedParcelles = [...parcelles];
+
+    for (const parcelle of nonSyncParcelles) {
+      updatedParcelles = updatedParcelles.map((p) =>
+        p.id === parcelle.id ? { ...p, syncing: true, syncError: undefined } : p
+      );
+      setParcelles(updatedParcelles);
+
+      try {
+        const success = await syncWithAPI(parcelle);
+
+        updatedParcelles = updatedParcelles.map((p) =>
+          p.id === parcelle.id
+            ? {
+                ...p,
+                synchronise: success,
+                syncing: false,
+                lastSync: success ? new Date().toISOString() : p.lastSync,
+              }
+            : p
+        );
+        setParcelles(updatedParcelles);
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : "Erreur inconnue";
+        updatedParcelles = updatedParcelles.map((p) =>
+          p.id === parcelle.id
+            ? { ...p, syncing: false, syncError: errorMsg }
+            : p
+        );
+        setParcelles(updatedParcelles);
+      }
+    }
+
+    await saveParcelles(updatedParcelles);
+    showSuccess(`${nonSyncParcelles.length} parcelles synchronisées`);
+    setSyncingAll(false);
+  };
+
+  const testerConnexion = async () => {
+    if (!serverIpPort) {
+      showError("Adresse du serveur non définie.");
+      return;
+    }
+
+    const testUrl = `${buildServerUrl(serverIpPort)}/ping`;
+    setTestingConnection(true);
+    const start = performance.now();
 
     try {
-      // Mise à jour temporaire
-      const tempParcelles = parcelles.map(p =>
-        !p.synchronise ? { ...p, syncing: true, syncError: undefined } : p
-      );
-      await saveParcelles(tempParcelles);
+      const response = await fetch(testUrl, { method: "GET" });
+      const end = performance.now();
+      const delayMs = Math.round(end - start);
+      if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
 
-      // Synchronisation séquentielle
-      for (const parcelle of nonSyncParcelles) {
-        try {
-          await syncWithAPI(parcelle);
-          // Mise à jour individuelle après chaque succès
-          const updated = parcelles.map(p =>
-            p.id === parcelle.id ? { ...p, synchronise: true, syncing: false } : p
-          );
-          await saveParcelles(updated);
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : 'Erreur inconnue';
-          const updated = parcelles.map(p =>
-            p.id === parcelle.id ? { ...p, syncError: errorMsg, syncing: false } : p
-          );
-          await saveParcelles(updated);
-          // Continue malgré les erreurs
-        }
-      }
-
-      showSuccess(`${nonSyncParcelles.length} parcelles traitées`);
+      const speedText =
+        delayMs < 100
+          ? "Ultra rapide 🚀"
+          : delayMs < 200
+          ? "Rapide ✅"
+          : "Lent 🐢";
+      showSuccess(`Connexion réussie (${delayMs} ms) — ${speedText}`);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erreur inconnue';
-      showError(`Erreur lors de la synchronisation: ${errorMsg}`);
+      const errorMsg =
+        error instanceof Error ? error.message : "Erreur inconnue";
+      showError(`Erreur de connexion : ${errorMsg}`);
     } finally {
-      setSyncingAll(false);
+      setTestingConnection(false);
     }
   };
 
-  const hasUnsynced = parcelles.some(p => !p.synchronise);
+  const hasUnsynced = parcelles.some((p) => !p.synchronise);
 
   return (
     <IonPage>
@@ -313,156 +346,171 @@ const Tab3: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
+      <IonLoading
+        isOpen={loading || syncingAll}
+        message={loading ? "Chargement..." : "Synchronisation en cours..."}
+      />
+
       <IonContent className="ion-padding">
         <IonItem>
-          <IonLabel>Adresse serveur:</IonLabel>
-          <IonText color="primary" slot="end">
-            {serverIpPort}
-          </IonText>
+          <IonLabel>Adresse serveur :</IonLabel>
+          <IonText color="primary">{serverIpPort}</IonText>
         </IonItem>
 
-        <div className="ion-margin-bottom ion-margin-top">
-          <IonButton expand="block" onClick={loadParcelles} disabled={loading}>
-            <IonIcon icon={refresh} slot="start" />
-            Recharger les données locales
+        {testingConnection && <IonProgressBar type="indeterminate" />}
+        <IonButton
+          expand="block"
+          color="medium"
+          onClick={testerConnexion}
+          disabled={testingConnection}
+        >
+          <IonIcon icon={wifi} slot="start" />
+          {testingConnection ? "Test en cours..." : "Tester la connexion"}
+        </IonButton>
+
+        <IonButton
+          expand="block"
+          onClick={loadParcelles}
+          disabled={loading || syncingAll}
+        >
+          <IonIcon icon={refresh} slot="start" />
+          Recharger les données locales
+        </IonButton>
+
+        {hasUnsynced && (
+          <IonButton
+            expand="block"
+            color="success"
+            onClick={synchroniserToutes}
+            disabled={syncingAll || loading}
+          >
+            <IonIcon icon={sync} slot="start" />
+            Synchroniser toutes les parcelles
           </IonButton>
-
-          {hasUnsynced && (
-            <IonButton
-              expand="block"
-              color="success"
-              onClick={synchroniserToutes}
-              disabled={syncingAll || loading}
-            >
-              <IonIcon icon={sync} slot="start" />
-              Synchroniser toutes les parcelles
-            </IonButton>
-          )}
-        </div>
-
-        {syncingAll && (
-          <>
-            <IonText>Synchronisation en cours...</IonText>
-            <IonProgressBar type="indeterminate" />
-          </>
         )}
 
-        {loading && !syncingAll ? (
-          <IonText>Chargement...</IonText>
-        ) : parcelles.length === 0 ? (
-          <IonText color="medium">
-            Aucune parcelle enregistrée localement.
-          </IonText>
-        ) : (
-          parcelles.map((parcelle) => (
-            <IonCard key={parcelle.id}>
-              <IonCardHeader>
-                <IonLabel>
-                  <strong>Parcelle :</strong> {parcelle.code}
+        <div className="cards-grid">
+          {parcelles.map((parcelle) => (
+            <IonCard
+              key={parcelle.id}
+              className="parcelle-card position-relative mb-3"
+            >
+              <IonButton
+                fill="clear"
+                size="small"
+                onClick={() => synchroniserParcelle(parcelle.id)}
+                disabled={parcelle.syncing}
+                title="Synchroniser"
+                className="sync-button"
+              >
+                <IonIcon
+                  icon={parcelle.synchronise ? checkmarkCircle : sync}
+                  color={parcelle.synchronise ? "success" : "warning"}
+                  size="small"
+                />
+              </IonButton>
+
+              <IonCardContent>
+                <div className="row align-items-start">
                   {parcelle.lastSync && (
-                    <p style={{ fontSize: '0.8rem', color: '#666' }}>
-                      Dernière sync: {new Date(parcelle.lastSync).toLocaleString()}
+                    <p className="parcelle-meta">
+                      ⏱️ Synchronisé le{" "}
+                      {new Date(parcelle.lastSync).toLocaleString()}
                     </p>
                   )}
-                </IonLabel>
-              </IonCardHeader>
-              <IonCardContent>
-                {parcelle.demandeurs.length > 0 ? (
-                  <IonList>
-                    {parcelle.demandeurs.map((d) => (
-                      <IonItem key={d.id}>
-                        <IonIcon
-                          icon={d.type === 'physique' ? person : business}
-                          slot="start"
-                        />
-                        <IonLabel>
-                          {d.type === 'physique'
-                            ? `${d.nom} ${d.prenom}`
-                            : d.denomination}
-                        </IonLabel>
-                      </IonItem>
-                    ))}
-                  </IonList>
-                ) : (
-                  <IonText color="medium">Aucun demandeur</IonText>
-                )}
+                  {/* Col 1 : code + état */}
+                  <div className="col-12 col-md-4 mb-2">
+                    <div className="parcelle-header">
+                      <IonLabel className="parcelle-code">
+                        🧭 Code : {parcelle.code}
+                      </IonLabel>
+                    </div>
 
-                <div className="mt-3 d-flex justify-content-between align-items-center">
-                  <div>
-                    {parcelle.syncing ? (
-                      <IonText color="primary">Synchronisation en cours...</IonText>
-                    ) : parcelle.synchronise ? (
-                      <IonText color="success">
-                        <IonIcon icon={checkmarkCircle} /> Synchronisé
-                      </IonText>
-                    ) : (
-                      <IonText color="danger">
-                        <IonIcon icon={closeCircle} /> Non synchronisé
-                      </IonText>
-                    )}
                     {parcelle.syncError && (
-                      <IonText color="danger">
-                        <p style={{ fontSize: '0.8rem' }}>{parcelle.syncError}</p>
+                      <IonText className="parcelle-error">
+                        ⚠️ {parcelle.syncError}
                       </IonText>
                     )}
                   </div>
 
-                  {!parcelle.synchronise && !parcelle.syncing && (
-                    <IonButton
-                      size="small"
-                      onClick={() => synchroniserParcelle(parcelle.id)}
-                      disabled={syncingAll || loading}
-                    >
-                      Synchroniser
-                    </IonButton>
-                  )}
+                  {/* Col 2 : Demandeurs */}
+                  <div className="col-12 col-md-8">
+                    {parcelle.demandeurs.length > 0 ? (
+                      <IonList lines="none">
+                        {parcelle.demandeurs.map((d) => (
+                          <IonItem key={d.id} style={{ padding: "0.2rem 0" }}>
+                            <IonIcon
+                              icon={d.type === "physique" ? person : business}
+                              slot="start"
+                              color="primary"
+                            />
+                            <IonLabel className="demandeur-label">
+                              {d.type === "physique"
+                                ? `${d.prenom || ""} ${d.nom || ""}`.trim()
+                                : d.denomination || ""}
+                            </IonLabel>
+                          </IonItem>
+                        ))}
+                      </IonList>
+                    ) : (
+                      <IonText color="medium">
+                        Pas de demandeur associé.
+                      </IonText>
+                    )}
+                  </div>
                 </div>
               </IonCardContent>
             </IonCard>
-          ))
-        )}
+          ))}
+        </div>
+
+        <IonModal
+          isOpen={showServerModal}
+          onDidDismiss={() => setShowServerModal(false)}
+        >
+          <IonHeader>
+            <IonToolbar color="primary">
+              <IonTitle>Configurer le serveur</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowServerModal(false)}>
+                  Fermer
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="ion-padding">
+            <IonLabel position="stacked">Adresse IP et port (Ex: 192.168.88.85:80)</IonLabel>
+            <IonInput
+              value={tempServerIpPort}
+              onIonChange={(e) => setTempServerIpPort(e.detail.value!)}
+              placeholder="192.168.88.85:80"
+              clearInput
+              disabled={testingConnection}
+            />
+            <IonButton
+              expand="block"
+              onClick={() => saveServerUrl(tempServerIpPort)}
+            >
+              Enregistrer
+            </IonButton>
+            <IonButton
+              expand="block"
+              color="medium"
+              onClick={() => setShowServerModal(false)}
+            >
+              Annuler
+            </IonButton>
+          </IonContent>
+        </IonModal>
 
         <IonToast
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
           message={toastMessage}
-          duration={3000}
+          duration={4000}
           color={toastColor}
-          position="top"
+          position="top" // 👈 c'est ce qui le met en haut
         />
-
-        {/* Modal pour configurer le serveur */}
-        <IonModal isOpen={showServerModal} onDidDismiss={() => setShowServerModal(false)}>
-          <ModalHeader>
-            <ModalToolbar>
-              <ModalButtons slot="start">
-                <ModalButton onClick={() => setShowServerModal(false)}>Annuler</ModalButton>
-              </ModalButtons>
-              <ModalTitle>Configuration du serveur</ModalTitle>
-              <ModalButtons slot="end">
-                <ModalButton onClick={() => saveServerUrl(tempServerIpPort)}>Valider</ModalButton>
-              </ModalButtons>
-            </ModalToolbar>
-          </ModalHeader>
-          <ModalContent className="ion-padding">
-            <IonItem>
-              <IonLabel position="stacked">Adresse du serveur (IP:port)</IonLabel>
-              <IonInput
-                type="text"
-                value={tempServerIpPort}
-                placeholder="192.168.88.85:80"
-                onIonChange={e => setTempServerIpPort(e.detail.value || '')}
-                clearInput
-              />
-            </IonItem>
-            <IonText color="medium" className="ion-margin-top">
-              <small>
-                Format: IP:port<br />
-                Exemple: 192.168.88.85:80
-              </small>
-            </IonText>
-          </ModalContent>
-        </IonModal>
       </IonContent>
     </IonPage>
   );
