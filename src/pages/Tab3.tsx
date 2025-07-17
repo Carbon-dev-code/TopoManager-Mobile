@@ -414,7 +414,7 @@ const Tab3: React.FC = () => {
                 <div className="row align-items-start">
                   {parcelle.lastSync && (
                     <p className="parcelle-meta">
-                      ⏱️ Synchronisé le{" "}
+                      Synchronisé le{" "}
                       {new Date(parcelle.lastSync).toLocaleString()}
                     </p>
                   )}
@@ -422,7 +422,7 @@ const Tab3: React.FC = () => {
                   <div className="col-12 col-md-4 mb-2">
                     <div className="parcelle-header">
                       <IonLabel className="parcelle-code">
-                        🧭 Code : {parcelle.code}
+                        Parcelle : {parcelle.code}
                       </IonLabel>
                     </div>
 
