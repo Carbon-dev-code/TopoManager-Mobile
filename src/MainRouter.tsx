@@ -40,7 +40,7 @@ const MainRouter: React.FC = () => {
   }
 
   return (
-    <IonSplitPane contentId="main-content">
+    <IonSplitPane contentId="main-content" when={false}>
       <IonMenu contentId="main-content" type="overlay">
         <IonHeader>
           <IonToolbar>
