@@ -29,7 +29,7 @@ import {
   business,
   sync,
   checkmark,
-  server,
+  settings,
   wifi,
 } from "ionicons/icons";
 import "./Tab3.css";
@@ -340,7 +340,7 @@ const Tab3: React.FC = () => {
           <IonTitle>Synchronisation</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => setShowServerModal(true)}>
-              <IonIcon icon={server} />
+              <IonIcon icon={settings} />
             </IonButton>
           </IonButtons>
         </IonToolbar>

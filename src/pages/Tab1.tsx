@@ -41,6 +41,7 @@ import {
   create,
 } from "ionicons/icons";
 import "../assets/dist/css/bootstrap.min.css";
+import "./Tab1.css";
 
 // Interfaces
 interface CIN {
@@ -338,28 +339,30 @@ const Tab1: React.FC = () => {
             </IonButton>
           </div>
         ) : (
-          <div className="parcelle-list">
+          <div className="cards-grid">
             {parcelles.map((parcelle) => (
-              <IonCard key={parcelle.id} className="mb-3">
-                <IonCardHeader className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <IonLabel>
-                      <strong>Parcelle:</strong> {parcelle.code}
-                    </IonLabel>
-                    <IonBadge color="primary" className="ms-2">
-                      {parcelle.demandeurs.length} demandeur(s)
-                    </IonBadge>
-                  </div>
-                  <IonButton
-                    fill="clear"
-                    color="danger"
-                    onClick={() => removeParcelle(parcelle.id)}
-                  >
-                    <IonIcon icon={trash} />
-                  </IonButton>
-                </IonCardHeader>
+              <IonCard key={parcelle.id} className="row m-1">
+                <span
+                  className="position-badge-custom-tab1"
+                  role="button"
+                  color="danger"
+                  onClick={() => removeParcelle(parcelle.id)}
+                >
+                  <IonIcon icon={trash} />
+                </span>
 
-                <IonCardContent>
+                <div className="col-12 col-sm-6 col-md-4 d-flex flex-column justify-content-center">
+                  <IonLabel className="parcelle-code">
+                    Parcelle : {parcelle.code}
+                  </IonLabel>
+
+                  <IonBadge color="primary" className="mt-2 fit-content-tab1">
+                    {parcelle.demandeurs.length} demandeur(s)
+                  </IonBadge>
+                </div>
+
+
+                <div className="col">
                   {parcelle.demandeurs.length === 0 ? (
                     <p className="text-muted">
                       Aucun demandeur pour cette parcelle
@@ -379,24 +382,11 @@ const Tab1: React.FC = () => {
                               ? `${demandeur.nom} ${demandeur.prenom}`
                               : demandeur.denomination}
                           </IonLabel>
-                          <IonButton
-                            fill="clear"
-                            color="danger"
-                            onClick={() =>
-                              setShowDeleteAlert({
-                                show: true,
-                                parcelleId: parcelle.id,
-                                demandeurId: demandeur.id,
-                              })
-                            }
-                          >
-                            <IonIcon icon={trash} />
-                          </IonButton>
                         </IonItem>
                       ))}
                     </IonList>
                   )}
-                </IonCardContent>
+                </div>
               </IonCard>
             ))}
           </div>
@@ -765,23 +755,23 @@ const Tab1: React.FC = () => {
 
                     {(formData.situation === "marie" ||
                       formData.situation === "veuf") && (
-                      <div className="mt-2">
-                        <IonLabel position="stacked">Nom du conjoint</IonLabel>
-                        <IonInput
-                          className="form-control px-3"
-                          value={formData.nomConjoint}
-                          onIonChange={(e) =>
-                            handleInputChange({
-                              target: {
-                                name: "nomConjoint",
-                                value: e.detail.value!,
-                              },
-                            })
-                          }
-                          placeholder="Nom complet du conjoint"
-                        />
-                      </div>
-                    )}
+                        <div className="mt-2">
+                          <IonLabel position="stacked">Nom du conjoint</IonLabel>
+                          <IonInput
+                            className="form-control px-3"
+                            value={formData.nomConjoint}
+                            onIonChange={(e) =>
+                              handleInputChange({
+                                target: {
+                                  name: "nomConjoint",
+                                  value: e.detail.value!,
+                                },
+                              })
+                            }
+                            placeholder="Nom complet du conjoint"
+                          />
+                        </div>
+                      )}
                   </div>
 
                   <div className="col-md-6 mb-3">

@@ -1,0 +1,55 @@
+.position-badge-custom-tab1 {
+  position: absolute;
+  top: 0;
+  right: 0.5rem;
+  z-index: 1;
+  background-color: var(--ion-color-danger);
+  color: white;
+  padding: 4px;
+  border-radius: 0%;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+}
+
+.position-badge-custom-tab1 ion-icon {
+  font-size: 18px;
+}
+
+/* Dent gauche */
+.position-badge-custom-tab1::before {
+  content: "";
+  position: absolute !important;
+  bottom: -11px !important;
+  left: 0px !important;
+  border-left: 0 solid transparent !important;
+  border-right: 12px solid transparent !important;
+  border-top: 12px solid var(--ion-color-danger) !important;
+}
+
+/* Dent droite */
+.position-badge-custom-tab1::after {
+  content: "";
+  position: absolute !important;
+  bottom: -11px !important;
+  right: 0px !important;
+  border-left: 12px solid transparent !important;
+  border-right: 0 solid transparent !important;
+  border-top: 12px solid var(--ion-color-danger) !important;
+}
+
+/* Responsive pour petits écrans */
+@media (max-width: 576px) {
+  .position-badge-custom-tab1 {
+    font-size: 0.85rem;
+    right: 0.3rem;
+  }
+}
+
+.fit-content-tab1{
+    width: fit-content !important;
+}
