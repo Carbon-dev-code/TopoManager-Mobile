@@ -10,7 +10,7 @@ import {
   IonButton,
   IonText,
   IonCard,
-  IonCardHeader,
+  IonSpinner,
   IonCardContent,
   IonLabel,
   IonList,
@@ -28,7 +28,7 @@ import {
   person,
   business,
   sync,
-  checkmarkCircle,
+  checkmark,
   server,
   wifi,
 } from "ionicons/icons";
@@ -125,7 +125,7 @@ const Tab3: React.FC = () => {
 
   const saveServerUrl = async (ipPort: string) => {
     const cleanedIpPort = ipPort.trim().replace(/^https?:\/\//, "");
-    if (!cleanedIpPort.match(/^[\w\.-]+(:\d+)?$/)) {
+    if (!cleanedIpPort.match(/^[\w\\.-]+(:\d+)?$/)) {
       showError("Format invalide. Utilisez IP:port (ex: 192.168.1.100:80)");
       return false;
     }
@@ -393,33 +393,50 @@ const Tab3: React.FC = () => {
           {parcelles.map((parcelle) => (
             <IonCard
               key={parcelle.id}
-              className="parcelle-card position-relative mb-3"
+              className={`parcelle-card position-relative mb-3" ${
+                parcelle.synchronise ? "synced" : "nosynced"
+              }`}
             >
-              <IonButton
-                fill="clear"
-                size="small"
-                onClick={() => synchroniserParcelle(parcelle.id)}
-                disabled={parcelle.syncing}
+              <span
+                className={`position-absolute position-badge-custom position-badge translate-middle badge rounded-pill ${
+                  parcelle.synchronise ? "bg-success" : "bg-danger"
+                } ${
+                  parcelle.syncing || parcelle.synchronise ? "disabled" : ""
+                }`}
                 title="Synchroniser"
-                className="sync-button"
+                onClick={() => {
+                  if (!parcelle.syncing && !parcelle.synchronise) {
+                    synchroniserParcelle(parcelle.id);
+                  }
+                }}
+                role="button"
+                aria-disabled={parcelle.syncing}
               >
-                <IonIcon
-                  icon={parcelle.synchronise ? checkmarkCircle : sync}
-                  color={parcelle.synchronise ? "success" : "warning"}
-                  size="small"
-                />
-              </IonButton>
+                {parcelle.syncing ? (
+                  <IonSpinner
+                    name="crescent"
+                    color="light"
+                    style={{ width: "18px", height: "18px" }}
+                  />
+                ) : (
+                  <IonIcon icon={parcelle.synchronise ? checkmark : sync} />
+                )}
+                <span className="visually-hidden">
+                  {parcelle.synchronise
+                    ? "Parcelle synchronisée"
+                    : "Parcelle à synchroniser"}
+                </span>
+              </span>
+              {parcelle.lastSync && (
+                <p className="parcelle-meta">
+                  Synchronisé le {new Date(parcelle.lastSync).toLocaleString()}
+                </p>
+              )}
 
-              <IonCardContent>
-                <div className="row align-items-start">
-                  {parcelle.lastSync && (
-                    <p className="parcelle-meta">
-                      Synchronisé le{" "}
-                      {new Date(parcelle.lastSync).toLocaleString()}
-                    </p>
-                  )}
+              <IonCardContent className="align-items-center">
+                <div className="row">
                   {/* Col 1 : code + état */}
-                  <div className="col-12 col-md-4 mb-2">
+                  <div className="col-12 col-md-4 d-flex">
                     <div className="parcelle-header">
                       <IonLabel className="parcelle-code">
                         Parcelle : {parcelle.code}
@@ -438,7 +455,7 @@ const Tab3: React.FC = () => {
                     {parcelle.demandeurs.length > 0 ? (
                       <IonList className="ion-list" lines="none">
                         {parcelle.demandeurs.map((d) => (
-                          <IonItem key={d.id} style={{ padding: "0.2rem 0" }}>
+                          <IonItem key={d.id} style={{ padding: "0px" }}>
                             <IonIcon
                               icon={d.type === "physique" ? person : business}
                               slot="start"
@@ -479,7 +496,9 @@ const Tab3: React.FC = () => {
             </IonToolbar>
           </IonHeader>
           <IonContent className="ion-padding">
-            <IonLabel position="stacked">Adresse IP et port (Ex: 192.168.88.85:80)</IonLabel>
+            <IonLabel position="stacked">
+              Adresse IP et port (Ex: 192.168.88.85:80)
+            </IonLabel>
             <IonInput
               value={tempServerIpPort}
               onIonChange={(e) => setTempServerIpPort(e.detail.value!)}
