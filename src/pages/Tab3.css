@@ -48,7 +48,7 @@
 .parcelle-error {
   font-size: 0.75rem;
   color: var(--ion-color-danger);
-  margin-top: 6px;
+  margin-left: 10px;
 }
 
 .demandeur-label {
@@ -126,4 +126,9 @@
   .position-badge-custom {
     right: 0.3rem;
   }
+}
+
+.my-progress-bar {
+  --background: white;
+  --progress-background: #0d00ff;
 }

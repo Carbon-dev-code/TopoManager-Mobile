@@ -68,13 +68,12 @@ const Tab3: React.FC = () => {
   const [syncingAll, setSyncingAll] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">(
-    "success"
-  );
+  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">("success");
   const [serverIpPort, setServerIpPort] = useState(DEFAULT_IP_PORT);
   const [showServerModal, setShowServerModal] = useState(false);
   const [tempServerIpPort, setTempServerIpPort] = useState(DEFAULT_IP_PORT);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [filtreParcelle, setFiltreParcelle] = useState<"tous" | "sync" | "nosync" | "erreur">("tous");
 
   const STORAGE_KEY = "parcelles_data";
   const SERVER_URL_KEY = "server_url";
@@ -220,12 +219,12 @@ const Tab3: React.FC = () => {
         const updated = parcelles.map((p) =>
           p.id === parcelleId
             ? {
-                ...p,
-                synchronise: true,
-                syncError: undefined,
-                syncing: false,
-                lastSync: new Date().toISOString(),
-              }
+              ...p,
+              synchronise: true,
+              syncError: undefined,
+              syncing: false,
+              lastSync: new Date().toISOString(),
+            }
             : p
         );
         await saveParcelles(updated);
@@ -271,11 +270,11 @@ const Tab3: React.FC = () => {
         updatedParcelles = updatedParcelles.map((p) =>
           p.id === parcelle.id
             ? {
-                ...p,
-                synchronise: success,
-                syncing: false,
-                lastSync: success ? new Date().toISOString() : p.lastSync,
-              }
+              ...p,
+              synchronise: success,
+              syncing: false,
+              lastSync: success ? new Date().toISOString() : p.lastSync,
+            }
             : p
         );
         setParcelles(updatedParcelles);
@@ -304,25 +303,46 @@ const Tab3: React.FC = () => {
 
     const testUrl = `${buildServerUrl(serverIpPort)}/ping`;
     setTestingConnection(true);
+    const controller = new AbortController();
+    const timeout = 20000;
+
     const start = performance.now();
 
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, timeout);
+
     try {
-      const response = await fetch(testUrl, { method: "GET" });
+      const response = await fetch(testUrl, {
+        method: "GET",
+        signal: controller.signal,
+      });
+
       const end = performance.now();
       const delayMs = Math.round(end - start);
+      clearTimeout(timer);
+
       if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
 
       const speedText =
         delayMs < 100
           ? "Ultra rapide 🚀"
           : delayMs < 200
-          ? "Rapide ✅"
-          : "Lent 🐢";
+            ? "Rapide ✅"
+            : "Lent 🐢";
       showSuccess(`Connexion réussie (${delayMs} ms) — ${speedText}`);
-    } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erreur inconnue";
-      showError(`Erreur de connexion : ${errorMsg}`);
+    } catch (error: unknown) {
+      clearTimeout(timer);
+
+      if (error instanceof DOMException && error.name === "AbortError") {
+        showError(
+          `Le serveur ne reponds pas après une attente de ${timeout / 1000} secondes ⏱️`
+        );
+      } else if (error instanceof Error) {
+        showError(`Erreur de connexion : ${error.message}`);
+      } else {
+        showError("Erreur inconnue");
+      }
     } finally {
       setTestingConnection(false);
     }
@@ -339,6 +359,9 @@ const Tab3: React.FC = () => {
           </IonButtons>
           <IonTitle>Synchronisation</IonTitle>
           <IonButtons slot="end">
+            <IonButton onClick={loadParcelles} disabled={loading || syncingAll}>
+              <IonIcon icon={refresh} />
+            </IonButton>
             <IonButton onClick={() => setShowServerModal(true)}>
               <IonIcon icon={settings} />
             </IonButton>
@@ -346,36 +369,39 @@ const Tab3: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
+      {testingConnection && (
+        <IonProgressBar
+          type="indeterminate"
+          className="my-progress-bar"
+        />
+      )}
+
       <IonLoading
         isOpen={loading || syncingAll}
         message={loading ? "Chargement..." : "Synchronisation en cours..."}
       />
 
       <IonContent className="ion-padding">
-        <IonItem>
-          <IonLabel>Adresse serveur :</IonLabel>
-          <IonText color="primary">{serverIpPort}</IonText>
-        </IonItem>
-
-        {testingConnection && <IonProgressBar type="indeterminate" />}
-        <IonButton
-          expand="block"
-          color="medium"
-          onClick={testerConnexion}
-          disabled={testingConnection}
-        >
-          <IonIcon icon={wifi} slot="start" />
-          {testingConnection ? "Test en cours..." : "Tester la connexion"}
-        </IonButton>
-
-        <IonButton
-          expand="block"
-          onClick={loadParcelles}
-          disabled={loading || syncingAll}
-        >
-          <IonIcon icon={refresh} slot="start" />
-          Recharger les données locales
-        </IonButton>
+        <div className="row align-items-center">
+          <div className="col">
+            <IonItem lines="none">
+              <IonLabel>Adresse serveur :</IonLabel>
+              <IonText color="primary" className="ms-2">{serverIpPort}</IonText>
+            </IonItem>
+          </div>
+          <div className="col-auto">
+            <IonButton
+              size="default"
+              expand="block"
+              color="primary"
+              onClick={testerConnexion}
+              disabled={testingConnection}
+            >
+              <IonIcon icon={wifi} slot="start" />
+              {testingConnection ? "Test en cours..." : "Tester la connexion"}
+            </IonButton>
+          </div>
+        </div>
 
         {hasUnsynced && (
           <IonButton
@@ -389,96 +415,163 @@ const Tab3: React.FC = () => {
           </IonButton>
         )}
 
-        <div className="cards-grid">
-          {parcelles.map((parcelle) => (
-            <IonCard
-              key={parcelle.id}
-              className={`parcelle-card position-relative mb-3" ${
-                parcelle.synchronise ? "synced" : "nosynced"
-              }`}
-            >
-              <span
-                className={`position-absolute position-badge-custom position-badge translate-middle badge rounded-pill ${
-                  parcelle.synchronise ? "bg-success" : "bg-danger"
-                } ${
-                  parcelle.syncing || parcelle.synchronise ? "disabled" : ""
-                }`}
-                title="Synchroniser"
-                onClick={() => {
-                  if (!parcelle.syncing && !parcelle.synchronise) {
-                    synchroniserParcelle(parcelle.id);
-                  }
-                }}
-                role="button"
-                aria-disabled={parcelle.syncing}
-              >
-                {parcelle.syncing ? (
-                  <IonSpinner
-                    name="crescent"
-                    color="light"
-                    style={{ width: "18px", height: "18px" }}
-                  />
-                ) : (
-                  <IonIcon icon={parcelle.synchronise ? checkmark : sync} />
-                )}
-                <span className="visually-hidden">
-                  {parcelle.synchronise
-                    ? "Parcelle synchronisée"
-                    : "Parcelle à synchroniser"}
-                </span>
-              </span>
-              {parcelle.lastSync && (
-                <p className="parcelle-meta">
-                  Synchronisé le {new Date(parcelle.lastSync).toLocaleString()}
-                </p>
-              )}
+        {/* Filtre ajouté ici */}
+        <div className="mb-3 mt-3">
+          <div
+            className="d-flex justify-content-center overflow-auto"
+            style={{ gap: '0.5rem' }}
+          >
+            <div className="col-auto">
+              <input
+                type="radio"
+                className="btn-check"
+                name="filtreParcelle"
+                id="tous-outlined"
+                autoComplete="off"
+                checked={filtreParcelle === "tous"}
+                onChange={() => setFiltreParcelle("tous")}
+              />
+              <label className="btn btn-outline-primary" htmlFor="tous-outlined">
+                Tous
+              </label>
+            </div>
+            <div className="col-auto">
+              <input
+                type="radio"
+                className="btn-check"
+                name="filtreParcelle"
+                id="sync-outlined"
+                autoComplete="off"
+                checked={filtreParcelle === "sync"}
+                onChange={() => setFiltreParcelle("sync")}
+              />
+              <label className="btn btn-outline-primary" htmlFor="sync-outlined">
+                Synchronisées
+              </label>
+            </div>
+            <div className="col-auto">
+              <input
+                type="radio"
+                className="btn-check"
+                name="filtreParcelle"
+                id="nosync-outlined"
+                autoComplete="off"
+                checked={filtreParcelle === "nosync"}
+                onChange={() => setFiltreParcelle("nosync")}
+              />
+              <label className="btn btn-outline-primary" htmlFor="nosync-outlined">
+                Non synchronisées
+              </label>
+            </div>
+            <div className="col-auto">
+              <input
+                type="radio"
+                className="btn-check"
+                name="filtreParcelle"
+                id="error-outlined"
+                autoComplete="off"
+                checked={filtreParcelle === "erreur"}
+                onChange={() => setFiltreParcelle("erreur")}
+              />
+              <label className="btn btn-outline-primary" htmlFor="error-outlined">
+                Avec erreurs
+              </label>
+            </div>
+          </div>
+        </div>
 
-              <IonCardContent className="align-items-center">
-                <div className="row">
-                  {/* Col 1 : code + état */}
-                  <div className="col-12 col-md-4 d-flex">
-                    <div className="parcelle-header">
-                      <IonLabel className="parcelle-code">
-                        Parcelle : {parcelle.code}
-                      </IonLabel>
+        <div className="cards-grid">
+          {parcelles
+            .filter((p) => {
+              if (filtreParcelle === "tous") return true;
+              if (filtreParcelle === "sync") return p.synchronise === true;
+              if (filtreParcelle === "nosync") return p.synchronise === undefined;
+              if (filtreParcelle === "erreur") return p.synchronise === false;
+              return true;
+            })
+            .map((parcelle) => (
+              <IonCard
+                key={parcelle.id}
+                className={`parcelle-card position-relative mb-3 ${parcelle.synchronise ? "synced" : "nosynced"
+                  }`}
+              >
+                <span
+                  className={`position-absolute position-badge-custom position-badge translate-middle badge rounded-pill ${parcelle.synchronise ? "bg-success" : "bg-danger"
+                    } ${parcelle.syncing || parcelle.synchronise ? "disabled" : ""}`}
+                  title="Synchroniser"
+                  onClick={() => {
+                    if (!parcelle.syncing && !parcelle.synchronise) {
+                      synchroniserParcelle(parcelle.id);
+                    }
+                  }}
+                  role="button"
+                  aria-disabled={parcelle.syncing}
+                >
+                  {parcelle.syncing ? (
+                    <IonSpinner
+                      name="crescent"
+                      color="light"
+                      style={{ width: "18px", height: "18px" }}
+                    />
+                  ) : (
+                    <IonIcon icon={parcelle.synchronise ? checkmark : sync} />
+                  )}
+                  <span className="visually-hidden">
+                    {parcelle.synchronise
+                      ? "Parcelle synchronisée"
+                      : "Parcelle à synchroniser"}
+                  </span>
+                </span>
+                {parcelle.lastSync && (
+                  <p className="parcelle-meta">
+                    Synchronisé le {new Date(parcelle.lastSync).toLocaleString()}
+                  </p>
+                )}
+
+                <IonCardContent className="align-items-center">
+                  <div className="row">
+                    <div className="col-12 col-md-4 d-flex align-items-center">
+                      <div className="parcelle-header">
+                        <IonLabel className="parcelle-code">
+                          Parcelle : {parcelle.code}
+                        </IonLabel>
+                      </div>
+
+                      {parcelle.syncError && (
+                        <IonText className="parcelle-error">
+                          ⚠️ {parcelle.syncError}
+                        </IonText>
+                      )}
                     </div>
 
-                    {parcelle.syncError && (
-                      <IonText className="parcelle-error">
-                        ⚠️ {parcelle.syncError}
-                      </IonText>
-                    )}
+                    <div className="col-12 col-md-8">
+                      {parcelle.demandeurs.length > 0 ? (
+                        <IonList className="ion-list" lines="none">
+                          {parcelle.demandeurs.map((d) => (
+                            <IonItem key={d.id} style={{ padding: "0px" }}>
+                              <IonIcon
+                                icon={d.type === "physique" ? person : business}
+                                slot="start"
+                                color="primary"
+                              />
+                              <IonLabel className="demandeur-label">
+                                {d.type === "physique"
+                                  ? `${d.prenom || ""} ${d.nom || ""}`.trim()
+                                  : d.denomination || ""}
+                              </IonLabel>
+                            </IonItem>
+                          ))}
+                        </IonList>
+                      ) : (
+                        <IonText color="medium">
+                          Pas de demandeur associé.
+                        </IonText>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Col 2 : Demandeurs */}
-                  <div className="col-12 col-md-8">
-                    {parcelle.demandeurs.length > 0 ? (
-                      <IonList className="ion-list" lines="none">
-                        {parcelle.demandeurs.map((d) => (
-                          <IonItem key={d.id} style={{ padding: "0px" }}>
-                            <IonIcon
-                              icon={d.type === "physique" ? person : business}
-                              slot="start"
-                              color="primary"
-                            />
-                            <IonLabel className="demandeur-label">
-                              {d.type === "physique"
-                                ? `${d.prenom || ""} ${d.nom || ""}`.trim()
-                                : d.denomination || ""}
-                            </IonLabel>
-                          </IonItem>
-                        ))}
-                      </IonList>
-                    ) : (
-                      <IonText color="medium">
-                        Pas de demandeur associé.
-                      </IonText>
-                    )}
-                  </div>
-                </div>
-              </IonCardContent>
-            </IonCard>
-          ))}
+                </IonCardContent>
+              </IonCard>
+            ))}
         </div>
 
         <IonModal
@@ -528,7 +621,7 @@ const Tab3: React.FC = () => {
           message={toastMessage}
           duration={4000}
           color={toastColor}
-          position="top" // 👈 c'est ce qui le met en haut
+          position="top"
         />
       </IonContent>
     </IonPage>
