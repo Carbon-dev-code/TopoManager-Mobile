@@ -22,7 +22,7 @@ const Tab4: React.FC = () => {
         </IonToolbar>
         </IonHeader>
         <IonContent>
-            TESTE
+            TESTE P
         </IonContent>
     </IonPage> 
   );
