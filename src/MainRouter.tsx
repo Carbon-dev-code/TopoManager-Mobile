@@ -15,11 +15,12 @@ import {
   IonRouterOutlet,
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
-import { documentOutline, mapOutline, informationOutline } from 'ionicons/icons';
+import { documentOutline, mapOutline, cloudUploadOutline, cloudDownloadOutline} from 'ionicons/icons';
 
 import Tab1 from './pages/Tab1';
 import Tab2 from './pages/Tab2';
 import Tab3 from './pages/Tab3';
+import Tab4 from './pages/Tab4';
 import Accueil from './pages/accueil/Accueil';
 import Login from './pages/login/Login';
 
@@ -63,8 +64,14 @@ const MainRouter: React.FC = () => {
             </IonMenuToggle>
             <IonMenuToggle autoHide={false}>
               <IonItem routerLink="/tab3" routerDirection="none">
-                <IonIcon icon={informationOutline} slot="start" />
-                <IonLabel>Syncronisation</IonLabel>
+                <IonIcon icon={cloudUploadOutline} slot="start" />
+                <IonLabel>Upload</IonLabel>
+              </IonItem>
+            </IonMenuToggle>
+            <IonMenuToggle autoHide={false}>
+              <IonItem routerLink="/tab4" routerDirection="none">
+                <IonIcon icon={cloudDownloadOutline} slot="start" />
+                <IonLabel>Telecharger</IonLabel>
               </IonItem>
             </IonMenuToggle>
           </IonList>
@@ -83,6 +90,7 @@ const MainRouter: React.FC = () => {
             <Route exact path="/tab1" component={Tab1} />
             <Route exact path="/tab2" component={Tab2} />
             <Route exact path="/tab3" component={Tab3} />
+            <Route exact path="/tab4" component={Tab4} />
             <Route exact path="/">
               <Redirect to="/accueil" />
             </Route>
