@@ -24,7 +24,6 @@ import {
   IonCard,
   IonCardHeader,
   IonCardContent,
-  IonDatetime,
   IonRadioGroup,
   IonRadio,
 } from "@ionic/react";
@@ -37,7 +36,6 @@ import {
   business,
   male,
   female,
-  idCard,
   create,
 } from "ionicons/icons";
 import "../assets/dist/css/bootstrap.min.css";
@@ -83,13 +81,17 @@ interface Demandeur {
 interface Parcelle {
   id: string;
   code: string;
+  type: string;
   demandeurs: Demandeur[];
 }
 
 interface TempParcelle {
   code: string;
+  type: string;
   demandeurs: Demandeur[];
 }
+
+const STORAGE_KEY = "parcelles_data";
 
 const Tab1: React.FC = () => {
   // États principaux
@@ -98,6 +100,7 @@ const Tab1: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
   const [currentParcelleCode, setCurrentParcelleCode] = useState("");
+  const [typeParcelle, setTypeParcelle] = useState<string>("");
 
   // États du formulaire demandeur
   const [isPhysique, setIsPhysique] = useState(true);
@@ -130,50 +133,7 @@ const Tab1: React.FC = () => {
     saveParcellesToStorage(parcelles);
   }, [parcelles]);
 
-  // Gestion des parcelles
-  const createParcelle = async () => {
-    if (!tempParcelle || !tempParcelle.code) return;
-
-    const newParcelle: Parcelle = {
-      id: Date.now().toString(),
-      code: tempParcelle.code,
-      demandeurs: tempParcelle.demandeurs.map((d) => ({
-        ...d,
-        cin: d.piece === "cin" ? d.cin : undefined,
-        acte: d.piece === "acte" ? d.acte : undefined,
-      })),
-    };
-
-    // 🔁 Charger l'existant pour ne pas perdre les parcelles synchronisées
-    const existing = await Preferences.get({ key: STORAGE_KEY });
-    let oldParcelles: Parcelle[] = [];
-
-    if (existing.value) {
-      try {
-        oldParcelles = JSON.parse(existing.value);
-      } catch (e) {
-        console.error("Erreur de parsing des anciennes parcelles", e);
-      }
-    }
-
-    const allParcelles = [...oldParcelles, newParcelle];
-
-    // ✅ Sauvegarder la nouvelle liste fusionnée
-    await Preferences.set({
-      key: STORAGE_KEY,
-      value: JSON.stringify(allParcelles),
-    });
-
-    setParcelles(allParcelles); // Mets à jour l'état local
-    setTempParcelle(null);
-    setShowCreateModal(false);
-  };
-
-  const removeParcelle = (id: string) => {
-    setParcelles(parcelles.filter((p) => p.id !== id));
-  };
-
-  const STORAGE_KEY = "parcelles_data";
+  // Fonctions stockage local
   const saveParcellesToStorage = async (parcelles: Parcelle[]) => {
     await Preferences.set({
       key: STORAGE_KEY,
@@ -196,16 +156,38 @@ const Tab1: React.FC = () => {
     return [];
   };
 
-  // Gestion des demandeurs
+  // Création de parcelle avec demandeurs
+  const createParcelle = async () => {
+    if (!tempParcelle || !tempParcelle.code) return;
+
+    const newParcelle: Parcelle = {
+      id: Date.now().toString(),
+      code: tempParcelle.code,
+      type: tempParcelle.type,
+      demandeurs: tempParcelle.demandeurs.map((d) => ({
+        ...d,
+        cin: d.piece === "cin" ? d.cin : undefined,
+        acte: d.piece === "acte" ? d.acte : undefined,
+      })),
+    };
+
+    const allParcelles = [...parcelles, newParcelle];
+    setParcelles(allParcelles);
+    setTempParcelle(null);
+    setShowCreateModal(false);
+  };
+
+  const removeParcelle = (id: string) => {
+    setParcelles(parcelles.filter((p) => p.id !== id));
+  };
+
+  // Gestion demandeurs
   const addDemandeur = () => {
     if (!tempParcelle) return;
 
-    // Validation des champs obligatoires
     if (isPhysique) {
       if (!formData.nom || !formData.prenom || !formData.dateNaissance) {
-        alert(
-          "Veuillez remplir tous les champs obligatoires (Nom, Prénom, Date de naissance)"
-        );
+        alert("Veuillez remplir les champs Nom, Prénom, Date de naissance");
         return;
       }
     } else {
@@ -219,7 +201,6 @@ const Tab1: React.FC = () => {
       id: Date.now().toString(),
       type: isPhysique ? "physique" : "morale",
       ...formData,
-      // Nettoyage des données selon le type de pièce
       cin: formData.piece === "cin" ? formData.cin : undefined,
       acte: formData.piece === "acte" ? formData.acte : undefined,
     };
@@ -233,23 +214,16 @@ const Tab1: React.FC = () => {
     setShowDemandeurModal(false);
   };
 
-  const removeDemandeur = () => {
-    const { parcelleId, demandeurId } = showDeleteAlert;
-    setParcelles(
-      parcelles.map((p) => {
-        if (p.id === parcelleId) {
-          return {
-            ...p,
-            demandeurs: p.demandeurs.filter((d) => d.id !== demandeurId),
-          };
-        }
-        return p;
-      })
-    );
-    setShowDeleteAlert({ show: false, parcelleId: "", demandeurId: "" });
+  // Suppression demandeur dans tempParcelle
+  const removeDemandeurFromTemp = (id: string) => {
+    if (!tempParcelle) return;
+    setTempParcelle({
+      ...tempParcelle,
+      demandeurs: tempParcelle.demandeurs.filter((d) => d.id !== id),
+    });
   };
 
-  // Helpers
+  // Reset formulaire demandeur
   const resetForm = () => {
     setFormData({
       neVers: false,
@@ -263,9 +237,9 @@ const Tab1: React.FC = () => {
     setIsPhysique(true);
   };
 
+  // Gestion input formulaire demandeur
   const handleInputChange = (e: any) => {
     const { name, value, type, checked } = e.target;
-
     if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
@@ -325,7 +299,6 @@ const Tab1: React.FC = () => {
       </IonHeader>
 
       <IonContent className="ion-padding">
-        {/* Liste des parcelles */}
         {parcelles.length === 0 ? (
           <div className="text-center py-5">
             <IonIcon
@@ -359,23 +332,21 @@ const Tab1: React.FC = () => {
                   <IonBadge color="primary" className="mt-2 fit-content-tab1">
                     {parcelle.demandeurs.length} demandeur(s)
                   </IonBadge>
+                  <IonLabel className="mt-1">
+                    Type : <strong>{parcelle.type}</strong>
+                  </IonLabel>
                 </div>
-
 
                 <div className="col">
                   {parcelle.demandeurs.length === 0 ? (
-                    <p className="text-muted">
-                      Aucun demandeur pour cette parcelle
-                    </p>
+                    <p className="text-muted">Aucun demandeur pour cette parcelle</p>
                   ) : (
                     <IonList>
                       {parcelle.demandeurs.map((demandeur) => (
                         <IonItem key={demandeur.id}>
                           <IonIcon
                             slot="start"
-                            icon={
-                              demandeur.type === "physique" ? person : business
-                            }
+                            icon={demandeur.type === "physique" ? person : business}
                           />
                           <IonLabel>
                             {demandeur.type === "physique"
@@ -392,12 +363,14 @@ const Tab1: React.FC = () => {
           </div>
         )}
 
-        {/* Modal: Création de parcelle */}
+        {/* Modal Création Parcelle */}
         <IonModal
           isOpen={showCreateModal}
           onDidDismiss={() => {
             setTempParcelle(null);
             setShowCreateModal(false);
+            setCurrentParcelleCode("");
+            setTypeParcelle("");
           }}
         >
           <IonHeader>
@@ -407,6 +380,8 @@ const Tab1: React.FC = () => {
                   onClick={() => {
                     setTempParcelle(null);
                     setShowCreateModal(false);
+                    setCurrentParcelleCode("");
+                    setTypeParcelle("");
                   }}
                 >
                   <IonIcon icon={close} />
@@ -427,25 +402,38 @@ const Tab1: React.FC = () => {
                     labelPlacement="floating"
                     placeholder="Ex: 123-045-789"
                     value={currentParcelleCode}
-                    onIonChange={(e) =>
-                      setCurrentParcelleCode(e.detail.value || "")
-                    }
+                    onIonChange={(e) => setCurrentParcelleCode(e.detail.value || "")}
                     className="mb-3"
                   />
+
+                  <IonSelect
+                    label="Type de Parcelle"
+                    labelPlacement="floating"
+                    placeholder="Choisir un type"
+                    value={typeParcelle}
+                    onIonChange={(e) => setTypeParcelle(e.detail.value)}
+                    className="mb-3"
+                  >
+                    <IonSelectOption value="TANIMBOLY">TANIMBOLY</IonSelectOption>
+                    <IonSelectOption value="TANIMBARY">TANIMBARY</IonSelectOption>
+                    <IonSelectOption value="DOBO">DOBO</IonSelectOption>
+                  </IonSelect>
 
                   <IonButton
                     expand="block"
                     onClick={() => {
-                      if (currentParcelleCode) {
+                      if (currentParcelleCode && typeParcelle) {
                         setTempParcelle({
                           code: currentParcelleCode,
+                          type: typeParcelle,
                           demandeurs: [],
                         });
                         setCurrentParcelleCode("");
+                        setTypeParcelle("");
                         setShowDemandeurModal(true);
                       }
                     }}
-                    disabled={!currentParcelleCode}
+                    disabled={!currentParcelleCode || !typeParcelle}
                   >
                     <IonIcon icon={add} slot="start" />
                     Continuer pour ajouter des demandeurs
@@ -456,7 +444,9 @@ const Tab1: React.FC = () => {
               <>
                 <IonCard>
                   <IonCardHeader>
-                    <IonLabel>Parcelle: {tempParcelle.code}</IonLabel>
+                    <IonLabel>
+                      Parcelle: {tempParcelle.code} ({tempParcelle.type})
+                    </IonLabel>
                   </IonCardHeader>
                   <IonCardContent>
                     <IonButton
@@ -481,14 +471,7 @@ const Tab1: React.FC = () => {
                               <IonButton
                                 fill="clear"
                                 color="danger"
-                                onClick={() => {
-                                  setTempParcelle({
-                                    ...tempParcelle,
-                                    demandeurs: tempParcelle.demandeurs.filter(
-                                      (d) => d.id !== demandeur.id
-                                    ),
-                                  });
-                                }}
+                                onClick={() => removeDemandeurFromTemp(demandeur.id)}
                               >
                                 <IonIcon icon={trash} />
                               </IonButton>
@@ -508,499 +491,303 @@ const Tab1: React.FC = () => {
                   disabled={tempParcelle.demandeurs.length === 0}
                 >
                   <IonIcon icon={create} slot="start" />
-                  Créer la parcelle avec {tempParcelle.demandeurs.length}{" "}
-                  demandeur(s)
+                  Créer la parcelle avec {tempParcelle.demandeurs.length} demandeur(s)
                 </IonButton>
               </>
             )}
           </IonContent>
         </IonModal>
 
-        {/* Modal: Ajout de demandeur */}
+        {/* Modal Ajout Demandeur */}
         <IonModal
           isOpen={showDemandeurModal}
           onDidDismiss={() => {
             resetForm();
             setShowDemandeurModal(false);
+            if (!tempParcelle) setShowCreateModal(false);
           }}
         >
           <IonHeader>
             <IonToolbar color="primary">
               <IonButtons slot="start">
-                <IonButton onClick={() => setShowDemandeurModal(false)}>
+                <IonButton
+                  onClick={() => {
+                    resetForm();
+                    setShowDemandeurModal(false);
+                  }}
+                >
                   <IonIcon icon={close} />
                 </IonButton>
               </IonButtons>
-              <IonTitle>Ajouter Demandeur</IonTitle>
-              <IonButtons slot="end">
-                <IonButton strong={true} onClick={addDemandeur}>
-                  Ajouter
-                </IonButton>
-              </IonButtons>
+              <IonTitle>Ajouter un demandeur</IonTitle>
             </IonToolbar>
           </IonHeader>
 
           <IonContent className="ion-padding">
-            <div className="mb-4">
-              <IonLabel className="me-3">Type de Personne :</IonLabel>
-              <IonRadioGroup
-                value={isPhysique ? "physique" : "morale"}
-                onIonChange={(e) =>
-                  setIsPhysique(e.detail.value === "physique")
-                }
-              >
-                <IonItem>
-                  <IonLabel>Physique</IonLabel>
-                  <IonRadio slot="start" value="physique" />
-                </IonItem>
-                <IonItem>
-                  <IonLabel>Morale</IonLabel>
-                  <IonRadio slot="start" value="morale" />
-                </IonItem>
-              </IonRadioGroup>
-            </div>
+            <IonRadioGroup
+              value={isPhysique}
+              onIonChange={(e) => {
+                setIsPhysique(e.detail.value);
+                resetForm();
+              }}
+              className="mb-3"
+            >
+              <IonItem>
+                <IonLabel>Personne Physique</IonLabel>
+                <IonRadio slot="start" value={true} />
+              </IonItem>
+              <IonItem>
+                <IonLabel>Personne Morale</IonLabel>
+                <IonRadio slot="start" value={false} />
+              </IonItem>
+            </IonRadioGroup>
 
             {isPhysique ? (
               <>
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Nom*</IonLabel>
-                    <IonInput
-                      className="form-control px-3"
-                      value={formData.nom}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "nom", value: e.detail.value! },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Prénom*</IonLabel>
-                    <IonInput
-                      className="form-control px-3"
-                      value={formData.prenom}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "prenom", value: e.detail.value! },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+                <IonInput
+                  label="Nom"
+                  labelPlacement="floating"
+                  value={formData.nom || ""}
+                  name="nom"
+                  onIonChange={handleInputChange}
+                  required
+                />
+                <IonInput
+                  label="Prénom"
+                  labelPlacement="floating"
+                  value={formData.prenom || ""}
+                  name="prenom"
+                  onIonChange={handleInputChange}
+                  required
+                />
 
-                <IonItem>
-                  <IonCheckbox
-                    slot="start"
-                    checked={formData.neVers}
-                    onIonChange={(e) =>
-                      handleInputChange({
-                        target: {
-                          name: "neVers",
-                          type: "checkbox",
-                          checked: e.detail.checked,
-                        },
-                      })
-                    }
-                  />
-                  <IonLabel>Né vers (approximatif)</IonLabel>
-                </IonItem>
+                <IonCheckbox
+                  checked={formData.neVers}
+                  onIonChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      neVers: e.detail.checked,
+                    }))
+                  }
+                />
+                <IonLabel>Né vers</IonLabel>
 
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Date de naissance*</IonLabel>
-                    {formData.neVers ? (
-                      <IonInput
-                        type="number"
-                        className="form-control px-3"
-                        placeholder="Année (ex: 1985)"
-                        min="1900"
-                        max={new Date().getFullYear()}
-                        value={formData.dateNaissance?.substring(0, 4) || ""}
-                        onIonChange={(e) => {
-                          const year = e.detail.value || "";
-                          handleInputChange({
-                            target: {
-                              name: "dateNaissance",
-                              value: year.length === 4 ? `${year}-01-01` : "",
-                            },
-                          });
-                        }}
-                      />
-                    ) : (
-                      <IonInput
-                        type="date"
-                        className="form-control px-3"
-                        value={formData.dateNaissance}
-                        onIonChange={(e) =>
-                          handleInputChange({
-                            target: {
-                              name: "dateNaissance",
-                              value: e.detail.value!,
-                            },
-                          })
-                        }
-                      />
-                    )}
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Lieu de naissance</IonLabel>
-                    <IonInput
-                      className="form-control px-3"
-                      value={formData.lieuNaissance}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: {
-                            name: "lieuNaissance",
-                            value: e.detail.value!,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+                <IonInput
+                  label="Date de naissance"
+                  labelPlacement="floating"
+                  type="date"
+                  value={formData.dateNaissance || ""}
+                  name="dateNaissance"
+                  onIonChange={handleInputChange}
+                  disabled={formData.neVers}
+                />
+                <IonInput
+                  label="Lieu de naissance"
+                  labelPlacement="floating"
+                  value={formData.lieuNaissance || ""}
+                  name="lieuNaissance"
+                  onIonChange={handleInputChange}
+                  disabled={formData.neVers}
+                />
 
-                <div className="mb-3">
-                  <IonLabel>Sexe</IonLabel>
-                  <IonRadioGroup
-                    value={formData.sexe}
-                    onIonChange={(e) =>
-                      handleInputChange({
-                        target: { name: "sexe", value: e.detail.value },
-                      })
-                    }
-                  >
-                    <IonItem>
-                      <IonLabel>
-                        <IonIcon icon={male} className="me-1" />
-                        Masculin
-                      </IonLabel>
-                      <IonRadio slot="start" value="Masculin" />
-                    </IonItem>
-                    <IonItem>
-                      <IonLabel>
-                        <IonIcon icon={female} className="me-1" />
-                        Féminin
-                      </IonLabel>
-                      <IonRadio slot="start" value="Feminin" />
-                    </IonItem>
-                  </IonRadioGroup>
-                </div>
+                <IonRadioGroup
+                  value={formData.sexe}
+                  onIonChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      sexe: e.detail.value,
+                    }))
+                  }
+                >
+                  <IonItem>
+                    <IonLabel>Masculin</IonLabel>
+                    <IonRadio slot="start" value="M" />
+                  </IonItem>
+                  <IonItem>
+                    <IonLabel>Féminin</IonLabel>
+                    <IonRadio slot="start" value="F" />
+                  </IonItem>
+                </IonRadioGroup>
 
-                <div className="mb-3">
-                  <IonLabel position="stacked">Adresse</IonLabel>
-                  <IonInput
-                    className="form-control px-3"
-                    value={formData.adresse}
-                    onIonChange={(e) =>
-                      handleInputChange({
-                        target: { name: "adresse", value: e.detail.value! },
-                      })
-                    }
-                  />
-                </div>
+                <IonInput
+                  label="Adresse"
+                  labelPlacement="floating"
+                  value={formData.adresse || ""}
+                  name="adresse"
+                  onIonChange={handleInputChange}
+                />
 
-                <h5 className="mt-4">Filiation</h5>
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Nom du père</IonLabel>
-                    <IonInput
-                      className="form-control px-3"
-                      value={formData.nomPere}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "nomPere", value: e.detail.value! },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Nom de la mère</IonLabel>
-                    <IonInput
-                      className="form-control px-3"
-                      value={formData.nomMere}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "nomMere", value: e.detail.value! },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+                <IonInput
+                  label="Nom du père"
+                  labelPlacement="floating"
+                  value={formData.nomPere || ""}
+                  name="nomPere"
+                  onIonChange={handleInputChange}
+                />
 
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <IonLabel>Situation matrimoniale</IonLabel>
-                    <IonRadioGroup
-                      value={formData.situation}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "situation", value: e.detail.value },
-                        })
-                      }
-                    >
-                      <IonItem>
-                        <IonLabel>Célibataire</IonLabel>
-                        <IonRadio slot="start" value="celibataire" />
-                      </IonItem>
-                      <IonItem>
-                        <IonLabel>Marié(e)</IonLabel>
-                        <IonRadio slot="start" value="marie" />
-                      </IonItem>
-                      <IonItem>
-                        <IonLabel>Veuf(ve)</IonLabel>
-                        <IonRadio slot="start" value="veuf" />
-                      </IonItem>
-                    </IonRadioGroup>
+                <IonInput
+                  label="Nom de la mère"
+                  labelPlacement="floating"
+                  value={formData.nomMere || ""}
+                  name="nomMere"
+                  onIonChange={handleInputChange}
+                />
 
-                    {(formData.situation === "marie" ||
-                      formData.situation === "veuf") && (
-                        <div className="mt-2">
-                          <IonLabel position="stacked">Nom du conjoint</IonLabel>
-                          <IonInput
-                            className="form-control px-3"
-                            value={formData.nomConjoint}
-                            onIonChange={(e) =>
-                              handleInputChange({
-                                target: {
-                                  name: "nomConjoint",
-                                  value: e.detail.value!,
-                                },
-                              })
-                            }
-                            placeholder="Nom complet du conjoint"
-                          />
-                        </div>
-                      )}
-                  </div>
+                <IonSelect
+                  label="Situation matrimoniale"
+                  value={formData.situation}
+                  placeholder="Sélectionner"
+                  onIonChange={(e) =>
+                    setFormData((prev) => ({ ...prev, situation: e.detail.value }))
+                  }
+                >
+                  <IonSelectOption value="celibataire">Célibataire</IonSelectOption>
+                  <IonSelectOption value="marie">Marié(e)</IonSelectOption>
+                  <IonSelectOption value="divorce">Divorcé(e)</IonSelectOption>
+                  <IonSelectOption value="veuf">Veuf/Veuve</IonSelectOption>
+                </IonSelect>
 
-                  <div className="col-md-6 mb-3">
-                    <IonLabel>Pièces d'identification</IonLabel>
-                    <IonRadioGroup
-                      value={formData.piece}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "piece", value: e.detail.value },
-                        })
-                      }
-                    >
-                      <IonItem>
-                        <IonLabel>CIN</IonLabel>
-                        <IonRadio slot="start" value="cin" />
-                      </IonItem>
-                      <IonItem>
-                        <IonLabel>Acte de naissance</IonLabel>
-                        <IonRadio slot="start" value="acte" />
-                      </IonItem>
-                      <IonItem>
-                        <IonLabel>Rien</IonLabel>
-                        <IonRadio slot="start" value="rien" />
-                      </IonItem>
-                    </IonRadioGroup>
-                  </div>
-                </div>
+                <IonInput
+                  label="Nom du conjoint"
+                  labelPlacement="floating"
+                  value={formData.nomConjoint || ""}
+                  name="nomConjoint"
+                  onIonChange={handleInputChange}
+                />
+
+                <IonSelect
+                  label="Type de pièce"
+                  value={formData.piece}
+                  placeholder="Sélectionner"
+                  onIonChange={(e) =>
+                    setFormData((prev) => ({ ...prev, piece: e.detail.value }))
+                  }
+                >
+                  <IonSelectOption value="cin">CIN</IonSelectOption>
+                  <IonSelectOption value="acte">Acte de naissance</IonSelectOption>
+                  <IonSelectOption value="rien">Aucune pièce</IonSelectOption>
+                </IonSelect>
 
                 {formData.piece === "cin" && (
                   <>
-                    <h5 className="mt-4">CIN</h5>
-                    <div className="mb-3">
-                      <IonLabel position="stacked">Numéro</IonLabel>
-                      <div className="d-flex gap-2">
-                        {[0, 1, 2, 3].map((index) => (
-                          <IonInput
-                            key={index}
-                            className="form-control px-3"
-                            style={{ width: "25%" }}
-                            value={formData.cin?.numero?.[index] || ""}
-                            onIonChange={(e) =>
-                              handleCinNumberChange(index, e.detail.value!)
-                            }
-                            maxlength={3}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
-                        <IonLabel position="stacked">Date</IonLabel>
+                    <IonLabel>Numéro CIN (4 parties)</IonLabel>
+                    <div className="d-flex justify-content-between">
+                      {formData.cin?.numero.map((num, idx) => (
                         <IonInput
-                          type="date"
-                          className="form-control px-3"
-                          value={formData.cin?.date}
+                          key={idx}
+                          value={num}
                           onIonChange={(e) =>
-                            handleNestedChange("cin", "date", e.detail.value!)
+                            handleCinNumberChange(idx, e.detail.value || "")
                           }
+                          className="cin-input"
+                          maxlength={2}
                         />
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <IonLabel position="stacked">Lieu</IonLabel>
-                        <IonInput
-                          className="form-control px-3"
-                          value={formData.cin?.lieu}
-                          onIonChange={(e) =>
-                            handleNestedChange("cin", "lieu", e.detail.value!)
-                          }
-                        />
-                      </div>
+                      ))}
                     </div>
+
+                    <IonInput
+                      label="Date de délivrance"
+                      type="date"
+                      value={formData.cin?.date || ""}
+                      onIonChange={(e) =>
+                        handleNestedChange("cin", "date", e.detail.value || "")
+                      }
+                    />
+                    <IonInput
+                      label="Lieu de délivrance"
+                      value={formData.cin?.lieu || ""}
+                      onIonChange={(e) =>
+                        handleNestedChange("cin", "lieu", e.detail.value || "")
+                      }
+                    />
                   </>
                 )}
 
                 {formData.piece === "acte" && (
                   <>
-                    <h5 className="mt-4">Acte de naissance</h5>
-                    <div className="mb-3">
-                      <IonLabel position="stacked">Numéro</IonLabel>
-                      <IonInput
-                        className="form-control px-3"
-                        value={formData.acte?.numero}
-                        onIonChange={(e) =>
-                          handleNestedChange("acte", "numero", e.detail.value!)
-                        }
-                      />
-                    </div>
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
-                        <IonLabel position="stacked">Date</IonLabel>
-                        <IonInput
-                          type="date"
-                          className="form-control px-3"
-                          value={formData.acte?.date}
-                          onIonChange={(e) =>
-                            handleNestedChange("acte", "date", e.detail.value!)
-                          }
-                        />
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <IonLabel position="stacked">Lieu</IonLabel>
-                        <IonInput
-                          className="form-control px-3"
-                          value={formData.acte?.lieu}
-                          onIonChange={(e) =>
-                            handleNestedChange("acte", "lieu", e.detail.value!)
-                          }
-                        />
-                      </div>
-                    </div>
+                    <IonInput
+                      label="Numéro acte"
+                      value={formData.acte?.numero || ""}
+                      onIonChange={(e) =>
+                        handleNestedChange("acte", "numero", e.detail.value || "")
+                      }
+                    />
+                    <IonInput
+                      label="Date acte"
+                      type="date"
+                      value={formData.acte?.date || ""}
+                      onIonChange={(e) =>
+                        handleNestedChange("acte", "date", e.detail.value || "")
+                      }
+                    />
+                    <IonInput
+                      label="Lieu acte"
+                      value={formData.acte?.lieu || ""}
+                      onIonChange={(e) =>
+                        handleNestedChange("acte", "lieu", e.detail.value || "")
+                      }
+                    />
                   </>
                 )}
               </>
             ) : (
               <>
-                <div className="row mb-3">
-                  <div className="col-md-8">
-                    <IonLabel position="stacked">Type*</IonLabel>
-                    <IonSelect
-                      className="form-select"
-                      value={formData.typeMorale}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "typeMorale", value: e.detail.value },
-                        })
-                      }
-                    >
-                      <IonSelectOption value="Société">Société</IonSelectOption>
-                      <IonSelectOption value="Association">
-                        Association
-                      </IonSelectOption>
-                      <IonSelectOption value="ONG">ONG</IonSelectOption>
-                      <IonSelectOption value="Institution">
-                        Institution
-                      </IonSelectOption>
-                    </IonSelect>
-                  </div>
-                  <div className="col-md-4 d-flex align-items-end">
-                    <IonButton expand="block" fill="outline">
-                      <IonIcon icon={informationCircle} slot="start" />
-                      Liste
-                    </IonButton>
-                  </div>
-                </div>
+                {/* Formulaire Personne Morale */}
+                <IonInput
+                  label="Dénomination"
+                  labelPlacement="floating"
+                  value={formData.denomination || ""}
+                  name="denomination"
+                  onIonChange={handleInputChange}
+                />
+                <IonSelect
+                  label="Type Personne Morale"
+                  value={formData.typeMorale || ""}
+                  placeholder="Sélectionner"
+                  onIonChange={(e) =>
+                    setFormData((prev) => ({ ...prev, typeMorale: e.detail.value }))
+                  }
+                >
+                  <IonSelectOption value="sarl">SARL</IonSelectOption>
+                  <IonSelectOption value="sarlunipersonnelle">
+                    SARL Unipersonnelle
+                  </IonSelectOption>
+                  <IonSelectOption value="sa">SA</IonSelectOption>
+                  <IonSelectOption value="groupement">Groupement</IonSelectOption>
+                  <IonSelectOption value="association">Association</IonSelectOption>
+                  <IonSelectOption value="cooperative">Coopérative</IonSelectOption>
+                </IonSelect>
 
-                <div className="mb-3">
-                  <IonLabel position="stacked">Dénomination*</IonLabel>
-                  <IonInput
-                    className="form-control px-3"
-                    placeholder="Ex: Topomanager SARL"
-                    value={formData.denomination}
-                    onIonChange={(e) =>
-                      handleInputChange({
-                        target: {
-                          name: "denomination",
-                          value: e.detail.value!,
-                        },
-                      })
-                    }
-                  />
-                </div>
+                <IonInput
+                  label="Date de création"
+                  type="date"
+                  value={formData.dateCreation || ""}
+                  name="dateCreation"
+                  onIonChange={handleInputChange}
+                />
 
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Date de création</IonLabel>
-                    <IonInput
-                      type="date"
-                      className="form-control px-3"
-                      value={formData.dateCreation}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: {
-                            name: "dateCreation",
-                            value: e.detail.value!,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <IonLabel position="stacked">Siège</IonLabel>
-                    <IonInput
-                      className="form-control px-3"
-                      placeholder="Adresse du siège social"
-                      value={formData.siege}
-                      onIonChange={(e) =>
-                        handleInputChange({
-                          target: { name: "siege", value: e.detail.value! },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+                <IonInput
+                  label="Siège"
+                  value={formData.siege || ""}
+                  name="siege"
+                  onIonChange={handleInputChange}
+                />
 
-                <div className="mb-3">
-                  <IonLabel position="stacked">Observations</IonLabel>
-                  <IonTextarea
-                    className="form-control px-3"
-                    rows={4}
-                    placeholder="Saisir des remarques ou notes..."
-                    value={formData.observations}
-                    onIonChange={(e) =>
-                      handleInputChange({
-                        target: {
-                          name: "observations",
-                          value: e.detail.value!,
-                        },
-                      })
-                    }
-                  />
-                </div>
+                <IonTextarea
+                  label="Observations"
+                  value={formData.observations || ""}
+                  name="observations"
+                  onIonChange={handleInputChange}
+                />
               </>
             )}
+
+            <IonButton expand="block" onClick={addDemandeur} className="mt-3">
+              <IonIcon icon={add} slot="start" />
+              Ajouter le demandeur
+            </IonButton>
           </IonContent>
         </IonModal>
-
-        {/* Alerte suppression */}
-        <IonAlert
-          isOpen={showDeleteAlert.show}
-          onDidDismiss={() =>
-            setShowDeleteAlert({ show: false, parcelleId: "", demandeurId: "" })
-          }
-          header="Confirmer suppression"
-          message="Êtes-vous sûr de vouloir supprimer ce demandeur ?"
-          buttons={[
-            { text: "Annuler", role: "cancel" },
-            { text: "Supprimer", handler: removeDemandeur },
-          ]}
-        />
       </IonContent>
     </IonPage>
   );
