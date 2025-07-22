@@ -304,7 +304,7 @@ const Tab3: React.FC = () => {
     const testUrl = `${buildServerUrl(serverIpPort)}/ping`;
     setTestingConnection(true);
     const controller = new AbortController();
-    const timeout = 20000;
+    const timeout = 10000;
 
     const start = performance.now();
 
@@ -357,7 +357,7 @@ const Tab3: React.FC = () => {
           <IonButtons slot="start">
             <IonMenuButton />
           </IonButtons>
-          <IonTitle>Synchronisation</IonTitle>
+          <IonTitle>Upload</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={loadParcelles} disabled={loading || syncingAll}>
               <IonIcon icon={refresh} />
@@ -619,7 +619,7 @@ const Tab3: React.FC = () => {
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
           message={toastMessage}
-          duration={4000}
+          duration={3500}
           color={toastColor}
           position="top"
         />

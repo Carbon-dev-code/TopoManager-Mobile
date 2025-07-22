@@ -1,0 +1,105 @@
+/* Paramètres Territoriaux - Style amélioré */
+.current-param-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.param-details {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.param-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  margin-bottom: 8px;
+}
+
+.edit-button {
+  --box-shadow: 0 2px 6px rgba(var(--ion-color-primary-rgb), 0.3);
+}
+
+.saved-params-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.saved-params-header {
+  padding-bottom: 5px;
+}
+
+.saved-params-list {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.saved-param-item {
+  --border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.saved-param-item:hover {
+  transform: translateY(-2px);
+}
+
+.param-label h3 {
+  font-weight: 600;
+}
+
+.param-label p {
+  font-size: 0.9em;
+  margin-top: 4px;
+}
+
+.param-date {
+  color: var(--ion-color-medium);
+  font-size: 0.8em;
+  margin-top: 4px;
+}
+
+.selection-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.selection-item {
+  --border-radius: 8px;
+  margin-bottom: 16px;
+  --background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.selection-input {
+  width: 100%;
+}
+
+.save-button {
+  --box-shadow: 0 2px 6px rgba(var(--ion-color-primary-rgb), 0.3);
+  max-width: 400px;
+  margin: 0 auto;
+}
+/* Animation de rotation pendant le chargement */
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Style pour la barre de progression */
+ion-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
