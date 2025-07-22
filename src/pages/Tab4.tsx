@@ -111,7 +111,7 @@ const Tab4 = () => {
   const [currentParcelleCode, setCurrentParcelleCode] = useState<string>("");
 
   useIonViewWillEnter(() => {
-    refreshCurrentParams();
+    loadConfig().then(() => refreshCurrentParams());
   });
 
   const refreshCurrentParams = async () => {
@@ -121,11 +121,9 @@ const Tab4 = () => {
         const current = JSON.parse(value);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.code}-${current.district.code}-${
-          current.commune.code
-        }-${current.fokontany.code}-${current.hameau.code}-${
-          current.increment + 1
-        }`;
+        const codeComplet = `${current.region.code}-${current.district.code}-${current.commune.code
+          }-${current.fokontany.code}-${current.hameau.code}-${current.increment + 1
+          }`;
         setCurrentParcelleCode(codeComplet);
       }
     } catch (error) {
@@ -133,38 +131,46 @@ const Tab4 = () => {
     }
   };
 
-  useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const url = await ConfigService.getServerBaseUrl();
-        setServerUrl(url);
-      } catch {
-        setError("Configurez l'URL du serveur d'abord");
-      }
-    };
-    loadConfig();
-  }, []);
+  const loadConfig = async () => {
+    try {
+      const url = await ConfigService.getServerBaseUrl();
+      setServerUrl(url); // Mise à jour de l'état
+      return url; // Important pour le .then()
+    } catch (error) {
+      setError("Configurez l'URL du serveur d'abord");
+      throw error; // Propage l'erreur
+    }
+  };
 
   const fetchTerritoire = async () => {
-    if (!serverUrl) {
-      setError("URL du serveur non configurée");
-      return;
-    }
-
     setIsLoading(true);
     setShowProgress(true);
     setError(null);
 
     try {
-      const response = await fetch(`${serverUrl}/getTerritoire`);
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+      setServerUrl(await ConfigService.getServerBaseUrl());
+
+      // 2. Vérification finale de l'URL
+      if (!serverUrl) {
+        throw new Error("Configuration serveur manquante");
       }
-      const data = await response.json();
-      setTerritoire(data.data);
+
+      // 3. Fetch des données territoire
+      const [territoireResponse] = await Promise.all([
+        fetch(`${serverUrl}/getTerritoire`),
+      ]);
+
+      if (!territoireResponse.ok) {
+        throw new Error(`Erreur territoire: ${territoireResponse.status}`);
+      }
+
+      const territoireData = await territoireResponse.json();
+      setTerritoire(territoireData.data);
       setShowModal(true);
-    } catch (err) {
-      setError("Échec de la connexion au serveur");
+
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setError(`Échec de la synchronisation: ${message}`);
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -329,11 +335,9 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.code}-${
-        nouveauParametre.district.code
-      }-${nouveauParametre.commune.code}-${nouveauParametre.fokontany.code}-${
-        nouveauParametre.hameau.code
-      }-${nouveauParametre.increment + 1}`;
+      const codeComplet = `${nouveauParametre.region.code}-${nouveauParametre.district.code
+        }-${nouveauParametre.commune.code}-${nouveauParametre.fokontany.code}-${nouveauParametre.hameau.code
+        }-${nouveauParametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -350,11 +354,9 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.code}-${
-        parametre.district.code
-      }-${parametre.commune.code}-${parametre.fokontany.code}-${
-        parametre.hameau.code
-      }-${parametre.increment + 1}`;
+      const codeComplet = `${parametre.region.code}-${parametre.district.code
+        }-${parametre.commune.code}-${parametre.fokontany.code}-${parametre.hameau.code
+        }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);
@@ -377,6 +379,14 @@ const Tab4 = () => {
   const resetFokontany = () => {
     setSelectedFokontany(null);
     setSelectedHameau(null);
+  };
+
+  const getServerAddress = () => {
+    if (!serverUrl) return "Non configuré";
+
+    // Extrait http://ip:port ou https://ip:port
+    const matches = serverUrl.match(/^https?:\/\/([^\/]+)/);
+    return matches ? matches[1] : serverUrl;
   };
 
   return (
@@ -412,16 +422,26 @@ const Tab4 = () => {
                 justifyContent: "center",
               }}
             >
-              <IonIcon
-                icon={settingsOutline}
-                color="primary"
-                size="large"
-                className="param-icon"
-                style={{ marginRight: "8px" }}
-              />
-              <IonLabel style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
-                Paramétrage Actuel
-              </IonLabel>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <IonIcon
+                  icon={settingsOutline}
+                  color="primary"
+                  size="large"
+                  className="param-icon"
+                  style={{ marginRight: "8px" }}
+                />
+                <IonLabel style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+                  Paramétrage Actuel
+                </IonLabel>
+              </div>
+
+              <IonText color="medium" className="mx-2">
+                Serveur: {getServerAddress()}
+              </IonText>
             </div>
 
             {parametreActuel ? (
@@ -430,14 +450,10 @@ const Tab4 = () => {
                   <IonItem lines="none" className="param-item">
                     <IonLabel>
                       <IonText color="medium">
-                        (Code region-Code district-Code commune-Code
-                        fokontany-Code hameau-Numero auto increment)
+                        (Code region-Code district-Code commune-Code fokontany-Code hameau-Numero auto increment)
                       </IonText>
                       <p>
-                        <b>
-                          Code parcelle suivant pour le parametre:{" "}
-                          {currentParcelleCode}
-                        </b>
+                        <b>{currentParcelleCode || "Aucun code disponible"}</b>
                       </p>
                     </IonLabel>
                   </IonItem>

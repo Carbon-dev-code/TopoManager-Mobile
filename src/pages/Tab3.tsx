@@ -33,6 +33,7 @@ import {
   wifi,
 } from "ionicons/icons";
 import "./Tab3.css";
+import { ConfigService } from "../model/ConfigService";
 
 interface Demandeur {
   id: string;
@@ -122,7 +123,7 @@ const Tab3: React.FC = () => {
     }
   };
 
-  const saveServerUrl = async (ipPort: string) => {
+  const saveServerUrl = (ipPort: string) => {
     const cleanedIpPort = ipPort.trim().replace(/^https?:\/\//, "");
     if (!cleanedIpPort.match(/^[\w\\.-]+(:\d+)?$/)) {
       showError("Format invalide. Utilisez IP:port (ex: 192.168.1.100:80)");
@@ -131,7 +132,7 @@ const Tab3: React.FC = () => {
 
     try {
       const fullUrl = buildServerUrl(cleanedIpPort);
-      await Preferences.set({ key: SERVER_URL_KEY, value: fullUrl });
+      ConfigService.setServerBaseUrl(fullUrl);
       setServerIpPort(cleanedIpPort);
       setTempServerIpPort(cleanedIpPort);
       setShowServerModal(false);
