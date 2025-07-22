@@ -135,6 +135,10 @@ const Tab4 = () => {
     try {
       const url = await ConfigService.getServerBaseUrl();
       setServerUrl(url); // Mise à jour de l'état
+      const { value } = await Preferences.get({ key: 'territoireData' });
+      if (value) {
+        setTerritoire(JSON.parse(value));
+      }
       return url; // Important pour le .then()
     } catch (error) {
       setError("Configurez l'URL du serveur d'abord");
@@ -142,22 +146,24 @@ const Tab4 = () => {
     }
   };
 
-  const fetchTerritoire = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     setShowProgress(true);
     setError(null);
 
     try {
-      setServerUrl(await ConfigService.getServerBaseUrl());
+      // 1. Récupérer l'URL du serveur
+      const currentServerUrl = await ConfigService.getServerBaseUrl();
+      setServerUrl(currentServerUrl);
 
-      // 2. Vérification finale de l'URL
-      if (!serverUrl) {
+      // 2. Vérification de l'URL
+      if (!currentServerUrl) {
         throw new Error("Configuration serveur manquante");
       }
 
       // 3. Fetch des données territoire
       const [territoireResponse] = await Promise.all([
-        fetch(`${serverUrl}/getTerritoire`),
+        fetch(`${currentServerUrl}/getTerritoire`),
       ]);
 
       if (!territoireResponse.ok) {
@@ -165,6 +171,14 @@ const Tab4 = () => {
       }
 
       const territoireData = await territoireResponse.json();
+
+      // 4. Sauvegarder dans les préférences
+      await Preferences.set({
+        key: 'territoireData',
+        value: JSON.stringify(territoireData.data)
+      });
+
+      // 5. Mettre à jour l'état local
       setTerritoire(territoireData.data);
       setShowModal(true);
 
@@ -403,7 +417,7 @@ const Tab4 = () => {
             Paramètres Territoriaux
           </IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={fetchTerritoire} disabled={isLoading}>
+            <IonButton onClick={fetchData} disabled={isLoading}>
               <IonIcon slot="icon-only" icon={sync} />
             </IonButton>
           </IonButtons>

@@ -37,7 +37,6 @@ import {
   business,
   male,
   female,
-  idCard,
   create,
 } from "ionicons/icons";
 import "../assets/dist/css/bootstrap.min.css";
