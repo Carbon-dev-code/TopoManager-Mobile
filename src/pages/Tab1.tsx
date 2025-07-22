@@ -100,7 +100,6 @@ const Tab1: React.FC = () => {
   const [currentParcelleCode, setCurrentParcelleCode] = useState("");
   const [currentIncrement, setCurrentIncrement] = useState(0); // Renommé pour plus de clarté
 
-
   // États du formulaire demandeur
   const [isPhysique, setIsPhysique] = useState(true);
   const [formData, setFormData] = useState<Partial<Demandeur>>({
@@ -112,32 +111,38 @@ const Tab1: React.FC = () => {
     acte: { numero: "", date: "", lieu: "" },
   });
 
-  // Alertes
-  const [showDeleteAlert, setShowDeleteAlert] = useState({
-    show: false,
-    parcelleId: "",
-    demandeurId: "",
-  });
-
   useEffect(() => {
     const nextCodeParcelle = async () => {
       try {
-        const parametrePref = await Preferences.get({ key: 'parametreActuel' });
+        const parametrePref = await Preferences.get({ key: "parametreActuel" });
 
         if (parametrePref.value) {
           const parametreActuel = JSON.parse(parametrePref.value);
           const newIncrement = (parametreActuel.increment || 0) + 1;
-          const code_parcelle_complet = `${parametreActuel.region.code}-${parametreActuel.district.code}-${parametreActuel.commune.code}-${parametreActuel.fokontany.code}-${parametreActuel.hameau?.code}-${newIncrement.toString()}`;
+          const code_parcelle_complet = `${parametreActuel.region.code}-${
+            parametreActuel.district.code
+          }-${parametreActuel.commune.code}-${parametreActuel.fokontany.code}-${
+            parametreActuel.hameau?.code
+          }-${newIncrement.toString()}`;
           setCurrentParcelleCode(code_parcelle_complet);
-          setCurrentIncrement(newIncrement)
+          setCurrentIncrement(newIncrement);
         }
       } catch (error) {
         console.error("Erreur dans nextCodeParcelle:", error);
       }
     };
 
-    nextCodeParcelle();
-  }, []);
+    if (showCreateModal && !tempParcelle) {
+      nextCodeParcelle();
+    }
+  }, [showCreateModal, tempParcelle]);
+
+  // Alertes
+  const [showDeleteAlert, setShowDeleteAlert] = useState({
+    show: false,
+    parcelleId: "",
+    demandeurId: "",
+  });
 
   // Charger/Sauvegarder les données
   useEffect(() => {
@@ -158,7 +163,7 @@ const Tab1: React.FC = () => {
 
     try {
       // 1. Récupérer les paramètres actuels
-      const parametrePref = await Preferences.get({ key: 'parametreActuel' });
+      const parametrePref = await Preferences.get({ key: "parametreActuel" });
       if (!parametrePref.value) throw new Error("Paramètres non configurés");
       const parametreActuel = JSON.parse(parametrePref.value);
 
@@ -170,7 +175,7 @@ const Tab1: React.FC = () => {
           ...d,
           cin: d.piece === "cin" ? d.cin : undefined,
           acte: d.piece === "acte" ? d.acte : undefined,
-        }))
+        })),
       };
 
       // 3. Charger les parcelles existantes
@@ -186,7 +191,7 @@ const Tab1: React.FC = () => {
       }
 
       // 4. Vérifier les doublons
-      if (oldParcelles.some(p => p.code === newParcelle.code)) {
+      if (oldParcelles.some((p) => p.code === newParcelle.code)) {
         alert("Une parcelle avec ce code existe déjà");
         return;
       }
@@ -201,18 +206,17 @@ const Tab1: React.FC = () => {
 
       // 6. Mettre à jour l'incrément seulement après succès
       await Preferences.set({
-        key: 'parametreActuel',
+        key: "parametreActuel",
         value: JSON.stringify({
           ...parametreActuel,
-          increment: currentIncrement // On utilise l'incrément déjà calculé
-        })
+          increment: currentIncrement, // On utilise l'incrément déjà calculé
+        }),
       });
 
       // 7. Mettre à jour l'état
       setParcelles(allParcelles);
       setTempParcelle(null);
       setShowCreateModal(false);
-
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error("Erreur création parcelle:", error.message);
@@ -304,7 +308,6 @@ const Tab1: React.FC = () => {
     setShowDeleteAlert({ show: false, parcelleId: "", demandeurId: "" });
   };
 
-  // Helpers
   const resetForm = () => {
     setFormData({
       neVers: false,
@@ -415,7 +418,6 @@ const Tab1: React.FC = () => {
                     {parcelle.demandeurs.length} demandeur(s)
                   </IonBadge>
                 </div>
-
 
                 <div className="col">
                   {parcelle.demandeurs.length === 0 ? (
@@ -807,23 +809,23 @@ const Tab1: React.FC = () => {
 
                     {(formData.situation === "marie" ||
                       formData.situation === "veuf") && (
-                        <div className="mt-2">
-                          <IonLabel position="stacked">Nom du conjoint</IonLabel>
-                          <IonInput
-                            className="form-control px-3"
-                            value={formData.nomConjoint}
-                            onIonChange={(e) =>
-                              handleInputChange({
-                                target: {
-                                  name: "nomConjoint",
-                                  value: e.detail.value!,
-                                },
-                              })
-                            }
-                            placeholder="Nom complet du conjoint"
-                          />
-                        </div>
-                      )}
+                      <div className="mt-2">
+                        <IonLabel position="stacked">Nom du conjoint</IonLabel>
+                        <IonInput
+                          className="form-control px-3"
+                          value={formData.nomConjoint}
+                          onIonChange={(e) =>
+                            handleInputChange({
+                              target: {
+                                name: "nomConjoint",
+                                value: e.detail.value!,
+                              },
+                            })
+                          }
+                          placeholder="Nom complet du conjoint"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-md-6 mb-3">
