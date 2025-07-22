@@ -41,6 +41,7 @@ import {
 } from "ionicons/icons";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
+import { ParametreTerritoire } from "../model/ParametreTerritoire";
 
 // Interfaces
 interface CIN {
@@ -83,11 +84,13 @@ interface Parcelle {
   id: string;
   code: string;
   demandeurs: Demandeur[];
+  parametreTerritoire: ParametreTerritoire
 }
 
 interface TempParcelle {
   code: string;
   demandeurs: Demandeur[];
+  parametreTerritoire: ParametreTerritoire
 }
 
 const Tab1: React.FC = () => {
@@ -97,7 +100,8 @@ const Tab1: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
   const [currentParcelleCode, setCurrentParcelleCode] = useState("");
-  const [currentIncrement, setCurrentIncrement] = useState(0); // Renommé pour plus de clarté
+  const [currentIncrement, setCurrentIncrement] = useState(0);
+  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
 
   // États du formulaire demandeur
   const [isPhysique, setIsPhysique] = useState(true);
@@ -118,13 +122,10 @@ const Tab1: React.FC = () => {
         if (parametrePref.value) {
           const parametreActuel = JSON.parse(parametrePref.value);
           const newIncrement = (parametreActuel.increment || 0) + 1;
-          const code_parcelle_complet = `${parametreActuel.region.code}-${
-            parametreActuel.district.code
-          }-${parametreActuel.commune.code}-${parametreActuel.fokontany.code}-${
-            parametreActuel.hameau?.code
-          }-${newIncrement.toString()}`;
+          const code_parcelle_complet = `${parametreActuel.region.code}-${parametreActuel.district.code}-${parametreActuel.commune.code}-${parametreActuel.fokontany.code}-${parametreActuel.hameau?.code}-${newIncrement.toString()}`;
           setCurrentParcelleCode(code_parcelle_complet);
           setCurrentIncrement(newIncrement);
+          setParametreTerritoire(parametreActuel);
         }
       } catch (error) {
         console.error("Erreur dans nextCodeParcelle:", error);
@@ -175,6 +176,7 @@ const Tab1: React.FC = () => {
           cin: d.piece === "cin" ? d.cin : undefined,
           acte: d.piece === "acte" ? d.acte : undefined,
         })),
+        parametreTerritoire: { ...parametreTerritoire }
       };
 
       // 3. Charger les parcelles existantes
@@ -277,13 +279,13 @@ const Tab1: React.FC = () => {
       id: Date.now().toString(),
       type: isPhysique ? "physique" : "morale",
       ...formData,
-      // Nettoyage des données selon le type de pièce
       cin: formData.piece === "cin" ? formData.cin : undefined,
       acte: formData.piece === "acte" ? formData.acte : undefined,
     };
 
     setTempParcelle({
       ...tempParcelle,
+      ...parametreTerritoire,
       demandeurs: [...tempParcelle.demandeurs, newDemandeur],
     });
 
@@ -483,15 +485,42 @@ const Tab1: React.FC = () => {
                     labelPlacement="floating"
                     value={currentParcelleCode}
                     readonly={true}
-                    className="mb-3"
+                    className="mb-3 border-bottom"
                   />
-
+                  <div className="row pb-3 border-bottom justify-content-between" style={{ "--bs-gutter-x": "0rem" }}>
+                    <div className="col-auto">
+                      <IonLabel>
+                        Region: {parametreTerritoire?.region.nom}
+                      </IonLabel>
+                    </div>
+                    <div className="col-auto mx-1">
+                      <IonLabel>
+                        District: {parametreTerritoire?.district.nom}
+                      </IonLabel>
+                    </div>
+                    <div className="col-auto mx-1">
+                      <IonLabel>
+                        Commune: {parametreTerritoire?.commune.nom}
+                      </IonLabel>
+                    </div>
+                    <div className="col-auto mx-1">
+                      <IonLabel>
+                        Fokontany: {parametreTerritoire?.fokontany.nom}
+                      </IonLabel>
+                    </div>
+                    <div className="col-auto mx-1">
+                      <IonLabel>
+                        Hameau: {parametreTerritoire?.hameau.nom}
+                      </IonLabel>
+                    </div>
+                  </div>
                   <IonButton
                     expand="block"
                     onClick={() => {
                       if (currentParcelleCode) {
                         setTempParcelle({
                           code: currentParcelleCode,
+                          parametreTerritoire: { ...parametreTerritoire }, // Copie profonde
                           demandeurs: [],
                         });
                         setCurrentParcelleCode("");
@@ -510,6 +539,11 @@ const Tab1: React.FC = () => {
                 <IonCard>
                   <IonCardHeader>
                     <IonLabel>Parcelle: {tempParcelle.code}</IonLabel>
+                    <IonLabel>Region: {tempParcelle.code}</IonLabel>
+                    <IonLabel>District: {tempParcelle.code}</IonLabel>
+                    <IonLabel>Commune: {tempParcelle.code}</IonLabel>
+                    <IonLabel>Fokontany: {tempParcelle.code}</IonLabel>
+                    <IonLabel>Hameau: {tempParcelle.code}</IonLabel>
                   </IonCardHeader>
                   <IonCardContent>
                     <IonButton
@@ -808,23 +842,23 @@ const Tab1: React.FC = () => {
 
                     {(formData.situation === "marie" ||
                       formData.situation === "veuf") && (
-                      <div className="mt-2">
-                        <IonLabel position="stacked">Nom du conjoint</IonLabel>
-                        <IonInput
-                          className="form-control px-3"
-                          value={formData.nomConjoint}
-                          onIonChange={(e) =>
-                            handleInputChange({
-                              target: {
-                                name: "nomConjoint",
-                                value: e.detail.value!,
-                              },
-                            })
-                          }
-                          placeholder="Nom complet du conjoint"
-                        />
-                      </div>
-                    )}
+                        <div className="mt-2">
+                          <IonLabel position="stacked">Nom du conjoint</IonLabel>
+                          <IonInput
+                            className="form-control px-3"
+                            value={formData.nomConjoint}
+                            onIonChange={(e) =>
+                              handleInputChange({
+                                target: {
+                                  name: "nomConjoint",
+                                  value: e.detail.value!,
+                                },
+                              })
+                            }
+                            placeholder="Nom complet du conjoint"
+                          />
+                        </div>
+                      )}
                   </div>
 
                   <div className="col-md-6 mb-3">
@@ -1054,8 +1088,8 @@ const Tab1: React.FC = () => {
             { text: "Supprimer", handler: removeDemandeur },
           ]}
         />
-      </IonContent>
-    </IonPage>
+      </IonContent >
+    </IonPage >
   );
 };
 
