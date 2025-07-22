@@ -162,21 +162,33 @@ const Tab4 = () => {
       }
 
       // 3. Fetch des données territoire
-      const [territoireResponse] = await Promise.all([
+      const [territoireResponse, categorieResponse] = await Promise.all([
         fetch(`${currentServerUrl}/getTerritoire`),
+        fetch(`${currentServerUrl}/getCategorie`),
       ]);
 
       if (!territoireResponse.ok) {
         throw new Error(`Erreur territoire: ${territoireResponse.status}`);
       }
 
+      if (!categorieResponse.ok) {
+        throw new Error(`Erreur categorie: ${categorieResponse.status}`);
+      }
+
       const territoireData = await territoireResponse.json();
+      const categorieData = await categorieResponse.json();
 
       // 4. Sauvegarder dans les préférences
       await Preferences.set({
         key: 'territoireData',
         value: JSON.stringify(territoireData.data)
       });
+
+      await Preferences.set({
+        key: 'categorieData',
+        value: JSON.stringify(categorieData.data)
+      });
+      //categorie no nkitiako farany ooooo🔥
 
       // 5. Mettre à jour l'état local
       setTerritoire(territoireData.data);
