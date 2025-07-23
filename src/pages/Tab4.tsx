@@ -188,7 +188,6 @@ const Tab4 = () => {
         key: 'categorieData',
         value: JSON.stringify(categorieData.data)
       });
-      //categorie no nkitiako farany ooooo🔥
 
       // 5. Mettre à jour l'état local
       setTerritoire(territoireData.data);
