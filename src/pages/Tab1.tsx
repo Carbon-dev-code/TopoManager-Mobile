@@ -529,7 +529,10 @@ const Tab1: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="row g-3 pt-3 pb-2 border-bottom" style={{ "--bs-gutter-x": "0rem" }}>
+                  <div
+                    className="row g-3 pt-3 pb-2 border-bottom"
+                    style={{ "--bs-gutter-x": "0rem" }}
+                  >
                     {/* Champ Catégorie */}
                     <div className="col-12 col-md-6">
                       <div className="form-group">
@@ -595,12 +598,39 @@ const Tab1: React.FC = () => {
               <>
                 <IonCard>
                   <IonCardHeader>
-                    <IonLabel>Parcelle: {tempParcelle.code}</IonLabel>
-                    <IonLabel>Region: {tempParcelle.code}</IonLabel>
-                    <IonLabel>District: {tempParcelle.code}</IonLabel>
-                    <IonLabel>Commune: {tempParcelle.code}</IonLabel>
-                    <IonLabel>Fokontany: {tempParcelle.code}</IonLabel>
-                    <IonLabel>Hameau: {tempParcelle.code}</IonLabel>
+                    <IonInput
+                      label="Code Parcelle"
+                      labelPlacement="floating"
+                      value={tempParcelle.code}
+                      readonly={true}
+                      className="mb-3 border-bottom"
+                    />
+                    <div className="d-flex flex-wrap gap-3 border-bottom pb-2">
+                      <div className="d-flex flex-column">
+                        <small className="text-muted">Région</small>
+                        <strong>{tempParcelle.parametreTerritoire?.region.nom}</strong>
+                      </div>
+
+                      <div className="d-flex flex-column">
+                        <small className="text-muted">District</small>
+                        <strong>{tempParcelle.parametreTerritoire?.district.nom}</strong>
+                      </div>
+
+                      <div className="d-flex flex-column">
+                        <small className="text-muted">Commune</small>
+                        <strong>{tempParcelle.parametreTerritoire?.commune.nom}</strong>
+                      </div>
+
+                      <div className="d-flex flex-column">
+                        <small className="text-muted">Fokontany</small>
+                        <strong>{tempParcelle.parametreTerritoire?.fokontany.nom}</strong>
+                      </div>
+
+                      <div className="d-flex flex-column">
+                        <small className="text-muted">Hameau</small>
+                        <strong>{tempParcelle.parametreTerritoire?.hameau.nom}</strong>
+                      </div>
+                    </div>               
                   </IonCardHeader>
                   <IonCardContent>
                     <IonButton
