@@ -608,29 +608,83 @@ const Tab1: React.FC = () => {
                     <div className="d-flex flex-wrap gap-3 border-bottom pb-2">
                       <div className="d-flex flex-column">
                         <small className="text-muted">Région</small>
-                        <strong>{tempParcelle.parametreTerritoire?.region.nom}</strong>
+                        <strong>
+                          {tempParcelle.parametreTerritoire?.region.nom}
+                        </strong>
                       </div>
 
                       <div className="d-flex flex-column">
                         <small className="text-muted">District</small>
-                        <strong>{tempParcelle.parametreTerritoire?.district.nom}</strong>
+                        <strong>
+                          {tempParcelle.parametreTerritoire?.district.nom}
+                        </strong>
                       </div>
 
                       <div className="d-flex flex-column">
                         <small className="text-muted">Commune</small>
-                        <strong>{tempParcelle.parametreTerritoire?.commune.nom}</strong>
+                        <strong>
+                          {tempParcelle.parametreTerritoire?.commune.nom}
+                        </strong>
                       </div>
 
                       <div className="d-flex flex-column">
                         <small className="text-muted">Fokontany</small>
-                        <strong>{tempParcelle.parametreTerritoire?.fokontany.nom}</strong>
+                        <strong>
+                          {tempParcelle.parametreTerritoire?.fokontany.nom}
+                        </strong>
                       </div>
 
                       <div className="d-flex flex-column">
                         <small className="text-muted">Hameau</small>
-                        <strong>{tempParcelle.parametreTerritoire?.hameau.nom}</strong>
+                        <strong>
+                          {tempParcelle.parametreTerritoire?.hameau.nom}
+                        </strong>
                       </div>
-                    </div>               
+                    </div>
+                    <div
+                      className="row g-3 pt-3 pb-2 border-bottom"
+                      style={{ "--bs-gutter-x": "0rem" }}
+                    >
+                      {/* Champ Catégorie */}
+                      <div className="col-12 col-md-6">
+                        <div className="form-group">
+                          <label
+                            htmlFor="categorie"
+                            className="form-label fw-semibold text-muted mb-1"
+                          >
+                            Catégorie
+                          </label>
+                          <select
+                            className="form-select form-select-sm shadow-sm rounded"
+                            id="categorie"
+                          >
+                            {categorie.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.labelcategorie}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Champ Consistance */}
+                      <div className="col-12 col-md-6 ps-1">
+                        <div className="form-group">
+                          <label
+                            htmlFor="input-consistance"
+                            className="form-label fw-semibold text-muted mb-1"
+                          >
+                            Consistance
+                          </label>
+                          <input
+                            type="text"
+                            id="input-consistance"
+                            placeholder="Katakata"
+                            className="form-control form-control-sm shadow-sm rounded"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </IonCardHeader>
                   <IonCardContent>
                     <IonButton
