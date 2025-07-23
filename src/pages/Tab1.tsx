@@ -502,69 +502,75 @@ const Tab1: React.FC = () => {
                     readonly={true}
                     className="mb-3 border-bottom"
                   />
-                  <div
-                    className="row pb-2 border-bottom"
-                    style={{ "--bs-gutter-x": "0rem" }}
-                  >
-                    <label className="col-auto m-1">
-                      Region: {parametreTerritoire?.region.nom}
-                    </label>
-                    <label className="col-auto m-1">
-                      District: {parametreTerritoire?.district.nom}
-                    </label>
-                    <label className="col-auto m-1">
-                      Commune: {parametreTerritoire?.commune.nom}
-                    </label>
-                    <label className="col-auto m-1">
-                      Fokontany: {parametreTerritoire?.fokontany.nom}
-                    </label>
-                    <label className="col-auto m-1">
-                      Hameau: {parametreTerritoire?.hameau.nom}
-                    </label>
-                    <div className="col-auto"></div>
-                  </div>
-                  <div
-                    className="row pt-2 pb-2 border-bottom"
-                    style={{ "--bs-gutter-x": "0rem" }}
-                  >
-                    <div className="col-6">
-                      <div className="row d-flex align-items-center">
-                        <div className="col-auto">
-                          <label htmlFor="categorie">Categorie</label>
-                        </div>
-                        <div className="col w-100">
-                          <select
-                            className="form-select form-select-sm"
-                            id="categorie"
-                          >
-                            {categorie.map((cat) => (
-                              <option key={cat.id} value={cat.id}>
-                                {cat.labelcategorie}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                  <div className="d-flex flex-wrap gap-3 border-bottom pb-2">
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Région</small>
+                      <strong>{parametreTerritoire?.region.nom}</strong>
                     </div>
-                    <div className="col-6">
-                      <div className="row d-flex align-items-center">
-                        <div
-                          className="col-auto"
-                          style={{ paddingLeft: "20px" }}
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">District</small>
+                      <strong>{parametreTerritoire?.district.nom}</strong>
+                    </div>
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Commune</small>
+                      <strong>{parametreTerritoire?.commune.nom}</strong>
+                    </div>
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Fokontany</small>
+                      <strong>{parametreTerritoire?.fokontany.nom}</strong>
+                    </div>
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Hameau</small>
+                      <strong>{parametreTerritoire?.hameau.nom}</strong>
+                    </div>
+                  </div>
+
+                  <div className="row g-3 pt-3 pb-2 border-bottom" style={{ "--bs-gutter-x": "0rem" }}>
+                    {/* Champ Catégorie */}
+                    <div className="col-12 col-md-6">
+                      <div className="form-group">
+                        <label
+                          htmlFor="categorie"
+                          className="form-label fw-semibold text-muted mb-1"
                         >
-                          <label htmlFor="input-consistance">Consistance</label>
-                        </div>
-                        <div className="col">
-                          <input
-                            type="text"
-                            id="input-consistance"
-                            placeholder="Katakata"
-                            className="form-control form-control-sm"
-                          />
-                        </div>
+                          Catégorie
+                        </label>
+                        <select
+                          className="form-select form-select-sm shadow-sm rounded"
+                          id="categorie"
+                        >
+                          {categorie.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.labelcategorie}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Champ Consistance */}
+                    <div className="col-12 col-md-6 ps-1">
+                      <div className="form-group">
+                        <label
+                          htmlFor="input-consistance"
+                          className="form-label fw-semibold text-muted mb-1"
+                        >
+                          Consistance
+                        </label>
+                        <input
+                          type="text"
+                          id="input-consistance"
+                          placeholder="Katakata"
+                          className="form-control form-control-sm shadow-sm rounded"
+                        />
                       </div>
                     </div>
                   </div>
+
                   <IonButton
                     expand="block"
                     onClick={() => {
