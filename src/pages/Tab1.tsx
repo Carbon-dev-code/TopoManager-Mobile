@@ -43,6 +43,7 @@ import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
 import { ParametreTerritoire } from "../model/ParametreTerritoire";
 import { Categorie } from "../model/Categorie";
+import { Status } from "../model/Status";
 
 // Interfaces
 interface CIN {
@@ -97,6 +98,7 @@ interface TempParcelle {
 const Tab1: React.FC = () => {
   // États principaux
   const [categorie, setCategorie] = useState<Categorie[]>([]);
+  const [status, setStatus] = useState<Status[]>([]);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [tempParcelle, setTempParcelle] = useState<TempParcelle | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -145,10 +147,19 @@ const Tab1: React.FC = () => {
     }
   };
 
+  const getStatus = async () => {
+    const { value } = await Preferences.get({ key: "statusData" });
+
+    if (value) {
+      setStatus(JSON.parse(value));
+    }
+  };
+
   useEffect(() => {
     if (showCreateModal && !tempParcelle) {
       nextCodeParcelle();
       getCategorie();
+      getStatus();
     }
   }, [showCreateModal, tempParcelle]);
 
@@ -502,35 +513,37 @@ const Tab1: React.FC = () => {
                     readonly={true}
                     className="mb-3 border-bottom"
                   />
-                  <div className="d-flex flex-wrap gap-3 border-bottom pb-2">
-                    <div className="d-flex flex-column">
-                      <small className="text-muted">Région</small>
-                      <strong>{parametreTerritoire?.region.nom}</strong>
-                    </div>
-
-                    <div className="d-flex flex-column">
-                      <small className="text-muted">District</small>
-                      <strong>{parametreTerritoire?.district.nom}</strong>
-                    </div>
-
-                    <div className="d-flex flex-column">
-                      <small className="text-muted">Commune</small>
-                      <strong>{parametreTerritoire?.commune.nom}</strong>
-                    </div>
-
-                    <div className="d-flex flex-column">
-                      <small className="text-muted">Fokontany</small>
-                      <strong>{parametreTerritoire?.fokontany.nom}</strong>
-                    </div>
-
-                    <div className="d-flex flex-column">
-                      <small className="text-muted">Hameau</small>
-                      <strong>{parametreTerritoire?.hameau.nom}</strong>
+                  <div
+                    className="row g-3 pb-2 border-bottom mb-3"
+                    style={{ "--bs-gutter-x": "0rem" }}
+                  >
+                    <div className="col-12 col-md-6">
+                      <div className="form-group">
+                        <label
+                          htmlFor="status"
+                          className="form-label fw-semibold text-muted mb-1"
+                        >
+                          Status
+                        </label>
+                        <select
+                          className="form-select form-select-sm shadow-sm rounded"
+                          id="status"
+                        >
+                          {status.map((stat, index) => (
+                            <option
+                              key={stat.id || `status-${index}`}
+                              value={stat.id}
+                            >
+                              {stat.labelstatus}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
                   <div
-                    className="row g-3 pt-3 pb-2 border-bottom"
+                    className="row g-3 pb-2 border-bottom mb-3"
                     style={{ "--bs-gutter-x": "0rem" }}
                   >
                     {/* Champ Catégorie */}
@@ -571,6 +584,32 @@ const Tab1: React.FC = () => {
                           className="form-control form-control-sm shadow-sm rounded"
                         />
                       </div>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-wrap gap-3 border-bottom pb-2">
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Région</small>
+                      <strong>{parametreTerritoire?.region.nom}</strong>
+                    </div>
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">District</small>
+                      <strong>{parametreTerritoire?.district.nom}</strong>
+                    </div>
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Commune</small>
+                      <strong>{parametreTerritoire?.commune.nom}</strong>
+                    </div>
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Fokontany</small>
+                      <strong>{parametreTerritoire?.fokontany.nom}</strong>
+                    </div>
+
+                    <div className="d-flex flex-column">
+                      <small className="text-muted">Hameau</small>
+                      <strong>{parametreTerritoire?.hameau.nom}</strong>
                     </div>
                   </div>
 

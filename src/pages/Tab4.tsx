@@ -162,9 +162,10 @@ const Tab4 = () => {
       }
 
       // 3. Fetch des données territoire
-      const [territoireResponse, categorieResponse] = await Promise.all([
+      const [territoireResponse, categorieResponse, statusResponse] = await Promise.all([
         fetch(`${currentServerUrl}/getTerritoire`),
         fetch(`${currentServerUrl}/getCategorie`),
+        fetch(`${currentServerUrl}/getStatus`),
       ]);
 
       if (!territoireResponse.ok) {
@@ -175,8 +176,13 @@ const Tab4 = () => {
         throw new Error(`Erreur categorie: ${categorieResponse.status}`);
       }
 
+      if (!statusResponse.ok) {
+        throw new Error(`Erreur categorie: ${statusResponse.status}`);
+      }
+
       const territoireData = await territoireResponse.json();
       const categorieData = await categorieResponse.json();
+      const statusData = await statusResponse.json();
 
       // 4. Sauvegarder dans les préférences
       await Preferences.set({
@@ -187,6 +193,11 @@ const Tab4 = () => {
       await Preferences.set({
         key: 'categorieData',
         value: JSON.stringify(categorieData.data)
+      });
+
+      await Preferences.set({
+        key: 'statusData',
+        value: JSON.stringify(statusData.data)
       });
 
       // 5. Mettre à jour l'état local
