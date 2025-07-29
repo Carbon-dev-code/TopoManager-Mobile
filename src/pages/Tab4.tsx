@@ -25,6 +25,7 @@ import {
   IonPopover
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { useState, useEffect } from "react";
 import { ConfigService } from "../model/ConfigService";
 import { close, settingsOutline, sync, ellipsisVertical, map } from "ionicons/icons";
@@ -52,6 +53,9 @@ const Tab4 = () => {
   const [parametreActuel, setParametreActuel] = useState<ParametreTerritoire | null>(null);
   const [showProgress, setShowProgress] = useState(false);
   const [currentParcelleCode, setCurrentParcelleCode] = useState<string>("");
+  const [progression, setProgression] = useState<number>(0);
+  const [isSyncing, setIsSyncing] = useState(false); // Pour fetchData
+  const [isDownloadingTiles, setIsDownloadingTiles] = useState(false); // Pour fetchCarte
 
   useIonViewWillEnter(() => {
     loadConfig().then(() => refreshCurrentParams());
@@ -90,8 +94,7 @@ const Tab4 = () => {
   };
 
   const fetchData = async () => {
-    setIsLoading(true);
-    setShowProgress(true);
+    setIsSyncing(true);
     setError(null);
 
     try {
@@ -152,37 +155,104 @@ const Tab4 = () => {
       setError(`Échec de la synchronisation: ${message}`);
       console.error(err);
     } finally {
-      setIsLoading(false);
-      setShowProgress(false);
+       setIsSyncing(false);
     }
   };
 
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result?.toString().split(',')[1];
+        resolve(base64 ?? '');
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const sanitizeName = (name: string): string => {
+    return name.toLowerCase().replace(/[^a-z0-9]/gi, '_'); // remplace caractères spéciaux
+  };
+
   const fetchCarte = async () => {
-    setIsLoading(true);
-    setShowProgress(true);
+    setIsDownloadingTiles(true); // ← Nouvel état dédié
     setError(null);
+    setProgression(0); // Reset
 
     try {
-      // 1. Récupérer l'URL du serveur
       const currentServerUrl = await ConfigService.getServerBaseUrl();
       setServerUrl(currentServerUrl);
 
-      // 2. Vérification de l'URL
       if (!currentServerUrl) {
         throw new Error("Configuration serveur manquante");
       }
 
-      // 3. Fetch des données territoire
-      const [carteResponse] = await Promise.all([
-        fetch(`${currentServerUrl}/getCarte`),
-      ]);
+      const selectedRegionNom = sanitizeName(
+        territoire.find(r => r.idregion === selectedRegion)?.nomregion ?? 'inconnu'
+      );
+      const selectedDistrictNom = sanitizeName(
+        territoire.find(r => r.idregion === selectedRegion)
+          ?.districts.find(d => d.iddistrict === selectedDistrict)?.nomdistrict ?? 'inconnu'
+      );
+      const selectedCommuneNom = sanitizeName(
+        territoire.flatMap(r => r.districts)
+          .find(d => d.iddistrict === selectedDistrict)
+          ?.communes.find(c => c.idcommune === selectedCommune)?.nomcommune ?? 'inconnu'
+      );
+      const selectedFokontanyNom = sanitizeName(
+        territoire.flatMap(r => r.districts.flatMap(d => d.communes))
+          .find(c => c.idcommune === selectedCommune)
+          ?.fokontany.find(f => f.idfokontany === selectedFokontany)?.nomfokontany ?? 'inconnu'
+      );
+      const selectedHameauNom = sanitizeName(
+        territoire.flatMap(r => r.districts.flatMap(d => d.communes.flatMap(c => c.fokontany)))
+          .find(f => f.idfokontany === selectedFokontany)
+          ?.hameaux.find(h => h.idhameau === selectedHameau)?.nomhameau ?? 'inconnu'
+      );
+
+      const listResponse = await fetch(`${currentServerUrl}/getCarte`);
+      if (!listResponse.ok) throw new Error("Impossible de lister les tuiles");
+
+      const tiles: string[] = await listResponse.json();
+      const total = tiles.length;
+      let done = 0;
+
+      for (const tilePath of tiles) {
+        const tileUrl = `${currentServerUrl}/fonds/${tilePath}`;
+        const response = await fetch(tileUrl);
+        if (!response.ok) {
+          done++;
+          setProgression(done / total);
+          continue;
+        }
+
+        const blob = await response.blob();
+        const base64 = await blobToBase64(blob);
+
+        const localPath = `tiles/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${selectedHameauNom}/fond/${tilePath}`;
+
+        await Filesystem.writeFile({
+          path: localPath,
+          data: base64,
+          directory: Directory.Data,
+          recursive: true,
+        });
+
+        done++;
+        setProgression(done / total);
+      }
+
+      setProgression(1);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       setError(`Échec de la synchronisation: ${message}`);
       console.error(err);
     } finally {
       setIsLoading(false);
-      setShowProgress(false);
+      setIsDownloadingTiles(false);
+      setTimeout(() => {
+        setProgression(0); // Reset
+      }, 1000);
     }
   };
 
@@ -383,8 +453,11 @@ const Tab4 = () => {
       <IonHeader>
         <IonToolbar color="primary">
           {showProgress && (
-            <IonProgressBar type="indeterminate" color="light"></IonProgressBar>
-          )}
+            <IonProgressBar
+              type={isDownloadingTiles ? "determinate" : "indeterminate"}
+              value={isDownloadingTiles ? progression : undefined}
+              color="primary"
+            />)}
           <IonButtons slot="start">
             <IonMenuButton />
           </IonButtons>
@@ -602,6 +675,15 @@ const Tab4 = () => {
           </IonCard>
         )}
       </IonContent>
+      {isSyncing && <IonLoading isOpen={true} message="Synchronisation..." />}
+      {isDownloadingTiles && (
+        <>
+          <IonProgressBar value={progression} />
+          <div className="ion-text-center">
+            Téléchargement des cartes: {Math.round(progression * 100)}%
+          </div>
+        </>
+      )}
       <IonModal
         isOpen={showModalCarte}
         onDidDismiss={() => setShowModalCarte(false)}
