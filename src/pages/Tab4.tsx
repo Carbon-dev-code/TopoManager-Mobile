@@ -22,77 +22,19 @@ import {
   IonText,
   IonProgressBar,
   useIonViewWillEnter,
+  IonPopover
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import { useState, useEffect } from "react";
 import { ConfigService } from "../model/ConfigService";
-import { close, settingsOutline, sync } from "ionicons/icons";
+import { close, settingsOutline, sync, ellipsisVertical, map } from "ionicons/icons";
 import "./Tab4.css";
-
-interface Territoire {
-  idregion: number;
-  coderegion: string;
-  nomregion: string;
-  districts: District[];
-}
-
-interface District {
-  iddistrict: number;
-  codedistrict: string;
-  nomdistrict: string;
-  communes: Commune[];
-}
-
-interface Commune {
-  idcommune: number;
-  codecommune: string;
-  nomcommune: string;
-  fokontany: Fokontany[];
-}
-
-interface Fokontany {
-  idfokontany: number;
-  codefokontany: string;
-  nomfokontany: string;
-  hameaux: Hameau[];
-}
-
-interface Hameau {
-  idhameau: number;
-  codehameau: string;
-  nomhameau: string;
-}
-
-interface ParametreTerritoire {
-  id: string;
-  region: {
-    id: number;
-    code: string;
-    nom: string;
-  };
-  district: {
-    id: number;
-    code: string;
-    nom: string;
-  };
-  commune: {
-    id: number;
-    code: string;
-    nom: string;
-  };
-  fokontany: {
-    id: number;
-    code: string;
-    nom: string;
-  };
-  hameau: {
-    id: number;
-    code: string;
-    nom: string;
-  };
-  increment: number;
-  dateSelection: string;
-}
+import { Territoire } from "../model/Territoire";
+import { ParametreTerritoire } from "../model/ParametreTerritoire";
+import { District } from "../model/limite/District";
+import { Commune } from "../model/limite/Commune";
+import { Fokontany } from "../model/limite/Fokontany";
+import { Hameau } from "../model/limite/Hameau";
 
 const Tab4 = () => {
   const [territoire, setTerritoire] = useState<Territoire[]>([]);
@@ -100,6 +42,7 @@ const Tab4 = () => {
   const [error, setError] = useState<string | null>(null);
   const [serverUrl, setServerUrl] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
+  const [showModalCarte, setShowModalCarte] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
   const [selectedCommune, setSelectedCommune] = useState<number | null>(null);
@@ -204,6 +147,35 @@ const Tab4 = () => {
       setTerritoire(territoireData.data);
       setShowModal(true);
 
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setError(`Échec de la synchronisation: ${message}`);
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+      setShowProgress(false);
+    }
+  };
+
+  const fetchCarte = async () => {
+    setIsLoading(true);
+    setShowProgress(true);
+    setError(null);
+
+    try {
+      // 1. Récupérer l'URL du serveur
+      const currentServerUrl = await ConfigService.getServerBaseUrl();
+      setServerUrl(currentServerUrl);
+
+      // 2. Vérification de l'URL
+      if (!currentServerUrl) {
+        throw new Error("Configuration serveur manquante");
+      }
+
+      // 3. Fetch des données territoire
+      const [carteResponse] = await Promise.all([
+        fetch(`${currentServerUrl}/getCarte`),
+      ]);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       setError(`Échec de la synchronisation: ${message}`);
@@ -326,36 +298,17 @@ const Tab4 = () => {
       return;
     }
 
-    const nouveauParametre: ParametreTerritoire = {
-      id: `param-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // ID plus unique
-      region: {
-        id: region.idregion,
-        code: region.coderegion,
-        nom: region.nomregion,
-      },
-      district: {
-        id: district.iddistrict,
-        code: district.codedistrict,
-        nom: district.nomdistrict,
-      },
-      commune: {
-        id: commune.idcommune,
-        code: commune.codecommune,
-        nom: commune.nomcommune,
-      },
-      fokontany: {
-        id: fokontany.idfokontany,
-        code: fokontany.codefokontany,
-        nom: fokontany.nomfokontany,
-      },
-      hameau: {
-        id: hameau.idhameau,
-        code: hameau.codehameau,
-        nom: hameau.nomhameau,
-      },
+    const nouveauParametre = new ParametreTerritoire({
+      id: `param-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      region: new Territoire(region.idregion, region.coderegion, region.nomregion),
+      district: new District(district.iddistrict, district.codedistrict, district.nomdistrict),
+      commune: new Commune(commune.idcommune, commune.codecommune, commune.nomcommune),
+      fokontany: new Fokontany(fokontany.idfokontany, fokontany.codefokontany, fokontany.nomfokontany),
+      hameau: new Hameau(hameau.idhameau, hameau.codehameau, hameau.nomhameau),
+      code_parcelle: 0,
       increment: 0,
       dateSelection: new Date().toISOString(),
-    };
+    });
 
     const updatedParams = [...parametres, nouveauParametre];
     setParametres(updatedParams);
@@ -371,8 +324,8 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.code}-${nouveauParametre.district.code
-        }-${nouveauParametre.commune.code}-${nouveauParametre.fokontany.code}-${nouveauParametre.hameau.code
+      const codeComplet = `${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
+        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany}-${nouveauParametre.hameau.codehameau
         }-${nouveauParametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
@@ -390,8 +343,8 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.code}-${parametre.district.code
-        }-${parametre.commune.code}-${parametre.fokontany.code}-${parametre.hameau.code
+      const codeComplet = `${parametre.region.coderegion}-${parametre.district.codedistrict
+        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
         }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
@@ -435,16 +388,43 @@ const Tab4 = () => {
           <IonButtons slot="start">
             <IonMenuButton />
           </IonButtons>
+
           <IonTitle className="ion-text-center">
-            Paramètres Territoriaux
+            Paramètres et Synchronisation
           </IonTitle>
+
           <IonButtons slot="end">
-            <IonButton onClick={fetchData} disabled={isLoading}>
-              <IonIcon slot="icon-only" icon={sync} />
+            <IonButton id="dropdown-trigger">
+              <IonIcon icon={ellipsisVertical} />
             </IonButton>
           </IonButtons>
+
+          <IonPopover trigger="dropdown-trigger" triggerAction="click">
+            <IonContent>
+              <IonList>
+                <IonItem
+                  button
+                  onClick={fetchData}
+                  disabled={isLoading}
+                >
+                  <IonIcon icon={sync} slot="start" />
+                  <IonLabel>Synchroniser</IonLabel>
+                </IonItem>
+                <IonItem
+                  button
+                  onClick={() => setShowModalCarte(true)}
+                  disabled={isLoading}
+                >
+                  <IonIcon icon={map} slot="start" />
+                  <IonLabel>Ajouter une carte</IonLabel>
+                </IonItem>
+                {/* Tu peux ajouter d'autres options ici */}
+              </IonList>
+            </IonContent>
+          </IonPopover>
         </IonToolbar>
       </IonHeader>
+
 
       <IonContent className="ion-padding" color="light">
         {/* Carte du paramètre actuel */}
@@ -500,7 +480,7 @@ const Tab4 = () => {
                       <IonLabel>
                         <IonText color="medium">Région</IonText>
                         <p>
-                          <b>{parametreActuel.region.nom}</b>
+                          <b>{parametreActuel.region.nomregion}</b>
                         </p>
                       </IonLabel>
                     </IonItem>
@@ -510,7 +490,7 @@ const Tab4 = () => {
                       <IonLabel>
                         <IonText color="medium">District</IonText>
                         <p>
-                          <b>{parametreActuel.district.nom}</b>
+                          <b>{parametreActuel.district.nomdistrict}</b>
                         </p>
                       </IonLabel>
                     </IonItem>
@@ -536,7 +516,7 @@ const Tab4 = () => {
                       <IonLabel>
                         <IonText color="medium">Commune</IonText>
                         <p>
-                          <b>{parametreActuel.commune.nom}</b>
+                          <b>{parametreActuel.commune.nomcommune}</b>
                         </p>
                       </IonLabel>
                     </IonItem>
@@ -546,7 +526,7 @@ const Tab4 = () => {
                       <IonLabel>
                         <IonText color="medium">Fokontany</IonText>
                         <p>
-                          <b>{parametreActuel.fokontany.nom}</b>
+                          <b>{parametreActuel.fokontany.nomfokontany}</b>
                         </p>
                       </IonLabel>
                     </IonItem>
@@ -556,7 +536,7 @@ const Tab4 = () => {
                       <IonLabel>
                         <IonText color="medium">Hameau</IonText>
                         <p>
-                          <b>{parametreActuel.hameau.nom}</b>
+                          <b>{parametreActuel.hameau.nomhameau}</b>
                         </p>
                       </IonLabel>
                     </IonItem>
@@ -606,11 +586,11 @@ const Tab4 = () => {
                     <IonLabel className="param-label">
                       <IonText>
                         <h3>
-                          {param.region.nom} → {param.district.nom}
+                          {param.region.nomregion} → {param.district.nomdistrict}
                         </h3>
                         <p>
-                          {param.commune.nom} → {param.fokontany.nom} →{" "}
-                          {param.hameau.nom}
+                          {param.commune.nomcommune} → {param.fokontany.nomfokontany} →{" "}
+                          {param.hameau.nomhameau}
                         </p>
                         <p>{new Date(param.dateSelection).toLocaleString()}</p>
                       </IonText>
@@ -622,6 +602,203 @@ const Tab4 = () => {
           </IonCard>
         )}
       </IonContent>
+      <IonModal
+        isOpen={showModalCarte}
+        onDidDismiss={() => setShowModalCarte(false)}
+        className="param-modal"
+      >
+        <IonHeader>
+          <IonToolbar color="primary">
+            <IonTitle className="ion-text-center">
+              Telecharger la carte Voulue
+            </IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setShowModalCarte(false)}>
+                <IonIcon slot="icon-only" icon={close} />
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding" color="light">
+          {isLoading ? (
+            <IonLoading isOpen={true} message="Chargement..." />
+          ) : error ? (
+            <IonAlert
+              isOpen={!!error}
+              onDidDismiss={() => setError(null)}
+              header="Erreur"
+              message={error}
+              buttons={["OK"]}
+            />
+          ) : (
+            <div className="selection-container">
+              {/* Sélection de la région */}
+              <IonItem className="selection-item" lines="full">
+                <IonLabel position="stacked" color="primary">
+                  <b>Région</b>
+                </IonLabel>
+                <IonSelect
+                  value={selectedRegion}
+                  placeholder="Sélectionnez une région"
+                  onIonChange={(e) => {
+                    setSelectedRegion(e.detail.value);
+                    resetDistrict();
+                  }}
+                  interface="action-sheet"
+                  className="selection-input"
+                >
+                  {territoire.map((region) => (
+                    <IonSelectOption
+                      key={`region-${region.idregion}`}
+                      value={region.idregion}
+                    >
+                      {region.nomregion}
+                    </IonSelectOption>
+                  ))}
+                </IonSelect>
+              </IonItem>
+
+              {/* Sélection du district */}
+              {selectedRegion && (
+                <IonItem className="selection-item" lines="full">
+                  <IonLabel position="stacked" color="primary">
+                    <b>District</b>
+                  </IonLabel>
+                  <IonSelect
+                    value={selectedDistrict}
+                    placeholder="Sélectionnez un district"
+                    onIonChange={(e) => {
+                      setSelectedDistrict(e.detail.value);
+                      resetCommune();
+                    }}
+                    interface="action-sheet"
+                    className="selection-input"
+                  >
+                    {territoire
+                      .find((r) => r.idregion === selectedRegion)
+                      ?.districts.map((district) => (
+                        <IonSelectOption
+                          key={`district-${district.iddistrict}`}
+                          value={district.iddistrict}
+                        >
+                          {district.nomdistrict}
+                        </IonSelectOption>
+                      ))}
+                  </IonSelect>
+                </IonItem>
+              )}
+
+              {/* Sélection de la commune */}
+              {selectedDistrict && (
+                <IonItem className="selection-item" lines="full">
+                  <IonLabel position="stacked" color="primary">
+                    <b>Commune</b>
+                  </IonLabel>
+                  <IonSelect
+                    value={selectedCommune}
+                    placeholder="Sélectionnez une commune"
+                    onIonChange={(e) => {
+                      setSelectedCommune(e.detail.value);
+                      resetFokontany();
+                    }}
+                    interface="action-sheet"
+                    className="selection-input"
+                  >
+                    {territoire
+                      .flatMap((r) => r.districts)
+                      .find((d) => d.iddistrict === selectedDistrict)
+                      ?.communes.map((commune) => (
+                        <IonSelectOption
+                          key={`commune-${commune.idcommune}`}
+                          value={commune.idcommune}
+                        >
+                          {commune.nomcommune}
+                        </IonSelectOption>
+                      ))}
+                  </IonSelect>
+                </IonItem>
+              )}
+
+              {/* Sélection du fokontany */}
+              {selectedCommune && (
+                <IonItem className="selection-item" lines="full">
+                  <IonLabel position="stacked" color="primary">
+                    <b>Fokontany</b>
+                  </IonLabel>
+                  <IonSelect
+                    value={selectedFokontany}
+                    placeholder="Sélectionnez un fokontany"
+                    onIonChange={(e) => {
+                      setSelectedFokontany(e.detail.value);
+                      setSelectedHameau(null);
+                    }}
+                    interface="action-sheet"
+                    className="selection-input"
+                  >
+                    {territoire
+                      .flatMap((r) => r.districts.flatMap((d) => d.communes))
+                      .find((c) => c.idcommune === selectedCommune)
+                      ?.fokontany.map((fokontany) => (
+                        <IonSelectOption
+                          key={`fokontany-${fokontany.idfokontany}`}
+                          value={fokontany.idfokontany}
+                        >
+                          {fokontany.nomfokontany}
+                        </IonSelectOption>
+                      ))}
+                  </IonSelect>
+                </IonItem>
+              )}
+
+              {/* Sélection du hameau */}
+              {selectedFokontany && (
+                <IonItem className="selection-item" lines="full">
+                  <IonLabel position="stacked" color="primary">
+                    <b>Hameau</b>
+                  </IonLabel>
+                  <IonSelect
+                    value={selectedHameau}
+                    placeholder="Sélectionnez un hameau"
+                    onIonChange={(e) => setSelectedHameau(e.detail.value)}
+                    interface="action-sheet"
+                    className="selection-input"
+                  >
+                    {territoire
+                      .flatMap((r) => r.districts)
+                      .flatMap((d) => d.communes)
+                      .find((c) => c.idcommune === selectedCommune)
+                      ?.fokontany.find(
+                        (f) => f.idfokontany === selectedFokontany
+                      )
+                      ?.hameaux.map((hameau) => (
+                        <IonSelectOption
+                          key={`hameau-${hameau.idhameau}`}
+                          value={hameau.idhameau}
+                        >
+                          {hameau.nomhameau}
+                        </IonSelectOption>
+                      ))}
+                  </IonSelect>
+                </IonItem>
+              )}
+
+              {/* Bouton d'enregistrement */}
+              <div className="ion-text-center ion-margin-top">
+                <IonButton
+                  expand="block"
+                  onClick={fetchCarte}
+                  disabled={!selectedHameau}
+                  shape="round"
+                  className="save-button"
+                >
+                  Enregistrer la configuration
+                </IonButton>
+              </div>
+            </div>
+          )}
+        </IonContent>
+
+      </IonModal>
 
       {/* Modal de sélection des paramètres */}
       <IonModal
