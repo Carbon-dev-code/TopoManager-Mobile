@@ -231,6 +231,9 @@ const Tab4 = () => {
 
         const localPath = `tiles/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${selectedHameauNom}/fond/${tilePath}`;
 
+        console.log(localPath);
+        
+
         await Filesystem.writeFile({
           path: localPath,
           data: base64,
