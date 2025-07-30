@@ -68,8 +68,8 @@ const Tab4 = () => {
         const current = JSON.parse(value);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.code}-${current.district.code}-${current.commune.code
-          }-${current.fokontany.code}-${current.hameau.code}-${current.increment + 1
+        const codeComplet = `${current.region.coderegion}-${current.district.codedistrict}-${current.commune.codecommune
+          }-${current.fokontany.codefokontany}-${current.hameau.codehameau}-${current.increment + 1
           }`;
         setCurrentParcelleCode(codeComplet);
       }
@@ -168,7 +168,7 @@ const Tab4 = () => {
       };
       reader.onerror = reject;
       reader.readAsDataURL(blob);
-    });
+  });
 
   const sanitizeName = (name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, '_'); // remplace caractères spéciaux
