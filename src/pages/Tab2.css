@@ -19,10 +19,54 @@
   position: absolute;
   bottom: 20px;
   right: 10px;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px) saturate(160%);
+  border-radius: 15px 15px 15px 15px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.3);
   padding: 5px;
   font-size: 12px;
-  max-width: 200px;
   z-index: 1000;
   overflow-wrap: break-word;
+}
+
+.glass-btn {
+  --padding-start: 0;
+  --padding-end: 0;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.365); /* ultra transparent */
+  backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.3);
+  width: 48px;
+  height: 48px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.glass-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.95);
+}
+
+.glass-btn ion-icon {
+  font-size: 22px;
+  color: white;
+}
+
+.ol-attribution {
+  display: none;
 }

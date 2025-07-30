@@ -6,6 +6,9 @@ import {
   IonTitle,
   IonToolbar,
   IonButton,
+  IonIcon,
+  IonButtons,
+  IonMenuButton,
 } from "@ionic/react";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
@@ -16,6 +19,7 @@ import { fromLonLat } from "ol/proj";
 import { OSM, XYZ } from "ol/source";
 import "ol/ol.css";
 import "./Tab2.css";
+import { eyeOffOutline, eyeOutline } from "ionicons/icons";
 
 const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
@@ -83,7 +87,9 @@ const Tab2: React.FC = () => {
 
     const map = new Map({
       target: mapElement.current,
-      layers: [new TileLayer({ source: new OSM() })],
+      layers: [new TileLayer({
+        source: new OSM()
+      })],
       view: initialView,
     });
 
@@ -92,39 +98,38 @@ const Tab2: React.FC = () => {
         const cacheKey = `${z}/${x}/${y}`;
         const url = tileCache.current[cacheKey] || "";
 
+        // === Affichage debug (OK ou Manquante)
+        const debugText = `Zoom: ${z} URL: ${url ? "OK" : "Manquante"}`;
+        if (lastDebug.current !== debugText) {
+          setDebugInfo(debugText);
+          lastDebug.current = debugText;
+        }
+
         // === CAS 1 : tuile présente
         if (url) {
-          alreadyChecked.current.delete(cacheKey); // on réinitialise pour le futur
+          alreadyChecked.current.delete(cacheKey); // réinitialise
           return url;
         }
 
         // === CAS 2 : tuile absente
-        // Vérifie si on l'a déjà traitée
         if (!alreadyChecked.current.has(cacheKey)) {
           alreadyChecked.current.add(cacheKey);
 
-          // On tente de la récupérer
+          // Essaie de la récupérer
           getTileUrl(z, x, y).then(() => {
             if (tileCache.current[cacheKey]) {
-              // Elle vient d’être ajoutée => on force un refresh
               localSource.refresh();
-            } else {
-              // toujours absente, on ne fait rien
             }
           });
-        }
-
-        const debugText = `Zoom: ${z} | X: ${x} | Y: ${y}\nURL: Manquante`;
-        if (lastDebug.current !== debugText) {
-          setDebugInfo(debugText);
-          lastDebug.current = debugText;
         }
 
         return "assets/placeholder-tile.png";
       },
     });
 
-    const localLayer = new TileLayer({ source: localSource });
+    const localLayer = new TileLayer({
+      source: localSource
+    });
     map.addLayer(localLayer);
     localLayerRef.current = localLayer;
     mapRef.current = map;
@@ -153,20 +158,23 @@ const Tab2: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
-          <IonTitle>Carte du Territoire</IonTitle>
+        <IonToolbar color="primary">
+          <IonButtons slot="start">
+            <IonMenuButton />
+          </IonButtons>
+          <IonTitle className="ion-text-center">Carte du Territoire</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
         <div ref={mapElement} className="map-container"></div>
         <div className="map-controls">
-          <IonButton onClick={toggleLocalTiles} title="Afficher ou masquer le fond de carte">
-            {showLocalTiles ? "Masquer le fond" : "Afficher le fond"}
+          <IonButton className="glass-btn" fill="clear" onClick={toggleLocalTiles}>
+            <IonIcon color="dark" icon={showLocalTiles ? eyeOffOutline : eyeOutline} />
           </IonButton>
         </div>
         {debugInfo && (
           <div className="debug-info">
-            <pre>{debugInfo}</pre>
+            <pre className="m-0">{debugInfo}</pre>
           </div>
         )}
       </IonContent>
