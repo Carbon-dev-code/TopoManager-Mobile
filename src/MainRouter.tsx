@@ -15,7 +15,7 @@ import {
   IonRouterOutlet,
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
-import { documentOutline, mapOutline, cloudUploadOutline, sync} from 'ionicons/icons';
+import { documentOutline, mapOutline, cloudUploadOutline, settings} from 'ionicons/icons';
 
 import Tab1 from './pages/Tab1';
 import Tab2 from './pages/Tab2';
@@ -70,8 +70,8 @@ const MainRouter: React.FC = () => {
             </IonMenuToggle>
             <IonMenuToggle autoHide={false}>
               <IonItem routerLink="/tab4" routerDirection="none">
-                <IonIcon icon={sync} slot="start" />
-                <IonLabel>Syncronisation</IonLabel>
+                <IonIcon icon={settings} slot="start" />
+                <IonLabel>Paramètrage</IonLabel>
               </IonItem>
             </IonMenuToggle>
           </IonList>

@@ -230,10 +230,7 @@ const Tab4 = () => {
         const base64 = await blobToBase64(blob);
 
         const localPath = `tiles/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${selectedHameauNom}/fond/${tilePath}`;
-
-        console.log(localPath);
         
-
         await Filesystem.writeFile({
           path: localPath,
           data: base64,
@@ -466,7 +463,7 @@ const Tab4 = () => {
           </IonButtons>
 
           <IonTitle className="ion-text-center">
-            Paramètres et Synchronisation
+            Paramètrage
           </IonTitle>
 
           <IonButtons slot="end">
@@ -484,7 +481,7 @@ const Tab4 = () => {
                   disabled={isLoading}
                 >
                   <IonIcon icon={sync} slot="start" />
-                  <IonLabel>Synchroniser</IonLabel>
+                  <IonLabel>Maj. locale</IonLabel>
                 </IonItem>
                 <IonItem
                   button

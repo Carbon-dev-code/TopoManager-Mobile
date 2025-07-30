@@ -26,6 +26,8 @@ const Tab2: React.FC = () => {
   const lastDebug = useRef<string>("");
   const [showLocalTiles, setShowLocalTiles] = useState(true);
   const [debugInfo, setDebugInfo] = useState("");
+  const alreadyChecked = useRef(new Set<string>()); // pour éviter refresh multiple
+
 
   const sanitizeName = useCallback((name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
@@ -90,24 +92,35 @@ const Tab2: React.FC = () => {
         const cacheKey = `${z}/${x}/${y}`;
         const url = tileCache.current[cacheKey] || "";
 
-        if (!url) {
+        // === CAS 1 : tuile présente
+        if (url) {
+          alreadyChecked.current.delete(cacheKey); // on réinitialise pour le futur
+          return url;
+        }
+
+        // === CAS 2 : tuile absente
+        // Vérifie si on l'a déjà traitée
+        if (!alreadyChecked.current.has(cacheKey)) {
+          alreadyChecked.current.add(cacheKey);
+
+          // On tente de la récupérer
           getTileUrl(z, x, y).then(() => {
-            if (!refreshTimeout.current) {
-              refreshTimeout.current = setTimeout(() => {
-                localSource.refresh();
-                refreshTimeout.current = null;
-              }, 300);
+            if (tileCache.current[cacheKey]) {
+              // Elle vient d’être ajoutée => on force un refresh
+              localSource.refresh();
+            } else {
+              // toujours absente, on ne fait rien
             }
           });
         }
 
-        const debugText = `Zoom: ${z} | X: ${x} | Y: ${y}\nURL: ${url ? "OK" : "Manquante"}`;
+        const debugText = `Zoom: ${z} | X: ${x} | Y: ${y}\nURL: Manquante`;
         if (lastDebug.current !== debugText) {
           setDebugInfo(debugText);
           lastDebug.current = debugText;
         }
 
-        return url || "assets/placeholder-tile.png";
+        return "assets/placeholder-tile.png";
       },
     });
 
