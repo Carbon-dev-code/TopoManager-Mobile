@@ -15,7 +15,10 @@ import { Preferences } from "@capacitor/preferences";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
-import { fromLonLat, toLonLat } from "ol/proj";
+import ScaleLine from "ol/control/ScaleLine";
+import { fromLonLat, toLonLat, transform } from "ol/proj";
+import proj4 from "proj4";
+import { register } from "ol/proj/proj4";
 import { OSM, XYZ } from "ol/source";
 import "ol/ol.css";
 import "./Tab2.css";
@@ -26,6 +29,14 @@ import {
   eyeOutline,
   pencilOutline,
 } from "ionicons/icons";
+import { Feature } from "ol";
+import Point from "ol/geom/Point";
+import VectorLayer from "ol/layer/Vector";
+import VectorSource from "ol/source/Vector";
+import Style from "ol/style/Style";
+import CircleStyle from "ol/style/Circle";
+import Fill from "ol/style/Fill";
+import Stroke from "ol/style/Stroke";
 
 const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
@@ -37,9 +48,9 @@ const Tab2: React.FC = () => {
   const [stateDrawCarte, setstateDrawCarte] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const alreadyChecked = useRef(new Set<string>());
-  const [centerCoords, setCenterCoords] = useState<[number, number] | null>(
-    null
-  );
+  const [centerCoords, setCenterCoords] = useState<[number, number] | null>(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
+
 
   const sanitizeName = useCallback((name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
@@ -91,6 +102,17 @@ const Tab2: React.FC = () => {
   );
 
   useEffect(() => {
+    proj4.defs("EPSG:29702",
+      "+proj=omerc +lat_0=-18.9 +lonc=44.10000000000001 +alpha=18.9 " +
+      "+k=0.9995000000000001 +x_0=400000 +y_0=800000 +gamma=18.9 +ellps=intl " +
+      "+towgs84=-189,-242,-91,0,0,0,0 +pm=paris +units=m +no_defs"
+    );
+
+    register(proj4); // Enregistre proj4 dans OpenLayers
+  }, []);
+
+
+  useEffect(() => {
     if (!mapElement.current) return;
 
     const initialView = new View({
@@ -100,7 +122,10 @@ const Tab2: React.FC = () => {
       maxZoom: 18,
     });
 
+    const scaleControl = new ScaleLine({units: 'metric',bar: true,steps: 1,text: true,minWidth: 140,});
+
     const map = new Map({
+      controls: [scaleControl],
       target: mapElement.current,
       layers: [
         new TileLayer({
@@ -110,13 +135,45 @@ const Tab2: React.FC = () => {
       view: initialView,
     });
 
+    // Crée un cercle pour marquer le vrai "centre"
+    const centerMarker = new Feature({
+      geometry: new Point(initialView.getCenter()!),
+    });
+
+    centerMarker.setStyle(
+      new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: 'rgba(255, 0, 0, 0.9)' }),
+          stroke: new Stroke({ color: 'white', width: 2 }),
+        }),
+      })
+    );
+
+    const vectorSource = new VectorSource({
+      features: [centerMarker],
+    });
+
+    const vectorLayer = new VectorLayer({
+      source: vectorSource,
+    });
+
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center) {
-        const lonLat = toLonLat(center); // ← Convertit en [lon, lat]
+        // Mettre à jour le marqueur visuel
+        centerMarker.setGeometry(new Point(center));
+
+        // EPSG:4326
+        const lonLat = toLonLat(center);
         setCenterCoords([lonLat[0], lonLat[1]]);
+
+        // EPSG:29702
+        const projected = transform(lonLat, "EPSG:4326", "EPSG:29702") as [number, number];
+        setCenterCoordsProjected(projected);
       }
     });
+
 
     const localSource = new XYZ({
       tileUrlFunction: ([z, x, y]) => {
@@ -158,6 +215,7 @@ const Tab2: React.FC = () => {
     map.addLayer(localLayer);
     localLayerRef.current = localLayer;
     mapRef.current = map;
+    map.addLayer(vectorLayer);
 
     return () => {
       map.setTarget(undefined);
@@ -202,10 +260,10 @@ const Tab2: React.FC = () => {
         {stateDrawCarte && (
           <div className="map-crosshair">
             <div className="cross-symbol"></div>
-            {centerCoords && (
+            {centerCoords && centerCoordsProjected && (
               <div className="coord-display">
-                <div>X: {centerCoords[0].toFixed(6)}</div>
-                <div>Y: {centerCoords[1].toFixed(6)}</div>
+                <div><small>WGS84:</small> || Lon: {centerCoords[0].toFixed(6)} Lat: {centerCoords[1].toFixed(6)}</div>
+                <div><small>EPSG:29702:</small> || X: {centerCoordsProjected[0].toFixed(6)} Y: {centerCoordsProjected[1].toFixed(6)}</div>
               </div>
             )}
           </div>
