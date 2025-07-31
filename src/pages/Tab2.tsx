@@ -201,7 +201,7 @@ const Tab2: React.FC = () => {
       <IonContent fullscreen>
         {stateDrawCarte && (
           <div className="map-crosshair">
-            +
+            <div className="cross-symbol"></div>
             {centerCoords && (
               <div className="coord-display">
                 <div>X: {centerCoords[0].toFixed(6)}</div>
@@ -210,6 +210,7 @@ const Tab2: React.FC = () => {
             )}
           </div>
         )}
+
 
         <div ref={mapElement} className="map-container"></div>
         <div className="map-controls">

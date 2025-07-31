@@ -75,10 +75,43 @@
   z-index: 1000;
   pointer-events: none;
   border: 2px black dashed;
-  padding: 0px 11px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.233);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
+
+.cross-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 1;
+  height: 100%;
+  width: 100%;
+}
+
+.cross-symbol::before {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 20px;
+  background-color: black;
+  transform: rotate(0deg);
+}
+.cross-symbol::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 20px;
+  background-color: black;
+  transform: rotate(90deg);
+}
+
 
 .coord-display {
   position: absolute;
