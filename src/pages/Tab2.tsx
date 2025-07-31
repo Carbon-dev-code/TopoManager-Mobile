@@ -108,7 +108,7 @@ const Tab2: React.FC = () => {
       "+towgs84=-189,-242,-91,0,0,0,0 +pm=paris +units=m +no_defs"
     );
 
-    register(proj4); // Enregistre proj4 dans OpenLayers
+    register(proj4);
   }, []);
 
 
@@ -122,7 +122,7 @@ const Tab2: React.FC = () => {
       maxZoom: 18,
     });
 
-    const scaleControl = new ScaleLine({units: 'metric',bar: true,steps: 1,text: true,minWidth: 140,});
+    const scaleControl = new ScaleLine({ units: 'metric', bar: true, steps: 1, text: true, minWidth: 140, });
 
     const map = new Map({
       controls: [scaleControl],
@@ -164,16 +164,13 @@ const Tab2: React.FC = () => {
         // Mettre à jour le marqueur visuel
         centerMarker.setGeometry(new Point(center));
 
-        // EPSG:4326
         const lonLat = toLonLat(center);
         setCenterCoords([lonLat[0], lonLat[1]]);
 
-        // EPSG:29702
-        const projected = transform(lonLat, "EPSG:4326", "EPSG:29702") as [number, number];
+        const projected = transform(center, "EPSG:3857", "EPSG:29702") as [number, number];
         setCenterCoordsProjected(projected);
       }
     });
-
 
     const localSource = new XYZ({
       tileUrlFunction: ([z, x, y]) => {
