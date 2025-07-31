@@ -444,7 +444,7 @@ const Tab4 = () => {
     if (!serverUrl) return "Non configuré";
 
     // Extrait http://ip:port ou https://ip:port
-    const matches = serverUrl.match(/^https?:\/\/([^\/]+)/);
+    const matches = serverUrl.match(/^https?:\/\/([^\\/]+)/);
     return matches ? matches[1] : serverUrl;
   };
 
