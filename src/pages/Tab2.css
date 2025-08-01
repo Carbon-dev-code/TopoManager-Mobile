@@ -18,15 +18,15 @@
 
 .map-controls {
   position: absolute;
-  bottom: 60px;
-  left: 10px;
+  bottom: 18px;
+  right: 10px;
   z-index: 1000;
 }
 
 .debug-info {
   position: absolute;
-  bottom: 18px;
-  right: 10px;
+  bottom: 60px;
+  left: 10px;
   background: rgba(255, 255, 255, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(12px) saturate(160%);
@@ -46,7 +46,7 @@
   justify-content: center;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.365); /* ultra transparent */
+  background: rgba(255, 255, 255, 0.468); /* ultra transparent */
   backdrop-filter: blur(12px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 50%;

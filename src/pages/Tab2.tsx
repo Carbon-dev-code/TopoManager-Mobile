@@ -27,6 +27,8 @@ import {
   eyeOffOutline,
   eyeOutline,
   pencilOutline,
+  checkboxOutline,
+  closeOutline,
 } from "ionicons/icons";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -46,9 +48,7 @@ const Tab2: React.FC = () => {
   const [stateDrawCarte, setstateDrawCarte] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const alreadyChecked = useRef(new Set<string>());
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
-    number[] | null
-  >(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
 
@@ -179,6 +179,7 @@ const Tab2: React.FC = () => {
       steps: 1,
       text: true,
       minWidth: 135,
+      maxWidth: 200,
     });
 
     const map = new Map({
@@ -304,6 +305,14 @@ const Tab2: React.FC = () => {
 
         <div ref={mapElement} className="map-container"></div>
         <div className="map-controls">
+          {stateDrawCarte && (
+            <IonButton
+              className="glass-btn-draw"
+              fill="clear"
+            >
+              <IonIcon color="success" icon={checkboxOutline} />
+            </IonButton>
+          )}
           <IonButton className="glass-btn" fill="clear" onClick={drawCarte}>
             <IonIcon
               color={stateDrawCarte ? "blue" : "dark"}
@@ -355,6 +364,12 @@ const Tab2: React.FC = () => {
                 }}
               >
                 <IonIcon color="danger" icon={removeOutline} />
+              </IonButton>
+              <IonButton
+                className="glass-btn-draw"
+                fill="clear"
+              >
+                <IonIcon color="dark" icon={closeOutline} />
               </IonButton>
             </div>
           </div>
