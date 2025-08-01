@@ -1,9 +1,9 @@
-import { Point } from "./Point";
+import { PointC } from "./PointC";
 
 export class Polygone {
-  points: Point[];
+  points: PointC[];
 
-  constructor(points: Point[]){
+  constructor(points: PointC[]){
     this.points = points;
   }
 }

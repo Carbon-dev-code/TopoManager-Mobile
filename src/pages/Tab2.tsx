@@ -36,7 +36,9 @@ import { Feature } from "ol";
 import Polygon from "ol/geom/Polygon";
 import { Style, Stroke, Fill } from "ol/style";
 import Point from "ol/geom/Point";
+import { PointC } from "../model/vecteur/PointC";
 import CircleStyle from "ol/style/Circle";
+import { Polygone } from "../model/vecteur/Polygone";
 
 const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
@@ -109,6 +111,17 @@ const Tab2: React.FC = () => {
     vectorLayerRef.current = vectorLayer;
     mapRef.current.addLayer(vectorLayer);
   }, [drawPoints]);
+
+  const addPolygone = () => {
+    const pointObjects: PointC[] = drawPoints.map(([x, y]) => {
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number, number];
+      return new PointC(tx, ty);
+    });
+    //console.log('Liste des Points:', pointObjects);
+     new Polygone(pointObjects);
+
+  };
+
 
   const getTileUrl = useCallback(
     async (z: number, x: number, y: number): Promise<string> => {
@@ -309,6 +322,7 @@ const Tab2: React.FC = () => {
             <IonButton
               className="glass-btn-draw"
               fill="clear"
+              onClick={addPolygone}
             >
               <IonIcon color="success" icon={checkboxOutline} />
             </IonButton>

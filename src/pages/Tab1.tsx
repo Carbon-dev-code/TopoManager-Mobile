@@ -105,8 +105,8 @@ const Tab1: React.FC = () => {
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
   const [currentParcelleCode, setCurrentParcelleCode] = useState("");
   const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] =
-    useState<ParametreTerritoire | null>(null);
+  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
+  const today = new Date().toISOString().split('T')[0]; // format YYYY-MM-DD
 
   // États du formulaire demandeur
   const [isPhysique, setIsPhysique] = useState(true);
@@ -126,11 +126,7 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.code}-${
-          parametreActuel.district.code
-        }-${parametreActuel.commune.code}-${parametreActuel.fokontany.code}-${
-          parametreActuel.hameau?.code
-        }-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict}-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany}-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
         setCurrentParcelleCode(code_parcelle_complet);
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
@@ -506,13 +502,26 @@ const Tab1: React.FC = () => {
             {!tempParcelle ? (
               <IonCard>
                 <IonCardContent>
-                  <IonInput
-                    label="Code Parcelle"
-                    labelPlacement="floating"
-                    value={currentParcelleCode}
-                    readonly={true}
-                    className="mb-3 border-bottom"
-                  />
+                  <div className="row border-bottom mb-3"
+                    style={{ "--bs-gutter-x": "0rem" }}>
+                    <IonInput
+                      label="Code Parcelle"
+                      labelPlacement="floating"
+                      value={currentParcelleCode}
+                      readonly={true}
+                      className="col-12 col-md-6"
+                    />
+                    <div className="col-12 col-md-6">
+                      <IonInput
+                        label="En date du"
+                        type="date"
+                        labelPlacement="floating"
+                        className="form-input form-input-sm px-3"
+                        value={today}
+                        id="date-now"
+                      />
+                    </div>
+                  </div>
                   <div
                     className="row g-3 pb-2 border-bottom mb-3"
                     style={{ "--bs-gutter-x": "0rem" }}
@@ -539,6 +548,14 @@ const Tab1: React.FC = () => {
                           ))}
                         </select>
                       </div>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <IonInput
+                        label="Année d'occupation"
+                        type="number"
+                        labelPlacement="floating"
+                        className="form-input form-input-sm px-3"
+                      />
                     </div>
                   </div>
 
@@ -589,27 +606,27 @@ const Tab1: React.FC = () => {
                   <div className="d-flex flex-wrap gap-3 border-bottom pb-2">
                     <div className="d-flex flex-column">
                       <small className="text-muted">Région</small>
-                      <strong>{parametreTerritoire?.region.nom}</strong>
+                      <strong>{parametreTerritoire?.region.nomregion}</strong>
                     </div>
 
                     <div className="d-flex flex-column">
                       <small className="text-muted">District</small>
-                      <strong>{parametreTerritoire?.district.nom}</strong>
+                      <strong>{parametreTerritoire?.district.nomdistrict}</strong>
                     </div>
 
                     <div className="d-flex flex-column">
                       <small className="text-muted">Commune</small>
-                      <strong>{parametreTerritoire?.commune.nom}</strong>
+                      <strong>{parametreTerritoire?.commune.nomcommune}</strong>
                     </div>
 
                     <div className="d-flex flex-column">
                       <small className="text-muted">Fokontany</small>
-                      <strong>{parametreTerritoire?.fokontany.nom}</strong>
+                      <strong>{parametreTerritoire?.fokontany.nomfokontany}</strong>
                     </div>
 
                     <div className="d-flex flex-column">
                       <small className="text-muted">Hameau</small>
-                      <strong>{parametreTerritoire?.hameau.nom}</strong>
+                      <strong>{parametreTerritoire?.hameau.nomhameau}</strong>
                     </div>
                   </div>
 
@@ -1022,23 +1039,23 @@ const Tab1: React.FC = () => {
 
                     {(formData.situation === "marie" ||
                       formData.situation === "veuf") && (
-                      <div className="mt-2">
-                        <IonLabel position="stacked">Nom du conjoint</IonLabel>
-                        <IonInput
-                          className="form-control px-3"
-                          value={formData.nomConjoint}
-                          onIonChange={(e) =>
-                            handleInputChange({
-                              target: {
-                                name: "nomConjoint",
-                                value: e.detail.value!,
-                              },
-                            })
-                          }
-                          placeholder="Nom complet du conjoint"
-                        />
-                      </div>
-                    )}
+                        <div className="mt-2">
+                          <IonLabel position="stacked">Nom du conjoint</IonLabel>
+                          <IonInput
+                            className="form-control px-3"
+                            value={formData.nomConjoint}
+                            onIonChange={(e) =>
+                              handleInputChange({
+                                target: {
+                                  name: "nomConjoint",
+                                  value: e.detail.value!,
+                                },
+                              })
+                            }
+                            placeholder="Nom complet du conjoint"
+                          />
+                        </div>
+                      )}
                   </div>
 
                   <div className="col-md-6 mb-3">
