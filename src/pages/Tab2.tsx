@@ -3,7 +3,6 @@ import {
   IonContent,
   IonHeader,
   IonPage,
-  IonTitle,
   IonToolbar,
   IonButton,
   IonIcon,
@@ -29,6 +28,13 @@ import {
   eyeOutline,
   pencilOutline,
 } from "ionicons/icons";
+import VectorLayer from "ol/layer/Vector";
+import VectorSource from "ol/source/Vector";
+import { Feature } from "ol";
+import Polygon from "ol/geom/Polygon";
+import { Style, Stroke, Fill } from "ol/style";
+import Point from "ol/geom/Point";
+import CircleStyle from "ol/style/Circle";
 
 const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
@@ -40,12 +46,69 @@ const Tab2: React.FC = () => {
   const [stateDrawCarte, setstateDrawCarte] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const alreadyChecked = useRef(new Set<string>());
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
-
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
+    number[] | null
+  >(null);
+  const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
+  const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
 
   const sanitizeName = useCallback((name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
   }, []);
+
+  const updatePolygon = useCallback(() => {
+    if (!mapRef.current) return;
+
+    const source = new VectorSource();
+
+    // --- 1. Ajouter le polygone s’il y a assez de points
+    if (drawPoints.length > 2) {
+      const polygon = new Polygon([[...drawPoints, drawPoints[0]]]); // fermer le polygone
+      const polyFeature = new Feature(polygon);
+      source.addFeature(polyFeature);
+    }
+
+    // --- 2. Ajouter les points (sommets) visibles
+    drawPoints.forEach((pt) => {
+      const pointFeature = new Feature({
+        geometry: new Point(pt),
+      });
+      source.addFeature(pointFeature);
+    });
+
+    // --- 3. Supprimer l’ancienne couche s’il y en a une
+    if (vectorLayerRef.current) {
+      mapRef.current.removeLayer(vectorLayerRef.current);
+    }
+
+    // --- 4. Style personnalisé pour les sommets et le polygone
+    const vectorLayer = new VectorLayer({
+      source,
+      style: (feature) => {
+        const geometry = feature.getGeometry();
+
+        if (geometry instanceof Point) {
+          return new Style({
+            image: new CircleStyle({
+              radius: 3,
+              fill: new Fill({ color: "#ff0000" }),
+              stroke: new Stroke({ color: "#fff", width: 1 }),
+            }),
+          });
+        } else if (geometry instanceof Polygon) {
+          return new Style({
+            stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
+            fill: new Fill({ color: "rgba(0, 0, 255, 0.1)" }),
+          });
+        }
+
+        return undefined;
+      },
+    });
+
+    vectorLayerRef.current = vectorLayer;
+    mapRef.current.addLayer(vectorLayer);
+  }, [drawPoints]);
 
   const getTileUrl = useCallback(
     async (z: number, x: number, y: number): Promise<string> => {
@@ -93,10 +156,12 @@ const Tab2: React.FC = () => {
   );
 
   useEffect(() => {
-    proj4.defs("EPSG:29702", "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs");
+    proj4.defs(
+      "EPSG:29702",
+      "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs"
+    );
     register(proj4);
   }, []);
-
 
   useEffect(() => {
     if (!mapElement.current) return;
@@ -108,7 +173,13 @@ const Tab2: React.FC = () => {
       maxZoom: 21,
     });
 
-    const scaleControl = new ScaleLine({ units: 'metric', bar: true, steps: 1, text: true, minWidth: 135 });
+    const scaleControl = new ScaleLine({
+      units: "metric",
+      bar: true,
+      steps: 1,
+      text: true,
+      minWidth: 135,
+    });
 
     const map = new Map({
       controls: [scaleControl],
@@ -124,7 +195,10 @@ const Tab2: React.FC = () => {
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center) {
-        const projected = transform(center, "EPSG:3857", "EPSG:29702") as [number, number];
+        const projected = transform(center, "EPSG:3857", "EPSG:29702") as [
+          number,
+          number
+        ];
         setCenterCoordsProjected(projected);
       }
     });
@@ -167,6 +241,7 @@ const Tab2: React.FC = () => {
       source: localSource,
     });
     map.addLayer(localLayer);
+
     localLayerRef.current = localLayer;
     mapRef.current = map;
 
@@ -176,6 +251,10 @@ const Tab2: React.FC = () => {
       tileCache.current = {};
     };
   }, [getTileUrl]);
+
+  useEffect(() => {
+    updatePolygon();
+  }, [drawPoints, updatePolygon]);
 
   const toggleLocalTiles = useCallback(() => {
     if (localLayerRef.current && mapRef.current) {
@@ -214,12 +293,14 @@ const Tab2: React.FC = () => {
             <div className="cross-symbol"></div>
             {centerCoordsProjected && (
               <div className="coord-display">
-                <div>X: {centerCoordsProjected[0].toFixed(6)} Y: {centerCoordsProjected[1].toFixed(6)}</div>
+                <div>
+                  X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
+                  {centerCoordsProjected[1].toFixed(6)}
+                </div>
               </div>
             )}
           </div>
         )}
-
 
         <div ref={mapElement} className="map-container"></div>
         <div className="map-controls">
@@ -249,10 +330,30 @@ const Tab2: React.FC = () => {
         {stateDrawCarte && (
           <div className="tools">
             <div className="draw">
-              <IonButton className="glass-btn-draw" fill="clear">
+              <IonButton
+                className="glass-btn-draw"
+                fill="clear"
+                onClick={() => {
+                  if (mapRef.current) {
+                    const center = mapRef.current.getView().getCenter();
+                    if (center) {
+                      setDrawPoints((prev) => [
+                        ...prev,
+                        center as [number, number],
+                      ]);
+                    }
+                  }
+                }}
+              >
                 <IonIcon color="blue" icon={addOutline} />
               </IonButton>
-              <IonButton className="glass-btn-draw" fill="clear">
+              <IonButton
+                className="glass-btn-draw"
+                fill="clear"
+                onClick={() => {
+                  setDrawPoints((prev) => prev.slice(0, -1));
+                }}
+              >
                 <IonIcon color="danger" icon={removeOutline} />
               </IonButton>
             </div>

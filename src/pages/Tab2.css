@@ -2,8 +2,8 @@
   box-shadow: none;
 }
 
-:host {
-    /* --background: var(--ion-toolbar-background, var(--ion-background-color, #fff)); */
+.custom-toolBar {
+  --background: var(--ion-toolbar-background, var(--ion-background-color, #ffffff00)) !important;
 }
 
 .map-container {
