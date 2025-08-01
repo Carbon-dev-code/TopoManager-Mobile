@@ -29,14 +29,6 @@ import {
   eyeOutline,
   pencilOutline,
 } from "ionicons/icons";
-import { Feature } from "ol";
-import Point from "ol/geom/Point";
-import VectorLayer from "ol/layer/Vector";
-import VectorSource from "ol/source/Vector";
-import Style from "ol/style/Style";
-import CircleStyle from "ol/style/Circle";
-import Fill from "ol/style/Fill";
-import Stroke from "ol/style/Stroke";
 
 const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
@@ -102,12 +94,7 @@ const Tab2: React.FC = () => {
   );
 
   useEffect(() => {
-    proj4.defs("EPSG:29702",
-      "+proj=omerc +lat_0=-18.9 +lonc=44.10000000000001 +alpha=18.9 " +
-      "+k=0.9995000000000001 +x_0=400000 +y_0=800000 +gamma=18.9 +ellps=intl " +
-      "+towgs84=-189,-242,-91,0,0,0,0 +pm=paris +units=m +no_defs"
-    );
-
+    proj4.defs("EPSG:29702", "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs");
     register(proj4);
   }, []);
 
@@ -135,35 +122,9 @@ const Tab2: React.FC = () => {
       view: initialView,
     });
 
-    // Crée un cercle pour marquer le vrai "centre"
-    const centerMarker = new Feature({
-      geometry: new Point(initialView.getCenter()!),
-    });
-
-    centerMarker.setStyle(
-      new Style({
-        image: new CircleStyle({
-          radius: 6,
-          fill: new Fill({ color: 'rgba(255, 0, 0, 0.9)' }),
-          stroke: new Stroke({ color: 'white', width: 2 }),
-        }),
-      })
-    );
-
-    const vectorSource = new VectorSource({
-      features: [centerMarker],
-    });
-
-    const vectorLayer = new VectorLayer({
-      source: vectorSource,
-    });
-
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center) {
-        // Mettre à jour le marqueur visuel
-        centerMarker.setGeometry(new Point(center));
-
         const lonLat = toLonLat(center);
         setCenterCoords([lonLat[0], lonLat[1]]);
 
@@ -212,7 +173,6 @@ const Tab2: React.FC = () => {
     map.addLayer(localLayer);
     localLayerRef.current = localLayer;
     mapRef.current = map;
-    map.addLayer(vectorLayer);
 
     return () => {
       map.setTarget(undefined);
