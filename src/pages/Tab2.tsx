@@ -16,7 +16,7 @@ import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import ScaleLine from "ol/control/ScaleLine";
-import { fromLonLat, toLonLat, transform } from "ol/proj";
+import { fromLonLat, transform } from "ol/proj";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { OSM, XYZ } from "ol/source";
@@ -40,7 +40,6 @@ const Tab2: React.FC = () => {
   const [stateDrawCarte, setstateDrawCarte] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const alreadyChecked = useRef(new Set<string>());
-  const [centerCoords, setCenterCoords] = useState<[number, number] | null>(null);
   const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
 
 
@@ -106,10 +105,10 @@ const Tab2: React.FC = () => {
       center: fromLonLat([46.383814, -25.041426]),
       zoom: 12,
       minZoom: 11,
-      maxZoom: 18,
+      maxZoom: 21,
     });
 
-    const scaleControl = new ScaleLine({ units: 'metric', bar: true, steps: 1, text: true, minWidth: 140, });
+    const scaleControl = new ScaleLine({ units: 'metric', bar: true, steps: 1, text: true, minWidth: 135 });
 
     const map = new Map({
       controls: [scaleControl],
@@ -125,9 +124,6 @@ const Tab2: React.FC = () => {
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center) {
-        const lonLat = toLonLat(center);
-        setCenterCoords([lonLat[0], lonLat[1]]);
-
         const projected = transform(center, "EPSG:3857", "EPSG:29702") as [number, number];
         setCenterCoordsProjected(projected);
       }
@@ -205,22 +201,20 @@ const Tab2: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar color="primary">
-          <IonButtons slot="start">
+      <IonHeader className="custom-header">
+        <IonToolbar className="custom-toolBar">
+          <IonButtons className="glass-btn" slot="start">
             <IonMenuButton />
           </IonButtons>
-          <IonTitle className="ion-text-center">Carte du Territoire</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
         {stateDrawCarte && (
           <div className="map-crosshair">
             <div className="cross-symbol"></div>
-            {centerCoords && centerCoordsProjected && (
+            {centerCoordsProjected && (
               <div className="coord-display">
-                <div><small>WGS84:</small> || Lon: {centerCoords[0].toFixed(6)} Lat: {centerCoords[1].toFixed(6)}</div>
-                <div><small>EPSG:29702:</small> || X: {centerCoordsProjected[0].toFixed(6)} Y: {centerCoordsProjected[1].toFixed(6)}</div>
+                <div>X: {centerCoordsProjected[0].toFixed(6)} Y: {centerCoordsProjected[1].toFixed(6)}</div>
               </div>
             )}
           </div>
