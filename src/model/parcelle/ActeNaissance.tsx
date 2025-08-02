@@ -1,9 +1,9 @@
 export class ActeNaissance {
-  numero: string;
-  date: Date;
-  lieu: string;
+  numero?: string | null;
+  date?: Date | null;
+  lieu?: string | null;
 
-  constructor(numero: string, date: Date, lieu: string){
+  constructor(numero?: string | null, date?: Date | null, lieu?: string | null){
     this.numero = numero;
     this.date = date;
     this.lieu = lieu

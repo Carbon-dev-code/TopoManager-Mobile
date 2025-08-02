@@ -3,22 +3,22 @@ import { Demandeur } from "./Demandeur";
 import { Riverin } from "./Riverin";
 
 export class Parcelle {
-    code: string;
-    dateCreation: Date;
-    status: number;
-    anneeOccup:number;
-    categorie:number;
-    consistance:string;
-    oppossition:boolean;
-    revandication:boolean;
-    observation:string;
+    code: string | null;
+    dateCreation: string | null;
+    status: number | null;
+    anneeOccup: number | null;
+    categorie: number | null;
+    consistance: string | null;
+    oppossition: boolean;
+    revandication: boolean;
+    observation: string;
     demandeurs: Demandeur[];
-    parametreTerritoire: ParametreTerritoire;
-    riverin: Riverin[]
+    parametreTerritoire: ParametreTerritoire | null;
+    riverin: Riverin[] | null;
 
-    constructor(code: string, dateCreation: Date, status: number, 
-        anneeOccup: number, categorie: number, consistance: string, opposition: boolean, revandication: boolean,
-        observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire, riverin: Riverin[]){
+    constructor(code: string | null, dateCreation: string | null, status: number | null,
+        anneeOccup: number | null, categorie: number | null, consistance: string | null, opposition: boolean, revandication: boolean,
+        observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[] | null) {
         this.code = code;
         this.dateCreation = dateCreation;
         this.status = status;
@@ -31,6 +31,10 @@ export class Parcelle {
         this.revandication = revandication;
         this.observation = observation;
         this.riverin = riverin;
+    }
+
+    static init(): Parcelle {
+        return new Parcelle(null, null, null, null, null, null, false, false, '', [], null, [])
     }
 
 }

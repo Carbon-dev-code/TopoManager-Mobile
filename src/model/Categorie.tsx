@@ -1,5 +1,5 @@
 // types.ts
 export interface Categorie {
-  id: number;
+  idcategorie: number;
   labelcategorie: string;
 }

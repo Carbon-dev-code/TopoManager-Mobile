@@ -1,11 +1,11 @@
 export class CIN {
-  numero: string;
-  date: Date;
-  lieu: string;
+  numero?: string[];
+  date?: Date | null;
+  lieu?: string;
 
-  constructor(numero: string, date: Date, lieu: string){
+  constructor(numero?: string[], date?: Date | null, lieu?: string){
     this.numero = numero;
     this.date = date;
-    this.lieu = lieu
+    this.lieu = lieu;
   }
 }
