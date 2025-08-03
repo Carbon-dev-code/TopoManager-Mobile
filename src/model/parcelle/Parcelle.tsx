@@ -14,11 +14,11 @@ export class Parcelle {
     observation: string;
     demandeurs: Demandeur[];
     parametreTerritoire: ParametreTerritoire | null;
-    riverin: Riverin[] | null;
+    riverin: Riverin[];
 
     constructor(code: string | null, dateCreation: string | null, status: number | null,
         anneeOccup: number | null, categorie: number | null, consistance: string | null, opposition: boolean, revandication: boolean,
-        observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[] | null) {
+        observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[]) {
         this.code = code;
         this.dateCreation = dateCreation;
         this.status = status;

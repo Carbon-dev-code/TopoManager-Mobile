@@ -30,6 +30,7 @@ import {
   IonGrid,
   IonCol,
   IonRow,
+  IonLoading,
 } from "@ionic/react";
 import {
   trash,
@@ -49,12 +50,15 @@ import { Categorie } from "../model/Categorie";
 import { Status } from "../model/Status";
 import { Parcelle } from "../model/parcelle/Parcelle";
 import { Demandeur } from "../model/parcelle/Demandeur";
+import { Riverin } from "../model/parcelle/Riverin";
 
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState<boolean>(false);
+  const [showRiverin, setShowRiverin] = useState<boolean>(false);
+  const [riverinMess, setRiverinMess] = useState<string>('Ajouter');
   const [currentParcelleCode, setCurrentParcelleCode] = useState("");
   const [currentIncrement, setCurrentIncrement] = useState(0);
   const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
@@ -64,6 +68,7 @@ const Tab1: React.FC = () => {
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [isPhysique, setIsPhysique] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
+  const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
 
   const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
     const result = await Preferences.get({ key: STORAGE_KEY });
@@ -139,8 +144,21 @@ const Tab1: React.FC = () => {
   const addDemandeur = () => {
     parcelle.demandeurs.push(demandeur)
     console.log(demandeur)
+    setDemandeur(Demandeur.init)
     setShowDemandeurModal(false)
   }
+
+  const addRiverin = () => {
+    if (newRiverin.repere == null || newRiverin.observation.trim() === '') {
+      setRiverinMess('😡 Vérifiez votre insertion');
+      return; // stop ici
+    }
+    parcelle.riverin.push(newRiverin);
+    console.log(newRiverin);
+    setNewRiverin(Riverin.init);
+    setRiverinMess('✅ Riverin ajouté');
+  };
+
 
   const removeParcelle = (code: string) => { //Fonction remove mila fafana ny ao am stockage
     setParcelles(parcelles.filter((p) => p.code !== code));
@@ -397,7 +415,7 @@ const Tab1: React.FC = () => {
                     <IonButton expand="full" color="tertiary">Recherche demandeur</IonButton>
                   </IonCol>
                   <IonCol size="12" size-md="4">
-                    <IonButton expand="full">Ajout riverin</IonButton>
+                    <IonButton expand="full" onClick={() => setShowRiverin(true)}>Ajout riverin</IonButton>
                   </IonCol>
                 </IonRow>
               </IonGrid>
@@ -467,8 +485,76 @@ const Tab1: React.FC = () => {
       </IonModal>
 
       {/**Modal riverin */}
-      <IonModal>
-        
+      <IonModal
+        isOpen={showRiverin}
+        onDidDismiss={() => { setShowRiverin(false) }}
+      >
+        <IonHeader>
+          <IonToolbar color="primary">
+            <IonButtons slot="start">
+              <IonButton
+                onClick={() => {
+                  setShowRiverin(false);
+                }}
+              >
+                <IonIcon icon={close} />
+              </IonButton>
+            </IonButtons>
+            <IonTitle>
+              Ajout de nouveau riverin au parcelle
+            </IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={addRiverin} id="open-loading">
+                Ajouter
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <IonLoading trigger="open-loading" message={riverinMess} duration={2500}/>
+          <IonList>
+            <IonItem>
+              <IonGrid>
+                <IonRow>
+                  <IonCol size="12">
+                    <IonSelect
+                      label="Repère :"
+                      value={newRiverin.repere}
+                      onIonChange={(e) =>
+                        setNewRiverin({ ...newRiverin, repere: Number(e.detail.value) })
+                      }
+                      placeholder="Riverin du parcelle"
+                    >
+                      <IonSelectOption value={1}>Nord</IonSelectOption>
+                      <IonSelectOption value={2}>Est</IonSelectOption>
+                      <IonSelectOption value={3}>Ouest</IonSelectOption>
+                      <IonSelectOption value={4}>Sud</IonSelectOption>
+                    </IonSelect>
+                  </IonCol>
+                </IonRow>
+              </IonGrid>
+            </IonItem>
+
+            <IonItem>
+              <IonGrid>
+                <IonRow>
+                  <IonCol size="12">
+                    <IonTextarea
+                      label="Observation"
+                      value={newRiverin.observation}
+                      onIonChange={(e) =>
+                        setNewRiverin({ ...newRiverin, observation: e.detail.value || "" })
+                      }
+                      labelPlacement="stacked"
+                      placeholder="Votre observation sur la parcelle"
+                    ></IonTextarea>
+                  </IonCol>
+                </IonRow>
+              </IonGrid>
+            </IonItem>
+          </IonList>
+
+        </IonContent>
       </IonModal>
 
       {/**Modal creation demandeur*/}
@@ -843,7 +929,7 @@ const Tab1: React.FC = () => {
             </>
           ) : (
             <>
-            
+
             </>
           )}
         </IonContent>
