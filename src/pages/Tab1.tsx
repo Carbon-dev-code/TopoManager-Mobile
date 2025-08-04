@@ -29,6 +29,11 @@ import {
   IonSegment,
   IonSegmentButton,
   IonToast,
+  IonCardSubtitle,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonChip,
 } from "@ionic/react";
 import {
   trash,
@@ -39,6 +44,8 @@ import {
   create,
   personOutline,
   businessOutline,
+  sync,
+  map,
 } from "ionicons/icons";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
@@ -105,11 +112,9 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
-          parametreActuel.district.codedistrict
-        }-${parametreActuel.commune.codecommune}-${
-          parametreActuel.fokontany.codefokontany
-        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
+          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
+          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentParcelleCode(code_parcelle_complet);
         setCurrentIncrement(newIncrement);
@@ -192,10 +197,10 @@ const Tab1: React.FC = () => {
   };
 
   const createParcelle = async () => {
-    console.log(parcelle);
+    console.log(parcelle); // visualisation
+
     parcelles.push(parcelle);
 
-    /*
     const existing = await Preferences.get({ key: STORAGE_KEY });
     let oldParcelles: Parcelle[] = [];
     if (existing.value) {
@@ -206,7 +211,9 @@ const Tab1: React.FC = () => {
       key: STORAGE_KEY,
       value: JSON.stringify(allParcelles),
     });
-    */
+
+    setParcelle(Parcelle.init);
+    setShowCreateModal(false);
   };
 
   return (
@@ -226,7 +233,7 @@ const Tab1: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent>
+      <IonContent className="ion-padding">
         {parcelles.length === 0 ? (
           <div className="text-center py-5">
             <IonIcon
@@ -240,9 +247,9 @@ const Tab1: React.FC = () => {
             </IonButton>
           </div>
         ) : (
-          <div className="cards-grid">
+          <>
             {parcelles.map((parcelle) => (
-              <IonCard key={parcelle.code} className="row m-1">
+              <IonCard key={parcelle.code} className="custom-card">
                 <span
                   className="position-badge-custom-tab1"
                   role="button"
@@ -252,42 +259,41 @@ const Tab1: React.FC = () => {
                   <IonIcon icon={trash} />
                 </span>
 
-                <div className="col-12 col-sm-6 col-md-4 d-flex flex-column justify-content-center">
-                  <IonLabel className="parcelle-code">
-                    Parcelle : {parcelle.code}
-                  </IonLabel>
+                <IonCardHeader className="custom-header-card">
+                  <IonCardTitle><strong>{parcelle.code}</strong></IonCardTitle>
+                  <IonCardSubtitle>
+                    <IonChip color="danger">
+                      <IonIcon icon={sync} color={parcelle.synchronise ? 'success' : 'danger'}></IonIcon>
+                      <IonLabel>{parcelle.synchronise ? 'Parcelle sync' : 'Parcelle non sync'}</IonLabel>
+                    </IonChip>
+                    <IonChip color="danger">
+                      <IonIcon icon={map} color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'}></IonIcon>
+                      <IonLabel>{(!parcelle.polygone || parcelle.polygone.length === 0) ? 'Pas de croquis' : 'Avec croquis'}
+                      </IonLabel>
+                    </IonChip>
+                  </IonCardSubtitle>
+                </IonCardHeader>
 
-                  <IonBadge color="primary" className="mt-2 fit-content-tab1">
-                    {parcelle.demandeurs.length} demandeur(s)
-                  </IonBadge>
-                </div>
-
-                <div className="col">
-                  {parcelle.demandeurs.length === 0 ? (
-                    <p className="text-muted">
-                      Aucun demandeur pour cette parcelle
-                    </p>
-                  ) : (
-                    <IonList>
-                      {parcelle.demandeurs.map((demandeur) => (
-                        <IonItem key={`dem` + demandeur.id}>
-                          <IonIcon
-                            slot="start"
-                            icon={demandeur.type === 0 ? person : business}
-                          />
-                          <IonLabel>
-                            {demandeur.type === 0
-                              ? `${demandeur.nom} ${demandeur.prenom}`
-                              : demandeur.denomination}
-                          </IonLabel>
-                        </IonItem>
-                      ))}
-                    </IonList>
-                  )}
-                </div>
+                <IonCardContent>
+                  <IonList className="scrollable-list">
+                    {parcelle.demandeurs.map((demandeur) => (
+                      <IonItem key={`dem` + demandeur.id} lines="none">
+                        <IonIcon
+                          slot="start"
+                          icon={demandeur.type === 0 ? person : business}
+                        />
+                        <IonLabel>
+                          {demandeur.type === 0
+                            ? `${demandeur.nom} ${demandeur.prenom}`
+                            : demandeur.denomination}
+                        </IonLabel>
+                      </IonItem>
+                    ))}
+                  </IonList>
+                </IonCardContent>
               </IonCard>
             ))}
-          </div>
+          </>
         )}
       </IonContent>
 
@@ -856,8 +862,8 @@ const Tab1: React.FC = () => {
                             value={
                               demandeur.dateNaissance
                                 ? demandeur.dateNaissance
-                                    .toISOString()
-                                    .substring(0, 10)
+                                  .toISOString()
+                                  .substring(0, 10)
                                 : ""
                             }
                             onIonChange={(e) =>
@@ -956,19 +962,19 @@ const Tab1: React.FC = () => {
                 <div style={{ marginLeft: "16px" }}>
                   {(demandeur.situation === "1" ||
                     demandeur.situation === "2") && (
-                    <IonInput
-                      className="border-bottom"
-                      label="Nom du conjoint"
-                      placeholder="Enter le nom de la mère du demandeur"
-                      value={demandeur.nomConjoint}
-                      onIonChange={(e) =>
-                        setDemandeur({
-                          ...demandeur,
-                          nomConjoint: String(e.detail.value),
-                        })
-                      }
-                    />
-                  )}
+                      <IonInput
+                        className="border-bottom"
+                        label="Nom du conjoint"
+                        placeholder="Enter le nom de la mère du demandeur"
+                        value={demandeur.nomConjoint}
+                        onIonChange={(e) =>
+                          setDemandeur({
+                            ...demandeur,
+                            nomConjoint: String(e.detail.value),
+                          })
+                        }
+                      />
+                    )}
                 </div>
                 <div className="border-bottom" style={{ marginLeft: "15px" }}>
                   <h5 className="mt-4">Filiation</h5>
@@ -1083,8 +1089,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.cin?.date
                                   ? demandeur.cin.date
-                                      .toISOString()
-                                      .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
@@ -1174,8 +1180,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.acte?.date
                                   ? demandeur.acte.date
-                                      .toISOString()
-                                      .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>

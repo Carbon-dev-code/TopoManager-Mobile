@@ -95,3 +95,18 @@
     flex-direction: column;
   }
 }
+
+.custom-header-card{
+  padding-bottom: 0px !important;
+}
+
+.custom-card {
+  max-width: 450px;
+  margin: 0 auto;
+}
+
+.scrollable-list {
+  max-height: 110px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
