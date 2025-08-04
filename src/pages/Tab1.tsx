@@ -49,16 +49,16 @@ import { Parcelle } from "../model/parcelle/Parcelle";
 import { Demandeur } from "../model/parcelle/Demandeur";
 import { Riverin } from "../model/parcelle/Riverin";
 
-
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState<boolean>(false);
   const [showRiverin, setShowRiverin] = useState<boolean>(false);
-  const [riverinMess, setRiverinMess] = useState<string>('Ajouter');
+  const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
   const [currentParcelleCode, setCurrentParcelleCode] = useState("");
   const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
+  const [parametreTerritoire, setParametreTerritoire] =
+    useState<ParametreTerritoire | null>(null);
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
@@ -66,8 +66,9 @@ const Tab1: React.FC = () => {
   const [isPhysique, setIsPhysique] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur");
-
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
+    "demandeur"
+  );
 
   const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
     const result = await Preferences.get({ key: STORAGE_KEY });
@@ -99,17 +100,21 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict}-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany}-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
+          parametreActuel.district.codedistrict
+        }-${parametreActuel.commune.codecommune}-${
+          parametreActuel.fokontany.codefokontany
+        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentParcelleCode(code_parcelle_complet);
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
 
-        setParcelle(prev => ({
+        setParcelle((prev) => ({
           ...prev,
           code: code_parcelle_complet,
-          dateCreation: new Date().toISOString().split('T')[0],
-          parametreTerritoire: parametreActuel
+          dateCreation: new Date().toISOString().split("T")[0],
+          parametreTerritoire: parametreActuel,
         }));
       }
     } catch (error) {
@@ -141,31 +146,31 @@ const Tab1: React.FC = () => {
   }, [showCreateModal]);
 
   const addDemandeur = () => {
-    parcelle.demandeurs.push(demandeur)
-    console.log(demandeur)
-    setDemandeur(Demandeur.init)
-    setShowDemandeurModal(false)
-  }
+    parcelle.demandeurs.push(demandeur);
+    console.log(demandeur);
+    setDemandeur(Demandeur.init);
+    setShowDemandeurModal(false);
+  };
 
   const addRiverin = () => {
-    if (newRiverin.repere == null || newRiverin.observation.trim() === '') {
-      setRiverinMess('😡 Vérifiez votre insertion');
+    if (newRiverin.repere == null || newRiverin.observation.trim() === "") {
+      setRiverinMess("😡 Vérifiez votre insertion");
       return; // stop ici
     }
     parcelle.riverin.push(newRiverin);
     console.log(newRiverin);
     setNewRiverin(Riverin.init);
-    setRiverinMess('✅ Riverin ajouté');
+    setRiverinMess("✅ Riverin ajouté");
   };
 
-
-  const removeParcelle = (code: string) => { //Fonction remove mila fafana ny ao am stockage
+  const removeParcelle = (code: string) => {
+    //Fonction remove mila fafana ny ao am stockage
     setParcelles(parcelles.filter((p) => p.code !== code));
-  }
+  };
 
   const createParcelle = async () => {
     console.log(parcelle);
-    parcelles.push(parcelle)
+    parcelles.push(parcelle);
 
     /*
     const existing = await Preferences.get({ key: STORAGE_KEY });
@@ -199,74 +204,76 @@ const Tab1: React.FC = () => {
       </IonHeader>
 
       <IonContent>
-        {
-          parcelles.length === 0 ? (
-            <div className="text-center py-5">
-              <IonIcon
-                icon={informationCircle}
-                size="large"
-                className="text-muted mb-3"
-              />
-              <h4 className="text-muted">Aucune parcelle enregistrée</h4>
-              <IonButton onClick={() => setShowCreateModal(true)}>
-                Créer une première parcelle
-              </IonButton>
-            </div>
-          ) : (
-            <div className="cards-grid">
-              {parcelles.map((parcelle) => (
-                <IonCard key={parcelle.code} className="row m-1">
-                  <span
-                    className="position-badge-custom-tab1"
-                    role="button"
-                    color="danger"
-                    onClick={() => removeParcelle(parcelle.code!!)}
-                  >
-                    <IonIcon icon={trash} />
-                  </span>
+        {parcelles.length === 0 ? (
+          <div className="text-center py-5">
+            <IonIcon
+              icon={informationCircle}
+              size="large"
+              className="text-muted mb-3"
+            />
+            <h4 className="text-muted">Aucune parcelle enregistrée</h4>
+            <IonButton onClick={() => setShowCreateModal(true)}>
+              Créer une première parcelle
+            </IonButton>
+          </div>
+        ) : (
+          <div className="cards-grid">
+            {parcelles.map((parcelle) => (
+              <IonCard key={parcelle.code} className="row m-1">
+                <span
+                  className="position-badge-custom-tab1"
+                  role="button"
+                  color="danger"
+                  onClick={() => removeParcelle(parcelle.code!!)}
+                >
+                  <IonIcon icon={trash} />
+                </span>
 
-                  <div className="col-12 col-sm-6 col-md-4 d-flex flex-column justify-content-center">
-                    <IonLabel className="parcelle-code">
-                      Parcelle : {parcelle.code}
-                    </IonLabel>
+                <div className="col-12 col-sm-6 col-md-4 d-flex flex-column justify-content-center">
+                  <IonLabel className="parcelle-code">
+                    Parcelle : {parcelle.code}
+                  </IonLabel>
 
-                    <IonBadge color="primary" className="mt-2 fit-content-tab1">
-                      {parcelle.demandeurs.length} demandeur(s)
-                    </IonBadge>
-                  </div>
+                  <IonBadge color="primary" className="mt-2 fit-content-tab1">
+                    {parcelle.demandeurs.length} demandeur(s)
+                  </IonBadge>
+                </div>
 
-                  <div className="col">
-                    {parcelle.demandeurs.length === 0 ? (
-                      <p className="text-muted">
-                        Aucun demandeur pour cette parcelle
-                      </p>
-                    ) : (
-                      <IonList>
-                        {parcelle.demandeurs.map((demandeur) => (
-                          <IonItem key={`dem` + demandeur.id}>
-                            <IonIcon
-                              slot="start"
-                              icon={demandeur.type === 0 ? person : business}
-                            />
-                            <IonLabel>
-                              {demandeur.type === 0 ? `${demandeur.nom} ${demandeur.prenom}` : demandeur.denomination}
-                            </IonLabel>
-                          </IonItem>
-                        ))}
-                      </IonList>
-                    )}
-                  </div>
-                </IonCard>
-              ))}
-            </div>
-          )
-        }
+                <div className="col">
+                  {parcelle.demandeurs.length === 0 ? (
+                    <p className="text-muted">
+                      Aucun demandeur pour cette parcelle
+                    </p>
+                  ) : (
+                    <IonList>
+                      {parcelle.demandeurs.map((demandeur) => (
+                        <IonItem key={`dem` + demandeur.id}>
+                          <IonIcon
+                            slot="start"
+                            icon={demandeur.type === 0 ? person : business}
+                          />
+                          <IonLabel>
+                            {demandeur.type === 0
+                              ? `${demandeur.nom} ${demandeur.prenom}`
+                              : demandeur.denomination}
+                          </IonLabel>
+                        </IonItem>
+                      ))}
+                    </IonList>
+                  )}
+                </div>
+              </IonCard>
+            ))}
+          </div>
+        )}
       </IonContent>
 
       {/*Modal creation de parcelle*/}
       <IonModal
         isOpen={showCreateModal}
-        onDidDismiss={() => { setShowCreateModal(false) }}
+        onDidDismiss={() => {
+          setShowCreateModal(false);
+        }}
       >
         <IonHeader>
           <IonToolbar color="primary">
@@ -279,9 +286,7 @@ const Tab1: React.FC = () => {
                 <IonIcon icon={close} />
               </IonButton>
             </IonButtons>
-            <IonTitle>
-              Nouvelle parcelle
-            </IonTitle>
+            <IonTitle>Nouvelle parcelle</IonTitle>
           </IonToolbar>
         </IonHeader>
 
@@ -297,9 +302,7 @@ const Tab1: React.FC = () => {
                       readonly={true}
                       value={parcelle.code}
                     >
-                      <div slot="label">
-                        Code parcelle
-                      </div>
+                      <div slot="label">Code parcelle</div>
                     </IonInput>
                   </IonCol>
                   <IonCol size="12" size-md="6">
@@ -309,9 +312,7 @@ const Tab1: React.FC = () => {
                       value={parcelle.dateCreation}
                       readonly={true}
                     >
-                      <div slot="label">
-                        En date du
-                      </div>
+                      <div slot="label">En date du</div>
                     </IonInput>
                   </IonCol>
                 </IonRow>
@@ -325,8 +326,14 @@ const Tab1: React.FC = () => {
                     <IonSelect
                       label="Status :"
                       value={parcelle.status}
-                      onIonChange={(e) => setParcelle({ ...parcelle, status: Number(e.detail.value) })}
-                      placeholder="Status de terre">
+                      onIonChange={(e) =>
+                        setParcelle({
+                          ...parcelle,
+                          status: Number(e.detail.value),
+                        })
+                      }
+                      placeholder="Status de terre"
+                    >
                       {status.map((stat, index) => (
                         <IonSelectOption
                           key={`status-${index}`}
@@ -342,9 +349,14 @@ const Tab1: React.FC = () => {
                       label="Année d'occupation :"
                       type="number"
                       value={parcelle.anneeOccup}
-                      onIonChange={(e) => setParcelle({ ...parcelle, anneeOccup: Number(e.detail.value) })}
-                      placeholder="Nombre d'année">
-                    </IonInput>
+                      onIonChange={(e) =>
+                        setParcelle({
+                          ...parcelle,
+                          anneeOccup: Number(e.detail.value),
+                        })
+                      }
+                      placeholder="Nombre d'année"
+                    ></IonInput>
                   </IonCol>
                 </IonRow>
               </IonGrid>
@@ -356,8 +368,14 @@ const Tab1: React.FC = () => {
                     <IonSelect
                       label="Catégorie :"
                       value={parcelle.categorie}
-                      onIonChange={(e) => setParcelle({ ...parcelle, categorie: Number(e.detail.value) })}
-                      placeholder="Catégorie de terre">
+                      onIonChange={(e) =>
+                        setParcelle({
+                          ...parcelle,
+                          categorie: Number(e.detail.value),
+                        })
+                      }
+                      placeholder="Catégorie de terre"
+                    >
                       {categorie.map((cat, index) => (
                         <IonSelectOption
                           key={`categorie-${index}`}
@@ -373,9 +391,14 @@ const Tab1: React.FC = () => {
                       label="Consistance :"
                       type="text"
                       value={parcelle.consistance}
-                      onIonChange={(e) => setParcelle({ ...parcelle, consistance: String(e.detail.value) })}
-                      placeholder="Consistance du terrain">
-                    </IonInput>
+                      onIonChange={(e) =>
+                        setParcelle({
+                          ...parcelle,
+                          consistance: String(e.detail.value),
+                        })
+                      }
+                      placeholder="Consistance du terrain"
+                    ></IonInput>
                   </IonCol>
                 </IonRow>
               </IonGrid>
@@ -388,18 +411,28 @@ const Tab1: React.FC = () => {
                       labelPlacement="start"
                       checked={parcelle.oppossition}
                       onIonChange={(e) =>
-                        setParcelle({ ...parcelle, oppossition: e.detail.checked })
+                        setParcelle({
+                          ...parcelle,
+                          oppossition: e.detail.checked,
+                        })
                       }
-                    >Opposition</IonCheckbox>
+                    >
+                      Opposition
+                    </IonCheckbox>
                   </IonCol>
                   <IonCol size="12" size-md="12">
                     <IonCheckbox
                       labelPlacement="start"
                       checked={parcelle.revandication}
                       onIonChange={(e) =>
-                        setParcelle({ ...parcelle, revandication: e.detail.checked })
+                        setParcelle({
+                          ...parcelle,
+                          revandication: e.detail.checked,
+                        })
                       }
-                    >Revandication</IonCheckbox>
+                    >
+                      Revandication
+                    </IonCheckbox>
                   </IonCol>
                 </IonRow>
               </IonGrid>
@@ -408,13 +441,25 @@ const Tab1: React.FC = () => {
               <IonGrid>
                 <IonRow className="justify-content-between text-center">
                   <IonCol size="12" size-md="4">
-                    <IonButton expand="full" onClick={() => setShowDemandeurModal(true)}>Ajout demandeur</IonButton>
+                    <IonButton
+                      expand="full"
+                      onClick={() => setShowDemandeurModal(true)}
+                    >
+                      Ajout demandeur
+                    </IonButton>
                   </IonCol>
                   <IonCol size="12" size-md="4">
-                    <IonButton expand="full" color="tertiary">Recherche demandeur</IonButton>
+                    <IonButton expand="full" color="tertiary">
+                      Recherche demandeur
+                    </IonButton>
                   </IonCol>
                   <IonCol size="12" size-md="4">
-                    <IonButton expand="full" onClick={() => setShowRiverin(true)}>Ajout riverin</IonButton>
+                    <IonButton
+                      expand="full"
+                      onClick={() => setShowRiverin(true)}
+                    >
+                      Ajout riverin
+                    </IonButton>
                   </IonCol>
                 </IonRow>
               </IonGrid>
@@ -424,7 +469,9 @@ const Tab1: React.FC = () => {
               <div className="tabs-header">
                 <IonSegment
                   value={activeTab}
-                  onIonChange={(e) => setActiveTab(e.detail.value as "demandeur" | "riverin")}
+                  onIonChange={(e) =>
+                    setActiveTab(e.detail.value as "demandeur" | "riverin")
+                  }
                 >
                   <IonSegmentButton value="demandeur">
                     <IonLabel>Demandeurs</IonLabel>
@@ -445,10 +492,12 @@ const Tab1: React.FC = () => {
                           icon={d.type === 0 ? personOutline : businessOutline}
                           slot="start"
                           color="primary"
-                          style={{ fontSize: '24px', marginRight: '12px' }}
+                          style={{ fontSize: "24px", marginRight: "12px" }}
                         />
                         <IonLabel>
-                          <h3 style={{ marginBottom: 4 }}>{d.nom} {d.prenom}</h3>
+                          <h3 style={{ marginBottom: 4 }}>
+                            {d.nom} {d.prenom}
+                          </h3>
                         </IonLabel>
                       </IonItem>
                     ))}
@@ -460,7 +509,9 @@ const Tab1: React.FC = () => {
                     {parcelle.riverin?.map((r, i) => (
                       <IonItem key={i} lines="none" className="custom-item">
                         <IonLabel>
-                          <h3 style={{ marginBottom: 4 }}>🧭 {["Nord", "Est", "Sud", "Ouest"][r.repere!! - 1]}</h3>
+                          <h3 style={{ marginBottom: 4 }}>
+                            🧭 {["Nord", "Est", "Sud", "Ouest"][r.repere!! - 1]}
+                          </h3>
                           <p style={{ margin: 0 }}>📝 {r.observation}</p>
                         </IonLabel>
                       </IonItem>
@@ -476,35 +527,51 @@ const Tab1: React.FC = () => {
                   <IonCol size="6" size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Région</small>
-                      <div><strong>{parametreTerritoire?.region.nomregion}</strong></div>
+                      <div>
+                        <strong>{parametreTerritoire?.region.nomregion}</strong>
+                      </div>
                     </div>
                   </IonCol>
 
                   <IonCol size="6" size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">District</small>
-                      <div><strong>{parametreTerritoire?.district.nomdistrict}</strong></div>
+                      <div>
+                        <strong>
+                          {parametreTerritoire?.district.nomdistrict}
+                        </strong>
+                      </div>
                     </div>
                   </IonCol>
 
                   <IonCol size="6" size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Commune</small>
-                      <div><strong>{parametreTerritoire?.commune.nomcommune}</strong></div>
+                      <div>
+                        <strong>
+                          {parametreTerritoire?.commune.nomcommune}
+                        </strong>
+                      </div>
                     </div>
                   </IonCol>
 
                   <IonCol size="6" size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Fokontany</small>
-                      <div><strong>{parametreTerritoire?.fokontany.nomfokontany}</strong></div>
+                      <div>
+                        <strong>
+                          {parametreTerritoire?.fokontany.nomfokontany}
+                        </strong>
+                      </div>
                     </div>
                   </IonCol>
 
                   <IonCol size="6" size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Hameau</small>
-                      <div><strong>{parametreTerritoire?.hameau.nomhameau}</strong></div>
+                      <div>
+                        <strong>{parametreTerritoire?.hameau.nomhameau}</strong>
+                      </div>
                     </div>
                   </IonCol>
                 </IonRow>
@@ -518,26 +585,31 @@ const Tab1: React.FC = () => {
                       label="Observation"
                       value={parcelle.observation}
                       onIonChange={(e) =>
-                        setParcelle({ ...parcelle, observation: e.detail.value || '' })
+                        setParcelle({
+                          ...parcelle,
+                          observation: e.detail.value || "",
+                        })
                       }
                       labelPlacement="stacked"
-                      placeholder="Votre observation sur la parcelle"></IonTextarea>
+                      placeholder="Votre observation sur la parcelle"
+                    ></IonTextarea>
                   </IonCol>
                 </IonRow>
               </IonGrid>
             </IonItem>
           </IonList>
-          <IonButton
-            expand="full"
-            onClick={createParcelle}
-          >Enregistrer la parcelle</IonButton>
+          <IonButton expand="full" onClick={createParcelle}>
+            Enregistrer la parcelle
+          </IonButton>
         </IonContent>
       </IonModal>
 
       {/**Modal riverin */}
       <IonModal
         isOpen={showRiverin}
-        onDidDismiss={() => { setShowRiverin(false) }}
+        onDidDismiss={() => {
+          setShowRiverin(false);
+        }}
       >
         <IonHeader>
           <IonToolbar color="primary">
@@ -550,9 +622,7 @@ const Tab1: React.FC = () => {
                 <IonIcon icon={close} />
               </IonButton>
             </IonButtons>
-            <IonTitle>
-              Ajout de nouveau riverin au parcelle
-            </IonTitle>
+            <IonTitle>Ajout de nouveau riverin au parcelle</IonTitle>
             <IonButtons slot="end">
               <IonButton onClick={addRiverin} id="open-loading">
                 Ajouter
@@ -561,7 +631,11 @@ const Tab1: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
-          <IonToast trigger="open-loading" message={riverinMess} duration={900}></IonToast>
+          <IonToast
+            trigger="open-loading"
+            message={riverinMess}
+            duration={900}
+          ></IonToast>
           <IonList>
             <IonItem>
               <IonGrid>
@@ -571,7 +645,10 @@ const Tab1: React.FC = () => {
                       label="Repère :"
                       value={newRiverin.repere}
                       onIonChange={(e) =>
-                        setNewRiverin({ ...newRiverin, repere: Number(e.detail.value) })
+                        setNewRiverin({
+                          ...newRiverin,
+                          repere: Number(e.detail.value),
+                        })
                       }
                       placeholder="Riverin du parcelle"
                     >
@@ -593,7 +670,10 @@ const Tab1: React.FC = () => {
                       label="Observation"
                       value={newRiverin.observation}
                       onIonChange={(e) =>
-                        setNewRiverin({ ...newRiverin, observation: e.detail.value || "" })
+                        setNewRiverin({
+                          ...newRiverin,
+                          observation: e.detail.value || "",
+                        })
                       }
                       labelPlacement="stacked"
                       placeholder="Votre observation sur la parcelle"
@@ -603,14 +683,15 @@ const Tab1: React.FC = () => {
               </IonGrid>
             </IonItem>
           </IonList>
-
         </IonContent>
       </IonModal>
 
       {/**Modal creation demandeur*/}
       <IonModal
         isOpen={showDemandeurModal}
-        onDidDismiss={() => { setShowDemandeurModal(false) }}
+        onDidDismiss={() => {
+          setShowDemandeurModal(false);
+        }}
       >
         <IonHeader>
           <IonToolbar color="primary">
@@ -633,18 +714,23 @@ const Tab1: React.FC = () => {
               <IonLabel className="me-3">Type de Personne :</IonLabel>
               <IonRadioGroup
                 value={isPhysique.toString()}
-                onIonChange={(e) => setIsPhysique(e.detail.value === 'true')}
+                onIonChange={(e) => setIsPhysique(e.detail.value === "true")}
               >
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <div
+                  style={{ display: "flex", gap: "1rem", alignItems: "center" }}
+                >
                   <IonItem lines="none">
-                    <IonRadio justify="end" value="true">Physique</IonRadio>
+                    <IonRadio justify="end" value="true">
+                      Physique
+                    </IonRadio>
                   </IonItem>
                   <IonItem lines="none">
-                    <IonRadio justify="end" value="false">Morale</IonRadio>
+                    <IonRadio justify="end" value="false">
+                      Morale
+                    </IonRadio>
                   </IonItem>
                 </div>
               </IonRadioGroup>
-
             </IonItem>
           </IonList>
           {isPhysique ? (
@@ -659,7 +745,10 @@ const Tab1: React.FC = () => {
                           placeholder="Enter le nom du demandeur"
                           value={demandeur.nom}
                           onIonChange={(e) =>
-                            setDemandeur({ ...demandeur, nom: String(e.detail.value) })
+                            setDemandeur({
+                              ...demandeur,
+                              nom: String(e.detail.value),
+                            })
                           }
                         />
                       </IonCol>
@@ -669,7 +758,10 @@ const Tab1: React.FC = () => {
                           placeholder="Enter le prenom du demandeur"
                           value={demandeur.prenom}
                           onIonChange={(e) =>
-                            setDemandeur({ ...demandeur, prenom: String(e.detail.value) })
+                            setDemandeur({
+                              ...demandeur,
+                              prenom: String(e.detail.value),
+                            })
                           }
                         />
                       </IonCol>
@@ -677,13 +769,18 @@ const Tab1: React.FC = () => {
                   </IonGrid>
                 </IonItem>
                 <IonCheckbox
-                  style={{ marginLeft: '20px' }}
+                  style={{ marginLeft: "20px" }}
                   labelPlacement="end"
                   checked={demandeur.neVers}
                   onIonChange={(e) =>
-                    setDemandeur({ ...demandeur, neVers: Boolean(e.detail.checked) })
+                    setDemandeur({
+                      ...demandeur,
+                      neVers: Boolean(e.detail.checked),
+                    })
                   }
-                >Né vers (approximatif)</IonCheckbox>
+                >
+                  Né vers (approximatif)
+                </IonCheckbox>
                 <IonItem>
                   <IonGrid>
                     <IonRow>
@@ -696,14 +793,24 @@ const Tab1: React.FC = () => {
                             placeholder="Année (ex: 1985)"
                             min="1500"
                             max={new Date().getFullYear()}
-                            value={demandeur.dateNaissance ? demandeur.dateNaissance.getFullYear() : ""}
+                            value={
+                              demandeur.dateNaissance
+                                ? demandeur.dateNaissance.getFullYear()
+                                : ""
+                            }
                             onIonChange={(e) => {
                               const year = e.detail.value;
                               if (year && year.length === 4) {
                                 const date = new Date(`${year}-01-01`);
-                                setDemandeur({ ...demandeur, dateNaissance: date });
+                                setDemandeur({
+                                  ...demandeur,
+                                  dateNaissance: date,
+                                });
                               } else {
-                                setDemandeur({ ...demandeur, dateNaissance: null });
+                                setDemandeur({
+                                  ...demandeur,
+                                  dateNaissance: null,
+                                });
                               }
                             }}
                           />
@@ -712,7 +819,13 @@ const Tab1: React.FC = () => {
                             type="date"
                             labelPlacement="stacked"
                             label="Date de naissance*"
-                            value={demandeur.dateNaissance ? demandeur.dateNaissance.toISOString().substring(0, 10) : ''}
+                            value={
+                              demandeur.dateNaissance
+                                ? demandeur.dateNaissance
+                                    .toISOString()
+                                    .substring(0, 10)
+                                : ""
+                            }
                             onIonChange={(e) =>
                               setDemandeur({
                                 ...demandeur,
@@ -725,7 +838,11 @@ const Tab1: React.FC = () => {
                         )}
                       </IonCol>
                       <IonCol size="12" size-md="6">
-                        <IonInput labelPlacement="stacked" label="Lieu de naissance" placeholder="Entrer le lieu de naissance du demandeur"></IonInput>
+                        <IonInput
+                          labelPlacement="stacked"
+                          label="Lieu de naissance"
+                          placeholder="Entrer le lieu de naissance du demandeur"
+                        ></IonInput>
                       </IonCol>
                     </IonRow>
                   </IonGrid>
@@ -734,18 +851,29 @@ const Tab1: React.FC = () => {
                   <IonLabel className="me-3">Sexe :</IonLabel>
                   <IonRadioGroup
                     value={demandeur.sexe}
-                    onIonChange={(e) => setDemandeur({
-                      ...demandeur,
-                      sexe: e.detail.value
-                    })
+                    onIonChange={(e) =>
+                      setDemandeur({
+                        ...demandeur,
+                        sexe: e.detail.value,
+                      })
                     }
                   >
-                    <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "1rem",
+                        alignItems: "center",
+                      }}
+                    >
                       <IonItem lines="none">
-                        <IonRadio justify="end" value="1">Masculin</IonRadio>
+                        <IonRadio justify="end" value="1">
+                          Masculin
+                        </IonRadio>
                       </IonItem>
                       <IonItem lines="none">
-                        <IonRadio justify="end" value="0">Féminin</IonRadio>
+                        <IonRadio justify="end" value="0">
+                          Féminin
+                        </IonRadio>
                       </IonItem>
                     </div>
                   </IonRadioGroup>
@@ -756,7 +884,10 @@ const Tab1: React.FC = () => {
                     placeholder="Enter l'adresse du demandeur"
                     value={demandeur.adresse}
                     onIonChange={(e) =>
-                      setDemandeur({ ...demandeur, adresse: String(e.detail.value) })
+                      setDemandeur({
+                        ...demandeur,
+                        adresse: String(e.detail.value),
+                      })
                     }
                   />
                 </IonItem>
@@ -770,31 +901,42 @@ const Tab1: React.FC = () => {
                   >
                     <div className="radio-options">
                       <IonItem lines="none">
-                        <IonRadio justify="end" value="0">Célibataire</IonRadio>
+                        <IonRadio justify="end" value="0">
+                          Célibataire
+                        </IonRadio>
                       </IonItem>
                       <IonItem lines="none">
-                        <IonRadio justify="end" value="1">Marié(e)</IonRadio>
+                        <IonRadio justify="end" value="1">
+                          Marié(e)
+                        </IonRadio>
                       </IonItem>
                       <IonItem lines="none">
-                        <IonRadio justify="end" value="2">Veuf(ve)</IonRadio>
+                        <IonRadio justify="end" value="2">
+                          Veuf(ve)
+                        </IonRadio>
                       </IonItem>
                     </div>
                   </IonRadioGroup>
                 </IonItem>
 
                 <div style={{ marginLeft: "16px" }}>
-                  {(demandeur.situation === '1' || demandeur.situation === '2') && (
+                  {(demandeur.situation === "1" ||
+                    demandeur.situation === "2") && (
                     <IonInput
                       className="border-bottom"
                       label="Nom du conjoint"
                       placeholder="Enter le nom de la mère du demandeur"
                       value={demandeur.nomConjoint}
                       onIonChange={(e) =>
-                        setDemandeur({ ...demandeur, nomConjoint: String(e.detail.value) })
-                      } />
+                        setDemandeur({
+                          ...demandeur,
+                          nomConjoint: String(e.detail.value),
+                        })
+                      }
+                    />
                   )}
                 </div>
-                <div  className="border-bottom" style={{ marginLeft: '15px' }}>
+                <div className="border-bottom" style={{ marginLeft: "15px" }}>
                   <h5 className="mt-4">Filiation</h5>
                   <IonGrid>
                     <IonRow>
@@ -803,8 +945,12 @@ const Tab1: React.FC = () => {
                         placeholder="Enter le nom du père demandeur"
                         value={demandeur.nomPere}
                         onIonChange={(e) =>
-                          setDemandeur({ ...demandeur, nomPere: String(e.detail.value) })
-                        } />
+                          setDemandeur({
+                            ...demandeur,
+                            nomPere: String(e.detail.value),
+                          })
+                        }
+                      />
                     </IonRow>
                   </IonGrid>
                   <IonGrid>
@@ -814,8 +960,12 @@ const Tab1: React.FC = () => {
                         placeholder="Enter le nom de la mère du demandeur"
                         value={demandeur.nomMere}
                         onIonChange={(e) =>
-                          setDemandeur({ ...demandeur, nomMere: String(e.detail.value) })
-                        } />
+                          setDemandeur({
+                            ...demandeur,
+                            nomMere: String(e.detail.value),
+                          })
+                        }
+                      />
                     </IonRow>
                   </IonGrid>
                 </div>
@@ -824,18 +974,27 @@ const Tab1: React.FC = () => {
                   <IonRadioGroup
                     value={demandeur.piece}
                     onIonChange={(e) =>
-                      setDemandeur({ ...demandeur, piece: Number(e.detail.value), })
+                      setDemandeur({
+                        ...demandeur,
+                        piece: Number(e.detail.value),
+                      })
                     }
                   >
                     <div className="radio-options">
                       <IonItem lines="none">
-                        <IonRadio justify="end" value={0}>CIN</IonRadio>
+                        <IonRadio justify="end" value={0}>
+                          CIN
+                        </IonRadio>
                       </IonItem>
                       <IonItem lines="none">
-                        <IonRadio justify="end" value={1}>Acte de naissance</IonRadio>
+                        <IonRadio justify="end" value={1}>
+                          Acte de naissance
+                        </IonRadio>
                       </IonItem>
                       <IonItem lines="none">
-                        <IonRadio justify="end" value={2}>Rien</IonRadio>
+                        <IonRadio justify="end" value={2}>
+                          Rien
+                        </IonRadio>
                       </IonItem>
                     </div>
                   </IonRadioGroup>
@@ -843,8 +1002,10 @@ const Tab1: React.FC = () => {
 
                 {demandeur.piece === 0 && (
                   <div>
-                    <h5 style={{ marginLeft: '20px' }} className="mt-4">CIN</h5>
-                    <div style={{ marginLeft: '20px' }} className="mb-3">
+                    <h5 style={{ marginLeft: "20px" }} className="mt-4">
+                      CIN
+                    </h5>
+                    <div style={{ marginLeft: "20px" }} className="mb-3">
                       <IonLabel position="stacked">Numéro</IonLabel>
                       <div className="d-flex gap-2">
                         {[0, 1, 2, 3].map((index) => (
@@ -855,7 +1016,12 @@ const Tab1: React.FC = () => {
                             value={demandeur.cin?.numero?.[index] || ""}
                             onIonChange={(e) => {
                               const value = e.detail.value || "";
-                              const existingNumero = demandeur.cin?.numero ?? ["", "", "", ""];
+                              const existingNumero = demandeur.cin?.numero ?? [
+                                "",
+                                "",
+                                "",
+                                "",
+                              ];
                               const newNumero = [...existingNumero];
                               newNumero[index] = value;
 
@@ -880,17 +1046,24 @@ const Tab1: React.FC = () => {
                             <IonInput
                               type="date"
                               label="Date CIN"
-                              value={demandeur.cin?.date ? demandeur.cin.date.toISOString().substring(0, 10) : ""}
+                              value={
+                                demandeur.cin?.date
+                                  ? demandeur.cin.date
+                                      .toISOString()
+                                      .substring(0, 10)
+                                  : ""
+                              }
                               onIonChange={(e) =>
                                 setDemandeur({
                                   ...demandeur,
                                   cin: {
                                     ...demandeur.cin,
-                                    date: e.detail.value ? new Date(e.detail.value) : null,
+                                    date: e.detail.value
+                                      ? new Date(e.detail.value)
+                                      : null,
                                   },
                                 })
                               }
-
                             />
                           </IonCol>
                           <IonCol size="12" sizeMd="6">
@@ -917,7 +1090,9 @@ const Tab1: React.FC = () => {
 
                 {demandeur.piece === 1 && (
                   <>
-                    <h5 className="mt-4" style={{ marginLeft: '20px' }}>Acte de naissance</h5>
+                    <h5 className="mt-4" style={{ marginLeft: "20px" }}>
+                      Acte de naissance
+                    </h5>
                     <IonItem>
                       <IonGrid>
                         <IonRow>
@@ -948,7 +1123,13 @@ const Tab1: React.FC = () => {
                               placeholder="Lieu de l'acte de naissance"
                               value={demandeur.acte?.lieu}
                               onIonChange={(e) =>
-                                setDemandeur({ ...demandeur, acte: { ...demandeur.acte, lieu: e.detail.value || "" } })
+                                setDemandeur({
+                                  ...demandeur,
+                                  acte: {
+                                    ...demandeur.acte,
+                                    lieu: e.detail.value || "",
+                                  },
+                                })
                               }
                             />
                           </IonCol>
@@ -957,14 +1138,20 @@ const Tab1: React.FC = () => {
                               label="Date de l'acte de naissance"
                               type="date"
                               value={
-                                demandeur.acte?.date ? demandeur.acte.date.toISOString().substring(0, 10) : ""
+                                demandeur.acte?.date
+                                  ? demandeur.acte.date
+                                      .toISOString()
+                                      .substring(0, 10)
+                                  : ""
                               }
                               onIonChange={(e) =>
                                 setDemandeur({
                                   ...demandeur,
                                   acte: {
                                     ...demandeur.acte,
-                                    date: e.detail.value ? new Date(e.detail.value) : null,
+                                    date: e.detail.value
+                                      ? new Date(e.detail.value)
+                                      : null,
                                   },
                                 })
                               }
@@ -975,19 +1162,61 @@ const Tab1: React.FC = () => {
                     </IonItem>
                   </>
                 )}
-
               </IonList>
             </>
           ) : (
             <>
-
+              <IonList>
+                <IonItem>
+                  <IonSelect label="Type :" value={demandeur.typeMorale}>
+                    <IonSelectOption value="Société">Société</IonSelectOption>
+                    <IonSelectOption value="Association">
+                      Association
+                    </IonSelectOption>
+                    <IonSelectOption value="ONG">ONG</IonSelectOption>
+                    <IonSelectOption value="Institution">
+                      Institution
+                    </IonSelectOption>
+                  </IonSelect>
+                </IonItem>
+                <IonItem>
+                  <IonInput
+                    label="Dénomination :"
+                    type="text"
+                    value={demandeur.denomination}
+                    placeholder="Consistance du terrain"
+                  ></IonInput>
+                </IonItem>
+                <IonItem>
+                  <IonInput
+                    label="Date de création :"
+                    type="date"
+                    value={demandeur.dateCreation}
+                    placeholder="Date de creation"
+                  ></IonInput>
+                </IonItem>
+                <IonItem>
+                  <IonInput
+                    label="Siège :"
+                    type="text"
+                    value={demandeur.siege}
+                    placeholder="Siège"
+                  ></IonInput>
+                </IonItem>
+                <IonItem>
+                  <IonTextarea
+                    label="Observations"
+                    rows={4}
+                    placeholder="Saisir des remarques ou notes..."
+                    value={demandeur.observations}
+                  />
+                </IonItem>
+              </IonList>
             </>
           )}
         </IonContent>
       </IonModal>
-
-    </IonPage >
-
+    </IonPage>
   );
 };
 
