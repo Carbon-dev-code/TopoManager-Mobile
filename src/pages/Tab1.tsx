@@ -48,6 +48,8 @@ import { Status } from "../model/Status";
 import { Parcelle } from "../model/parcelle/Parcelle";
 import { Demandeur } from "../model/parcelle/Demandeur";
 import { Riverin } from "../model/parcelle/Riverin";
+import { Repere } from "../model/Repere";
+import { TypeMoral } from "../model/TypeMoral";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
@@ -61,9 +63,12 @@ const Tab1: React.FC = () => {
     useState<ParametreTerritoire | null>(null);
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
+  const [repereL, setRepere] = useState<Repere[]>([]);
+  const [typeMoral, setTypeMoral] = useState<TypeMoral[]>([]);
+
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
-  const [isPhysique, setIsPhysique] = useState(true);
+  const [isPhysique, setIsPhysique] = useState(0);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
   const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
@@ -137,11 +142,29 @@ const Tab1: React.FC = () => {
     }
   };
 
+  const getRepere = async () => {
+    const { value } = await Preferences.get({ key: "repereData" });
+
+    if (value) {
+      setRepere(JSON.parse(value));
+    }
+  };
+
+  const getTypeMoral = async () => {
+    const { value } = await Preferences.get({ key: "typeMoralData" });
+
+    if (value) {
+      setTypeMoral(JSON.parse(value));
+    }
+  };
+
   useEffect(() => {
     if (showCreateModal) {
       nextCodeParcelle();
       getCategorie();
       getStatus();
+      getRepere();
+      getTypeMoral();
     }
   }, [showCreateModal]);
 
@@ -496,7 +519,7 @@ const Tab1: React.FC = () => {
                         />
                         <IonLabel>
                           <h3 style={{ marginBottom: 4 }}>
-                            {d.nom} {d.prenom}
+                            {d.type === 0 ? `${d.nom} ${d.prenom}` : d.denomination}
                           </h3>
                         </IonLabel>
                       </IonItem>
@@ -652,10 +675,14 @@ const Tab1: React.FC = () => {
                       }
                       placeholder="Riverin du parcelle"
                     >
-                      <IonSelectOption value={1}>Nord</IonSelectOption>
-                      <IonSelectOption value={2}>Est</IonSelectOption>
-                      <IonSelectOption value={3}>Ouest</IonSelectOption>
-                      <IonSelectOption value={4}>Sud</IonSelectOption>
+                      {repereL.map((rep, index) => (
+                        <IonSelectOption
+                          key={`rep-${index}`}
+                          value={rep.code_repere}
+                        >
+                          {rep.repere}
+                        </IonSelectOption>
+                      ))}
                     </IonSelect>
                   </IonCol>
                 </IonRow>
@@ -714,18 +741,25 @@ const Tab1: React.FC = () => {
               <IonLabel className="me-3">Type de Personne :</IonLabel>
               <IonRadioGroup
                 value={isPhysique.toString()}
-                onIonChange={(e) => setIsPhysique(e.detail.value === "true")}
+                onIonChange={(e) => {
+                  const value = Number(e.detail.value);
+                  setIsPhysique(value);
+                  setDemandeur({
+                    ...demandeur,
+                    type: Number(value), // Si type doit être une string
+                  });
+                }}
               >
                 <div
                   style={{ display: "flex", gap: "1rem", alignItems: "center" }}
                 >
                   <IonItem lines="none">
-                    <IonRadio justify="end" value="true">
+                    <IonRadio justify="end" value="0">
                       Physique
                     </IonRadio>
                   </IonItem>
                   <IonItem lines="none">
-                    <IonRadio justify="end" value="false">
+                    <IonRadio justify="end" value="1">
                       Morale
                     </IonRadio>
                   </IonItem>
@@ -733,7 +767,7 @@ const Tab1: React.FC = () => {
               </IonRadioGroup>
             </IonItem>
           </IonList>
-          {isPhysique ? (
+          {isPhysique === 0 ? (
             <>
               <IonList>
                 <IonItem className="mb-2">
@@ -1168,15 +1202,21 @@ const Tab1: React.FC = () => {
             <>
               <IonList>
                 <IonItem>
-                  <IonSelect label="Type :" value={demandeur.typeMorale}>
-                    <IonSelectOption value="Société">Société</IonSelectOption>
-                    <IonSelectOption value="Association">
-                      Association
-                    </IonSelectOption>
-                    <IonSelectOption value="ONG">ONG</IonSelectOption>
-                    <IonSelectOption value="Institution">
-                      Institution
-                    </IonSelectOption>
+                  <IonSelect
+                    label="Type :"
+                    value={demandeur.typeMorale}
+                    onIonChange={(e) =>
+                      setDemandeur({
+                        ...demandeur,
+                        typeMorale: e.detail.value!!,
+                      })
+                    }
+                  >
+                    {typeMoral.map((type, index) => (
+                      <IonSelectOption key={`type-${index}`} value={type.id}>
+                        {type.labetypemoral}
+                      </IonSelectOption>
+                    ))}
                   </IonSelect>
                 </IonItem>
                 <IonItem>
@@ -1184,7 +1224,13 @@ const Tab1: React.FC = () => {
                     label="Dénomination :"
                     type="text"
                     value={demandeur.denomination}
-                    placeholder="Consistance du terrain"
+                    onIonChange={(e) =>
+                      setDemandeur({
+                        ...demandeur,
+                        denomination: e.detail.value!!,
+                      })
+                    }
+                    placeholder="Dénomination"
                   ></IonInput>
                 </IonItem>
                 <IonItem>
@@ -1192,6 +1238,12 @@ const Tab1: React.FC = () => {
                     label="Date de création :"
                     type="date"
                     value={demandeur.dateCreation}
+                    onIonChange={(e) =>
+                      setDemandeur({
+                        ...demandeur,
+                        dateCreation: e.detail.value!!,
+                      })
+                    }
                     placeholder="Date de creation"
                   ></IonInput>
                 </IonItem>
@@ -1200,6 +1252,12 @@ const Tab1: React.FC = () => {
                     label="Siège :"
                     type="text"
                     value={demandeur.siege}
+                    onIonChange={(e) =>
+                      setDemandeur({
+                        ...demandeur,
+                        siege: e.detail.value!!,
+                      })
+                    }
                     placeholder="Siège"
                   ></IonInput>
                 </IonItem>
@@ -1209,6 +1267,12 @@ const Tab1: React.FC = () => {
                     rows={4}
                     placeholder="Saisir des remarques ou notes..."
                     value={demandeur.observations}
+                    onIonChange={(e) =>
+                      setDemandeur({
+                        ...demandeur,
+                        observations: e.detail.value!!,
+                      })
+                    }
                   />
                 </IonItem>
               </IonList>

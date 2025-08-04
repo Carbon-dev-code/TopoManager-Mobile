@@ -51,7 +51,6 @@ const Tab4 = () => {
   const [selectedHameau, setSelectedHameau] = useState<number | null>(null);
   const [parametres, setParametres] = useState<ParametreTerritoire[]>([]);
   const [parametreActuel, setParametreActuel] = useState<ParametreTerritoire | null>(null);
-  const [showProgress, setShowProgress] = useState(false);
   const [currentParcelleCode, setCurrentParcelleCode] = useState<string>("");
   const [progression, setProgression] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState(false); // Pour fetchData
@@ -108,10 +107,12 @@ const Tab4 = () => {
       }
 
       // 3. Fetch des données territoire
-      const [territoireResponse, categorieResponse, statusResponse] = await Promise.all([
+      const [territoireResponse, categorieResponse, statusResponse, repereResponse, typeMoralResponse] = await Promise.all([
         fetch(`${currentServerUrl}/getTerritoire`),
         fetch(`${currentServerUrl}/getCategorie`),
         fetch(`${currentServerUrl}/getStatus`),
+        fetch(`${currentServerUrl}/getRepere`),
+        fetch(`${currentServerUrl}/getTypeMoral`),
       ]);
 
       if (!territoireResponse.ok) {
@@ -126,9 +127,19 @@ const Tab4 = () => {
         throw new Error(`Erreur categorie: ${statusResponse.status}`);
       }
 
+      if (!repereResponse.ok) {
+        throw new Error(`Erreur repere: ${repereResponse.status}`);
+      }
+
+      if (!typeMoralResponse.ok) {
+         throw new Error(`Erreur type de personne moral: ${typeMoralResponse.status}`);
+      }
+
       const territoireData = await territoireResponse.json();
       const categorieData = await categorieResponse.json();
       const statusData = await statusResponse.json();
+      const repereData = await repereResponse.json();
+      const typeMoralData = await typeMoralResponse.json();
 
       // 4. Sauvegarder dans les préférences
       await Preferences.set({
@@ -144,6 +155,16 @@ const Tab4 = () => {
       await Preferences.set({
         key: 'statusData',
         value: JSON.stringify(statusData.data)
+      });
+
+      await Preferences.set({
+        key: 'repereData',
+        value: JSON.stringify(repereData.data)
+      });
+
+      await Preferences.set({
+        key: 'typeMoralData',
+        value: JSON.stringify(typeMoralData.data)
       });
 
       // 5. Mettre à jour l'état local
@@ -452,12 +473,6 @@ const Tab4 = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar color="primary">
-          {showProgress && (
-            <IonProgressBar
-              type={isDownloadingTiles ? "determinate" : "indeterminate"}
-              value={isDownloadingTiles ? progression : undefined}
-              color="primary"
-            />)}
           <IonButtons slot="start">
             <IonMenuButton />
           </IonButtons>
