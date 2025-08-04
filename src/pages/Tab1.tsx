@@ -31,17 +31,26 @@ import {
   IonCol,
   IonRow,
   IonLoading,
+  IonTab,
+  IonTabBar,
+  IonTabButton,
+  IonTabs,
+  IonSegment,
+  IonSegmentButton,
+  IonToast,
 } from "@ionic/react";
 import {
   trash,
-  add,
   close,
   informationCircle,
   person,
   business,
-  male,
-  female,
   create,
+  add,
+  manOutline,
+  moveOutline,
+  personOutline,
+  businessOutline,
 } from "ionicons/icons";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
@@ -69,6 +78,8 @@ const Tab1: React.FC = () => {
   const [isPhysique, setIsPhysique] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur");
+
 
   const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
     const result = await Preferences.get({ key: STORAGE_KEY });
@@ -420,6 +431,57 @@ const Tab1: React.FC = () => {
                 </IonRow>
               </IonGrid>
             </IonItem>
+            <div className="tabs-wrapper">
+              {/* Conteneur fixe pour le segment */}
+              <div className="tabs-header">
+                <IonSegment
+                  value={activeTab}
+                  onIonChange={(e) => setActiveTab(e.detail.value as "demandeur" | "riverin")}
+                >
+                  <IonSegmentButton value="demandeur">
+                    <IonLabel>Demandeurs</IonLabel>
+                  </IonSegmentButton>
+                  <IonSegmentButton value="riverin">
+                    <IonLabel>Riverins</IonLabel>
+                  </IonSegmentButton>
+                </IonSegment>
+              </div>
+
+              {/* Contenu scrollable */}
+              <div className="tab-content-scroll">
+                {activeTab === "demandeur" && (
+                  <div className="demandeur-list">
+                    {parcelle.demandeurs.map((d, i) => (
+                      <IonItem key={i} lines="none" className="custom-item">
+                        <IonIcon
+                          icon={d.type === 0 ? personOutline : businessOutline}
+                          slot="start"
+                          color="primary"
+                          style={{ fontSize: '24px', marginRight: '12px' }}
+                        />
+                        <IonLabel>
+                          <h3 style={{ marginBottom: 4 }}>{d.nom} {d.prenom}</h3>
+                        </IonLabel>
+                      </IonItem>
+                    ))}
+                  </div>
+                )}
+
+                {activeTab === "riverin" && (
+                  <div className="riverin-list">
+                    {parcelle.riverin?.map((r, i) => (
+                      <IonItem key={i} lines="none" className="custom-item">
+                        <IonLabel>
+                          <h3 style={{ marginBottom: 4 }}>🧭 {["Nord", "Est", "Sud", "Ouest"][r.repere!! - 1]}</h3>
+                          <p style={{ margin: 0 }}>📝 {r.observation}</p>
+                        </IonLabel>
+                      </IonItem>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <IonItem>
               <IonGrid className="ion-margin-bottom">
                 <IonRow className="ion-wrap ion-gap">
@@ -511,7 +573,7 @@ const Tab1: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
-          <IonLoading trigger="open-loading" message={riverinMess} duration={2500}/>
+          <IonToast trigger="open-loading" message={riverinMess} duration={900}></IonToast>
           <IonList>
             <IonItem>
               <IonGrid>
@@ -703,14 +765,14 @@ const Tab1: React.FC = () => {
                 <IonItem>
                   <IonInput
                     label="Adresse"
-                    placeholder="Enter l'adresse' du demandeur"
+                    placeholder="Enter l'adresse du demandeur"
                     value={demandeur.adresse}
                     onIonChange={(e) =>
                       setDemandeur({ ...demandeur, adresse: String(e.detail.value) })
                     }
                   />
                 </IonItem>
-                <IonItem>
+                <IonItem className="matrimonial-wrapper">
                   <IonLabel className="me-3">Situation matrimoniale :</IonLabel>
                   <IonRadioGroup
                     value={demandeur.situation}
@@ -718,7 +780,7 @@ const Tab1: React.FC = () => {
                       setDemandeur({ ...demandeur, situation: e.detail.value })
                     }
                   >
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center", }}>
+                    <div className="radio-options">
                       <IonItem lines="none">
                         <IonRadio justify="end" value="0">Célibataire</IonRadio>
                       </IonItem>
@@ -731,6 +793,7 @@ const Tab1: React.FC = () => {
                     </div>
                   </IonRadioGroup>
                 </IonItem>
+
                 <div style={{ marginLeft: "16px" }}>
                   {(demandeur.situation === '1' || demandeur.situation === '2') && (
                     <IonInput

@@ -53,3 +53,51 @@
 .fit-content-tab1{
     width: fit-content !important;
 }
+
+.tabs-wrapper {
+  background-color: #f7f7f7;
+  overflow-y: auto; /* active la scrollbar verticale */
+  max-height: 300px; /* fixe une hauteur max pour déclencher le scroll */
+  margin: 10px 0px 0px 10px;
+}
+
+.tabs-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  padding: 8px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tab-content-scroll {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 10px;
+}
+
+.custom-item {
+  background-color: white;
+  border-radius: 12px;
+  margin: 8px 0;
+  padding: 12px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.matrimonial-wrapper {
+  flex-direction: column; /* met le label au-dessus si nécessaire */
+  align-items: flex-start;
+}
+
+.radio-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 500px) {
+  .radio-options {
+    flex-direction: column;
+  }
+}
