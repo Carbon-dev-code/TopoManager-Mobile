@@ -84,19 +84,13 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
-.matrimonial-wrapper {
-  flex-direction: column; /* met le label au-dessus si nécessaire */
-  align-items: flex-start;
-}
-
 .radio-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
   margin-top: 8px;
 }
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
   .radio-options {
     flex-direction: column;
   }

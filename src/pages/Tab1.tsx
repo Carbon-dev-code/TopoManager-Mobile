@@ -14,7 +14,6 @@ import {
   IonItem,
   IonLabel,
   IonBadge,
-  IonAlert,
   IonInput,
   IonSelect,
   IonSelectOption,
@@ -22,19 +21,11 @@ import {
   IonTextarea,
   IonIcon,
   IonCard,
-  IonCardHeader,
-  IonCardContent,
-  IonDatetime,
   IonRadioGroup,
   IonRadio,
   IonGrid,
   IonCol,
   IonRow,
-  IonLoading,
-  IonTab,
-  IonTabBar,
-  IonTabButton,
-  IonTabs,
   IonSegment,
   IonSegmentButton,
   IonToast,
@@ -46,9 +37,6 @@ import {
   person,
   business,
   create,
-  add,
-  manOutline,
-  moveOutline,
   personOutline,
   businessOutline,
 } from "ionicons/icons";
@@ -772,8 +760,8 @@ const Tab1: React.FC = () => {
                     }
                   />
                 </IonItem>
-                <IonItem className="matrimonial-wrapper">
-                  <IonLabel className="me-3">Situation matrimoniale :</IonLabel>
+                <IonItem className="custom-wrapper">
+                  <IonLabel className="me-3">Situation matrimoniale</IonLabel>
                   <IonRadioGroup
                     value={demandeur.situation}
                     onIonChange={(e) =>
@@ -806,7 +794,7 @@ const Tab1: React.FC = () => {
                       } />
                   )}
                 </div>
-                <div style={{ marginLeft: '15px' }}>
+                <div  className="border-bottom" style={{ marginLeft: '15px' }}>
                   <h5 className="mt-4">Filiation</h5>
                   <IonGrid>
                     <IonRow>
@@ -839,7 +827,7 @@ const Tab1: React.FC = () => {
                       setDemandeur({ ...demandeur, piece: Number(e.detail.value), })
                     }
                   >
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
+                    <div className="radio-options">
                       <IonItem lines="none">
                         <IonRadio justify="end" value={0}>CIN</IonRadio>
                       </IonItem>
@@ -929,7 +917,7 @@ const Tab1: React.FC = () => {
 
                 {demandeur.piece === 1 && (
                   <>
-                    <h5 className="mt-4">Acte de naissance</h5>
+                    <h5 className="mt-4" style={{ marginLeft: '20px' }}>Acte de naissance</h5>
                     <IonItem>
                       <IonGrid>
                         <IonRow>
