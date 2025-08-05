@@ -46,6 +46,7 @@ import {
   sync,
   map,
 } from "ionicons/icons";
+import { useHistory } from 'react-router-dom';
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
 import { ParametreTerritoire } from "../model/ParametreTerritoire";
@@ -64,13 +65,11 @@ const Tab1: React.FC = () => {
   const [showRiverin, setShowRiverin] = useState<boolean>(false);
   const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
   const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] =
-    useState<ParametreTerritoire | null>(null);
+  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
   const [repereL, setRepere] = useState<Repere[]>([]);
   const [typeMoral, setTypeMoral] = useState<TypeMoral[]>([]);
-
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [isPhysique, setIsPhysique] = useState(0);
@@ -79,6 +78,12 @@ const Tab1: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
     "demandeur"
   );
+
+  const history = useHistory();
+
+  const handleCardClick = (codeParcelle: string) => {
+    history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
+  };
 
   const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
     const result = await Preferences.get({ key: STORAGE_KEY });
@@ -271,7 +276,12 @@ const Tab1: React.FC = () => {
         ) : (
           <div className="cardContent">
             {parcelles.map((parcelle) => (
-              <IonCard key={parcelle.code} className="custom-card">
+              <IonCard
+                key={parcelle.code}
+                className="custom-card"
+                button
+                onClick={() => handleCardClick(parcelle.code!)}
+              >
                 <span
                   className="position-badge-custom-tab1"
                   role="button"

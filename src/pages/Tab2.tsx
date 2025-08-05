@@ -9,6 +9,7 @@ import {
   IonButtons,
   IonMenuButton,
 } from "@ionic/react";
+import { useLocation } from 'react-router-dom';
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
 import Map from "ol/Map";
@@ -39,6 +40,7 @@ import Point from "ol/geom/Point";
 import { PointC } from "../model/vecteur/PointC";
 import CircleStyle from "ol/style/Circle";
 import { Polygone } from "../model/vecteur/Polygone";
+import { Parcelle } from "../model/parcelle/Parcelle";
 
 const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
@@ -50,13 +52,58 @@ const Tab2: React.FC = () => {
   const [stateDrawCarte, setstateDrawCarte] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const alreadyChecked = useRef(new Set<string>());
+  const [parcelles, setParcelles] = useState<Parcelle[]>([]);
+  const [currentParcelle,setCurrentParcelle] = useState<string>('');
   const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const query = useQuery();
+  const from = query.get('from');
+  const action = query.get('action');
+  const codeParcelle = query.get('code');
+  const STORAGE_KEY = "parcelles_data";
+
+  const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
+    const result = await Preferences.get({ key: STORAGE_KEY });
+    if (result.value) {
+      try {
+        const parsed = JSON.parse(result.value);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (error) {
+        console.error("Erreur parsing JSON:", error);
+      }
+    }
+    return [];
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      const savedParcelles = await loadParcellesFromStorage();
+      setParcelles(savedParcelles);
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (from === 'tab1' && action === 'croquis' && codeParcelle) {
+      console.log("🔵 Tab2 lancé depuis Tab1 pour dessin");
+      setstateDrawCarte(true); // ou ta logique actuelle pour activer le mode "croquis"
+      setCurrentParcelle(codeParcelle); // si tu veux sélectionner la bonne parcelle
+    } else {
+      console.log("🟢 Tab2 lancé normalement (visualisation)");
+    }
+  }, [from, action, codeParcelle]);
+
 
   const sanitizeName = useCallback((name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
   }, []);
+
+  function useQuery() {
+    return new URLSearchParams(useLocation().search);
+  }
 
   const updatePolygon = useCallback(() => {
     if (!mapRef.current) return;
@@ -118,7 +165,7 @@ const Tab2: React.FC = () => {
       return new PointC(tx, ty);
     });
     //console.log('Liste des Points:', pointObjects);
-     new Polygone(pointObjects);
+    new Polygone(pointObjects);
 
   };
 
