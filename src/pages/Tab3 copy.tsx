@@ -21,10 +21,6 @@ import {
   IonInput,
   IonModal,
   IonLoading,
-  IonCardHeader,
-  IonCardSubtitle,
-  IonChip,
-  IonCardTitle,
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import {
@@ -38,8 +34,24 @@ import {
 } from "ionicons/icons";
 import "./Tab3.css";
 import { ConfigService } from "../model/ConfigService";
-import { Parcelle } from "../model/parcelle/Parcelle";
 
+interface Demandeur {
+  id: string;
+  type: "physique" | "morale";
+  nom?: string;
+  prenom?: string;
+  denomination?: string;
+}
+
+interface Parcelle {
+  id: string;
+  code: string;
+  demandeurs: Demandeur[];
+  synchronise?: boolean;
+  syncError?: string;
+  syncing?: boolean;
+  lastSync?: string;
+}
 
 interface ApiResponse {
   success: boolean;
@@ -191,7 +203,7 @@ const Tab3: React.FC = () => {
   };
 
   const synchroniserParcelle = async (parcelleId: string) => {
-    const parcelle = parcelles.find((p) => p.code === parcelleId);
+    const parcelle = parcelles.find((p) => p.id === parcelleId);
     if (!parcelle) return;
 
     try {
@@ -365,7 +377,10 @@ const Tab3: React.FC = () => {
         />
       )}
 
-      <IonLoading isOpen={loading || syncingAll} message={loading ? "Chargement..." : "Synchronisation en cours..."}/>
+      <IonLoading
+        isOpen={loading || syncingAll}
+        message={loading ? "Chargement..." : "Synchronisation en cours..."}
+      />
 
       <IonContent className="ion-padding">
         <div className="row align-items-center">
@@ -390,8 +405,14 @@ const Tab3: React.FC = () => {
         </div>
 
         {hasUnsynced && (
-          <IonButton expand="block" color="success" onClick={synchroniserToutes} disabled={syncingAll || loading} >
-            <IonIcon icon={sync} slot="start"/> Synchroniser toutes les parcelles
+          <IonButton
+            expand="block"
+            color="success"
+            onClick={synchroniserToutes}
+            disabled={syncingAll || loading}
+          >
+            <IonIcon icon={sync} slot="start" />
+            Synchroniser toutes les parcelles
           </IonButton>
         )}
 
@@ -460,69 +481,95 @@ const Tab3: React.FC = () => {
           </div>
         </div>
 
-        <div className="cardContent">
+        <div className="cards-grid">
           {parcelles
             .filter((p) => {
               if (filtreParcelle === "tous") return true;
               if (filtreParcelle === "sync") return p.synchronise === true;
-              if (filtreParcelle === "nosync") return p.synchronise === false;
+              if (filtreParcelle === "nosync") return p.synchronise === undefined;
               if (filtreParcelle === "erreur") return p.synchronise === false;
               return true;
             })
             .map((parcelle) => (
-              <IonCard key={parcelle.code} className="custom-card">
+              <IonCard
+                key={parcelle.id}
+                className={`parcelle-card position-relative mb-3 ${parcelle.synchronise ? "synced" : "nosynced"
+                  }`}
+              >
                 <span
-                  className={`position-badge-custom-tab1 ${parcelle.synchronise ? "bg-success" : "bg-danger"} ${parcelle.syncing || parcelle.synchronise ? "disabled" : ""}`}
+                  className={`position-absolute position-badge-custom position-badge translate-middle badge rounded-pill ${parcelle.synchronise ? "bg-success" : "bg-danger"
+                    } ${parcelle.syncing || parcelle.synchronise ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
-                    if (!parcelle.syncing && !parcelle.synchronise) { synchroniserParcelle(parcelle.code!!!); }
+                    if (!parcelle.syncing && !parcelle.synchronise) {
+                      synchroniserParcelle(parcelle.id);
+                    }
                   }}
                   role="button"
                   aria-disabled={parcelle.syncing}
                 >
                   {parcelle.syncing ? (
-                    <IonSpinner name="crescent" color="light" style={{ width: "18px", height: "18px" }} />
+                    <IonSpinner
+                      name="crescent"
+                      color="light"
+                      style={{ width: "18px", height: "18px" }}
+                    />
                   ) : (
                     <IonIcon icon={parcelle.synchronise ? checkmark : sync} />
                   )}
-                  <span className="visually-hidden"> {parcelle.synchronise ? "Parcelle synchronisée" : "Parcelle à synchroniser"} </span>
+                  <span className="visually-hidden">
+                    {parcelle.synchronise
+                      ? "Parcelle synchronisée"
+                      : "Parcelle à synchroniser"}
+                  </span>
                 </span>
+                {parcelle.lastSync && (
+                  <p className="parcelle-meta">
+                    Synchronisé le {new Date(parcelle.lastSync).toLocaleString()}
+                  </p>
+                )}
 
-                <IonCardHeader className="custom-header-card">
-                  <IonCardTitle><strong>{parcelle.code}</strong></IonCardTitle>
-                  <IonCardSubtitle>
-                    {parcelle.lastSync && (
-                      <IonChip color="danger">
-                        <IonIcon icon={sync} color='primary'></IonIcon>
-                        <IonLabel> Sync le {new Date(parcelle.lastSync).toLocaleString()} </IonLabel>
-                      </IonChip>
-                    )}
-
-                    {parcelle.syncError && (
-                      <IonChip color="danger">
-                        <IonIcon icon={sync} color='warning'></IonIcon>
-                        <IonLabel> ⚠️ {parcelle.syncError}</IonLabel>
-                      </IonChip>
-                    )}
-                  </IonCardSubtitle>
-                </IonCardHeader>
-
-                <IonCardContent>
-                  <IonList className="scrollable-list">
-                    {parcelle.demandeurs.map((demandeur) => (
-                      <IonItem key={`dem` + demandeur.id} lines="none">
-                        <IonIcon
-                          slot="start"
-                          icon={demandeur.type === 0 ? person : business}
-                        />
-                        <IonLabel>
-                          {demandeur.type === 0
-                            ? `${demandeur.nom} ${demandeur.prenom}`
-                            : demandeur.denomination}
+                <IonCardContent className="align-items-center">
+                  <div className="row">
+                    <div className="col-12 col-md-4 d-flex align-items-center">
+                      <div className="parcelle-header">
+                        <IonLabel className="parcelle-code">
+                          Parcelle : {parcelle.code}
                         </IonLabel>
-                      </IonItem>
-                    ))}
-                  </IonList>
+                      </div>
+
+                      {parcelle.syncError && (
+                        <IonText className="parcelle-error">
+                          ⚠️ {parcelle.syncError}
+                        </IonText>
+                      )}
+                    </div>
+
+                    <div className="col-12 col-md-8">
+                      {parcelle.demandeurs.length > 0 ? (
+                        <IonList className="ion-list" lines="none">
+                          {parcelle.demandeurs.map((d) => (
+                            <IonItem key={d.id} style={{ padding: "0px" }}>
+                              <IonIcon
+                                icon={d.type === "physique" ? person : business}
+                                slot="start"
+                                color="primary"
+                              />
+                              <IonLabel className="demandeur-label">
+                                {d.type === "physique"
+                                  ? `${d.prenom || ""} ${d.nom || ""}`.trim()
+                                  : d.denomination || ""}
+                              </IonLabel>
+                            </IonItem>
+                          ))}
+                        </IonList>
+                      ) : (
+                        <IonText color="medium">
+                          Pas de demandeur associé.
+                        </IonText>
+                      )}
+                    </div>
+                  </div>
                 </IonCardContent>
               </IonCard>
             ))}

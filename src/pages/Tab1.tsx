@@ -64,7 +64,6 @@ const Tab1: React.FC = () => {
   const [showDemandeurModal, setShowDemandeurModal] = useState<boolean>(false);
   const [showRiverin, setShowRiverin] = useState<boolean>(false);
   const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
-  const [currentParcelleCode, setCurrentParcelleCode] = useState("");
   const [currentIncrement, setCurrentIncrement] = useState(0);
   const [parametreTerritoire, setParametreTerritoire] =
     useState<ParametreTerritoire | null>(null);
@@ -116,7 +115,6 @@ const Tab1: React.FC = () => {
           }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
           }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
-        setCurrentParcelleCode(code_parcelle_complet);
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
 
@@ -197,23 +195,48 @@ const Tab1: React.FC = () => {
   };
 
   const createParcelle = async () => {
-    console.log(parcelle); // visualisation
+    try {
+      const parametrePref = await Preferences.get({ key: "parametreActuel" });
+      if (!parametrePref.value) throw new Error("Paramètres non configurés");
+      const parametreActuel = JSON.parse(parametrePref.value);
 
-    parcelles.push(parcelle);
 
-    const existing = await Preferences.get({ key: STORAGE_KEY });
-    let oldParcelles: Parcelle[] = [];
-    if (existing.value) {
-      oldParcelles = JSON.parse(existing.value);
+      console.log(parcelle); // visualisation
+
+      parcelles.push(parcelle);
+
+      const existing = await Preferences.get({ key: STORAGE_KEY });
+      let oldParcelles: Parcelle[] = [];
+      if (existing.value) {
+        oldParcelles = JSON.parse(existing.value);
+      }
+      const allParcelles = [...oldParcelles, parcelle];
+      await Preferences.set({
+        key: STORAGE_KEY,
+        value: JSON.stringify(allParcelles),
+      });
+
+      // 6. Mettre à jour l'incrément seulement après succès
+      await Preferences.set({
+        key: "parametreActuel",
+        value: JSON.stringify({
+          ...parametreActuel,
+          increment: currentIncrement, // On utilise l'incrément déjà calculé
+        }),
+      });
+
+      setParcelle(Parcelle.init);
+      setShowCreateModal(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Erreur création parcelle:", error.message);
+        alert(`Erreur création: ${error.message}`);
+      } else {
+        console.error("Erreur inconnue lors de la création");
+        alert("Erreur inconnue lors de la création");
+      }
     }
-    const allParcelles = [...oldParcelles, parcelle];
-    await Preferences.set({
-      key: STORAGE_KEY,
-      value: JSON.stringify(allParcelles),
-    });
 
-    setParcelle(Parcelle.init);
-    setShowCreateModal(false);
   };
 
   return (
@@ -247,7 +270,7 @@ const Tab1: React.FC = () => {
             </IonButton>
           </div>
         ) : (
-          <>
+          <div className="cardContent">
             {parcelles.map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
@@ -293,7 +316,7 @@ const Tab1: React.FC = () => {
                 </IonCardContent>
               </IonCard>
             ))}
-          </>
+          </div>
         )}
       </IonContent>
 
