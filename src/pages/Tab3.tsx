@@ -83,7 +83,9 @@ const Tab3: React.FC = () => {
   }, []);
 
   const loadParcelles = async () => {
+    setSyncingAll(false)
     setLoading(true);
+  
     try {
       const result = await Preferences.get({ key: STORAGE_KEY });
       if (result.value) {
@@ -96,6 +98,7 @@ const Tab3: React.FC = () => {
       console.error("Erreur de lecture:", e);
       showError("Erreur lors du chargement des données locales");
     } finally {
+      setSyncingAll(false)
       setLoading(false);
     }
   };
@@ -373,7 +376,7 @@ const Tab3: React.FC = () => {
           </IonButtons>
           <IonTitle>Upload</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={loadParcelles} disabled={loading || syncingAll}>
+            <IonButton onClick={loadParcelles}>
               <IonIcon icon={refresh} />
             </IonButton>
             <IonButton onClick={() => setShowServerModal(true)}>
@@ -388,8 +391,13 @@ const Tab3: React.FC = () => {
       )}
 
       <IonLoading
-        isOpen={loading || syncingAll}
-        message={loading ? "Chargement..." : "Synchronisation en cours..."}
+        isOpen={loading}
+        message={"Chargement..."}
+      />
+
+      <IonLoading
+        isOpen={syncingAll}
+        message={"Synchronisation en cours..."}
       />
 
       <IonContent className="ion-padding">
@@ -517,12 +525,10 @@ const Tab3: React.FC = () => {
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
-                  className={`position-badge-custom-tab1 ion-color ${
-                    parcelle.synchronise == 0 ? "ion-color-success" : "ion-color-danger"
-                  }  ${parcelle.synchronise ? "disabled" : ""}`}
+                  className={`position-badge-custom-tab1 ion-color ${ parcelle.synchronise == 1 ? "ion-color-success" : "ion-color-danger" }  ${parcelle.synchronise ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
-                    if (parcelle.synchronise === 0 && !parcelle.syncing) {
+                    if (parcelle.synchronise != 1 && !parcelle.syncing) {
                       synchroniserParcelle(parcelle.code!);
                     }
                   }}
@@ -532,13 +538,10 @@ const Tab3: React.FC = () => {
                     <IonSpinner name="crescent" color="light"  style={{ width: "18px", height: "18px" }}
                     />
                   ) : (
-                    <IonIcon icon={parcelle.synchronise == 0 ? checkmark : sync} />
+                    <IonIcon icon={parcelle.synchronise == 1 ?  checkmark : sync} />
                   )}
                   <span className="visually-hidden">
-                    {" "}
-                    {parcelle.synchronise
-                      ? "Parcelle synchronisée"
-                      : "Parcelle à synchroniser"}{" "}
+                    {parcelle.synchronise ? "Parcelle synchronisée" : "Parcelle à synchroniser"}{" "}
                   </span>
                 </span>
 
