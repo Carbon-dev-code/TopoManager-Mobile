@@ -254,6 +254,8 @@ const Tab3: React.FC = () => {
     setSyncingAll(true);
     let updatedParcelles = [...parcelles];
 
+    let erreur = 0
+
     for (const parcelle of nonSyncParcelles) {
       // ✅ Marquer la parcelle comme en cours de sync
       updatedParcelles = updatedParcelles.map((p) =>
@@ -290,12 +292,18 @@ const Tab3: React.FC = () => {
               }
             : p
         );
+        erreur = erreur + 1;
         setParcelles(updatedParcelles);
       }
     }
 
     await saveParcelles(updatedParcelles);
-    showSuccess(`${nonSyncParcelles.length} parcelle(s) synchronisée(s)`);
+    if (erreur == 0) {
+      showSuccess(`${nonSyncParcelles.length} parcelle(s) synchronisée(s)`);
+    }else{
+      showError(`${erreur} parcelle(s) non synchronisée(s) à cause d'une erreur`);
+    }
+    
     setSyncingAll(false);
   };
 
