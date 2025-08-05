@@ -13,7 +13,6 @@ import {
   IonList,
   IonItem,
   IonLabel,
-  IonBadge,
   IonInput,
   IonSelect,
   IonSelectOption,
@@ -277,7 +276,7 @@ const Tab1: React.FC = () => {
                   className="position-badge-custom-tab1"
                   role="button"
                   color="danger"
-                  onClick={() => removeParcelle(parcelle.code!!)}
+                  onClick={() => removeParcelle(parcelle.code!)}
                 >
                   <IonIcon icon={trash} />
                 </span>
@@ -286,8 +285,8 @@ const Tab1: React.FC = () => {
                   <IonCardTitle><strong>{parcelle.code}</strong></IonCardTitle>
                   <IonCardSubtitle>
                     <IonChip color="danger">
-                      <IonIcon icon={sync} color={parcelle.synchronise ? 'success' : 'danger'}></IonIcon>
-                      <IonLabel>{parcelle.synchronise ? 'Parcelle sync' : 'Parcelle non sync'}</IonLabel>
+                      <IonIcon icon={sync} color={parcelle.synchronise === 1 ? 'success' : 'danger'}></IonIcon>
+                      <IonLabel>{parcelle.synchronise === 1 ? 'Parcelle sync' : 'Parcelle non sync'}</IonLabel>
                     </IonChip>
                     <IonChip color="danger">
                       <IonIcon icon={map} color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'}></IonIcon>
@@ -562,7 +561,7 @@ const Tab1: React.FC = () => {
                       <IonItem key={i} lines="none" className="custom-item">
                         <IonLabel>
                           <h3 style={{ marginBottom: 4 }}>
-                            🧭 {["Nord", "Est", "Sud", "Ouest"][r.repere!! - 1]}
+                            🧭 {["Nord", "Est", "Sud", "Ouest"][r.repere! - 1]}
                           </h3>
                           <p style={{ margin: 0 }}>📝 {r.observation}</p>
                         </IonLabel>
@@ -1237,7 +1236,7 @@ const Tab1: React.FC = () => {
                     onIonChange={(e) =>
                       setDemandeur({
                         ...demandeur,
-                        typeMorale: e.detail.value!!,
+                        typeMorale: e.detail.value!,
                       })
                     }
                   >
@@ -1256,7 +1255,7 @@ const Tab1: React.FC = () => {
                     onIonChange={(e) =>
                       setDemandeur({
                         ...demandeur,
-                        denomination: e.detail.value!!,
+                        denomination: e.detail.value!,
                       })
                     }
                     placeholder="Dénomination"
@@ -1270,7 +1269,7 @@ const Tab1: React.FC = () => {
                     onIonChange={(e) =>
                       setDemandeur({
                         ...demandeur,
-                        dateCreation: e.detail.value!!,
+                        dateCreation: e.detail.value!,
                       })
                     }
                     placeholder="Date de creation"
@@ -1284,7 +1283,7 @@ const Tab1: React.FC = () => {
                     onIonChange={(e) =>
                       setDemandeur({
                         ...demandeur,
-                        siege: e.detail.value!!,
+                        siege: e.detail.value!,
                       })
                     }
                     placeholder="Siège"
@@ -1299,7 +1298,7 @@ const Tab1: React.FC = () => {
                     onIonChange={(e) =>
                       setDemandeur({
                         ...demandeur,
-                        observations: e.detail.value!!,
+                        observations: e.detail.value!,
                       })
                     }
                   />

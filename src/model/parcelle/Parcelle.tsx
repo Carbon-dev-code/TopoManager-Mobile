@@ -16,17 +16,17 @@ export class Parcelle {
     demandeurs: Demandeur[];
     parametreTerritoire: ParametreTerritoire | null;
     riverin: Riverin[];
-    synchronise?: boolean;
+    synchronise?: number; // 0 non sync 1 sync 2 misy blem
     syncError?: string;
-    syncing?: boolean;
     lastSync?: string;
+    syncing?: boolean; // etat du spinner
     polygone: Polygone[]
 
 
     constructor(code: string | null, dateCreation: string | null, status: number | null,
         anneeOccup: number | null, categorie: number | null, consistance: string | null, opposition: boolean, revandication: boolean,
         observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[],
-        synchronise: boolean, syncError: string, syncing: boolean, lastSync:string,
+        synchronise: number, syncError: string, lastSync:string, syncing: boolean,
         polygone: Polygone[]
     ) {
         this.code = code;
@@ -43,13 +43,13 @@ export class Parcelle {
         this.riverin = riverin;
         this.synchronise = synchronise;
         this.syncError = syncError;
-        this.syncing = syncing;
         this.lastSync = lastSync;
+        this.syncing = syncing
         this.polygone = polygone
     }
 
     static init(): Parcelle {
-        return new Parcelle(null, null, null, null, null, null, false, false, '', [], null, [], false, '', false, '', [])
+        return new Parcelle(null, null, null, null, null, null, false, false, '', [], null, [], 0, '', '', false,[])
     }
 
 }

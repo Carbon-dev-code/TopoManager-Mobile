@@ -69,61 +69,28 @@
   z-index: 10;
 }
 
-.position-badge-custom {
-  position: absolute;
-  top: 1.3rem; /* distance depuis le haut, adaptable */
-  right: 0.3rem; /* distance depuis la droite, adaptable */
-  font-size: 1.7em; /* taille de base, modifiable */
-  padding: 5px 5px;
-  z-index: 10;
-  border-radius: 0px !important; /* un peu arrondi */
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
-}
-
-/* Dent gauche */
-.position-badge-custom::before {
-  content: "";
-  position: absolute;
-  bottom: -15px;
-  left: 0;
-  border-left: 0 solid transparent;
-  border-right: 18px solid transparent;
-  border-top: 18px solid; /* couleur dynamique */
-}
-
-/* Dent droite */
-.position-badge-custom::after {
-  content: "";
-  position: absolute;
-  bottom: -15px;
-  right: 0;
-  border-left: 18px solid transparent;
-  border-right: 0 solid transparent;
-  border-top: 18px solid; /* couleur dynamique */
-}
-
 /* Couleurs d’arrière-plan + dents */
-.bg-success.position-badge-custom {
-  background-color: #198754;
+.bg-success.position-badge-custom-tab1 {
+  background-color: green;
   color: white;
 }
-.bg-success.position-badge-custom::before,
-.bg-success.position-badge-custom::after {
-  border-top-color: #198754;
+.bg-success.position-badge-custom-tab1::before,
+.bg-success.position-badge-custom-tab1::after {
+  border-top-color: green;
 }
 
-.bg-danger.position-badge-custom {
-  background-color: #dc3545;
+.bg-danger.position-badge-custom-tab1 {
+  background-color: red;
   color: white;
 }
-.bg-danger.position-badge-custom::before,
-.bg-danger.position-badge-custom::after {
-  border-top-color: #dc3545;
+.bg-danger.position-badge-custom-tab1::before,
+.bg-danger.position-badge-custom-tab1::after {
+  border-top-color: red;
 }
 
 /* Adaptations pour écrans petits */
 @media (max-width: 576px) {
-  .position-badge-custom {
+  .position-badge-custom-tab1 {
     right: 0.3rem;
   }
 }

@@ -40,7 +40,6 @@ import "./Tab3.css";
 import { ConfigService } from "../model/ConfigService";
 import { Parcelle } from "../model/parcelle/Parcelle";
 
-
 interface ApiResponse {
   success: boolean;
   message?: string;
@@ -57,12 +56,16 @@ const Tab3: React.FC = () => {
   const [syncingAll, setSyncingAll] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">("success");
+  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">(
+    "success"
+  );
   const [serverIpPort, setServerIpPort] = useState(DEFAULT_IP_PORT);
   const [showServerModal, setShowServerModal] = useState(false);
   const [tempServerIpPort, setTempServerIpPort] = useState(DEFAULT_IP_PORT);
   const [testingConnection, setTestingConnection] = useState(false);
-  const [filtreParcelle, setFiltreParcelle] = useState<"tous" | "sync" | "nosync" | "erreur">("tous");
+  const [filtreParcelle, setFiltreParcelle] = useState<
+    "tous" | "sync" | "nosync" | "erreur"
+  >("tous");
 
   const STORAGE_KEY = "parcelles_data";
   const SERVER_URL_KEY = "server_url";
@@ -191,29 +194,28 @@ const Tab3: React.FC = () => {
   };
 
   const synchroniserParcelle = async (parcelleId: string) => {
-    const parcelle = parcelles.find((p) => p.code === parcelleId);
+    let parcelle = parcelles.find((p) => p.code === parcelleId);
     if (!parcelle) return;
 
-    try {
-      const tempParcelles = parcelles.map((p) =>
-        p.id === parcelleId
-          ? { ...p, synchronise: false, syncError: undefined, syncing: true }
-          : p
-      );
-      await saveParcelles(tempParcelles);
+    // ➕ Marquer comme en cours
+    parcelle = { ...parcelle, syncing: true };
+    setParcelles((prev) =>
+      prev.map((p) => (p.code === parcelleId ? parcelle! : p))
+    );
 
+    try {
       const success = await syncWithAPI(parcelle);
 
       if (success) {
         const updated = parcelles.map((p) =>
-          p.id === parcelleId
+          p.code === parcelleId
             ? {
-              ...p,
-              synchronise: true,
-              syncError: undefined,
-              syncing: false,
-              lastSync: new Date().toISOString(),
-            }
+                ...p,
+                synchronise: 1,
+                syncError: undefined,
+                lastSync: new Date().toISOString(),
+                syncing: false,
+              }
             : p
         );
         await saveParcelles(updated);
@@ -223,8 +225,13 @@ const Tab3: React.FC = () => {
       const errorMsg =
         error instanceof Error ? error.message : "Erreur inconnue";
       const updated = parcelles.map((p) =>
-        p.id === parcelleId
-          ? { ...p, synchronise: false, syncError: errorMsg, syncing: false }
+        p.code === parcelleId
+          ? {
+              ...p,
+              synchronise: 2,
+              syncError: errorMsg,
+              syncing: false,
+            }
           : p
       );
       await saveParcelles(updated);
@@ -238,8 +245,8 @@ const Tab3: React.FC = () => {
       return;
     }
 
-    const nonSyncParcelles = parcelles.filter((p) => !p.synchronise);
-    if (nonSyncParcelles.length === 0) {
+    const nonSyncParcelles = parcelles.filter((p) => p.synchronise == 0 ||  p.synchronise == 2);
+    if (nonSyncParcelles.length == 0) {
       showSuccess("Toutes les parcelles sont déjà synchronisées.");
       return;
     }
@@ -248,8 +255,9 @@ const Tab3: React.FC = () => {
     let updatedParcelles = [...parcelles];
 
     for (const parcelle of nonSyncParcelles) {
+      // ✅ Marquer la parcelle comme en cours de sync
       updatedParcelles = updatedParcelles.map((p) =>
-        p.id === parcelle.id ? { ...p, syncing: true, syncError: undefined } : p
+        p.code === parcelle.code ? { ...p, syncing: true } : p
       );
       setParcelles(updatedParcelles);
 
@@ -257,22 +265,29 @@ const Tab3: React.FC = () => {
         const success = await syncWithAPI(parcelle);
 
         updatedParcelles = updatedParcelles.map((p) =>
-          p.id === parcelle.id
+          p.code === parcelle.code
             ? {
-              ...p,
-              synchronise: success,
-              syncing: false,
-              lastSync: success ? new Date().toISOString() : p.lastSync,
-            }
+                ...p,
+                synchronise: 1,
+                lastSync: success ? new Date().toISOString() : p.lastSync,
+                syncError: undefined,
+                syncing: false, // ✅ sync terminée
+              }
             : p
         );
         setParcelles(updatedParcelles);
       } catch (error) {
         const errorMsg =
           error instanceof Error ? error.message : "Erreur inconnue";
+
         updatedParcelles = updatedParcelles.map((p) =>
-          p.id === parcelle.id
-            ? { ...p, syncing: false, syncError: errorMsg }
+          p.code === parcelle.code
+            ? {
+                ...p,
+                synchronise: 2, // ❗ erreur de sync
+                syncError: errorMsg,
+                syncing: false, // ✅ sync terminée malgré l'erreur
+              }
             : p
         );
         setParcelles(updatedParcelles);
@@ -280,7 +295,7 @@ const Tab3: React.FC = () => {
     }
 
     await saveParcelles(updatedParcelles);
-    showSuccess(`${nonSyncParcelles.length} parcelles synchronisées`);
+    showSuccess(`${nonSyncParcelles.length} parcelle(s) synchronisée(s)`);
     setSyncingAll(false);
   };
 
@@ -317,15 +332,17 @@ const Tab3: React.FC = () => {
         delayMs < 100
           ? "Ultra rapide 🚀"
           : delayMs < 200
-            ? "Rapide ✅"
-            : "Lent 🐢";
+          ? "Rapide ✅"
+          : "Lent 🐢";
       showSuccess(`Connexion réussie (${delayMs} ms) — ${speedText}`);
     } catch (error: unknown) {
       clearTimeout(timer);
 
       if (error instanceof DOMException && error.name === "AbortError") {
         showError(
-          `Le serveur ne reponds pas après une attente de ${timeout / 1000} secondes ⏱️`
+          `Le serveur ne reponds pas après une attente de ${
+            timeout / 1000
+          } secondes ⏱️`
         );
       } else if (error instanceof Error) {
         showError(`Erreur de connexion : ${error.message}`);
@@ -337,7 +354,7 @@ const Tab3: React.FC = () => {
     }
   };
 
-  const hasUnsynced = parcelles.some((p) => !p.synchronise);
+  const hasUnsynced = parcelles.some((p) => p.synchronise != 0);
 
   return (
     <IonPage>
@@ -359,20 +376,22 @@ const Tab3: React.FC = () => {
       </IonHeader>
 
       {testingConnection && (
-        <IonProgressBar
-          type="indeterminate"
-          className="my-progress-bar"
-        />
+        <IonProgressBar type="indeterminate" className="my-progress-bar" />
       )}
 
-      <IonLoading isOpen={loading || syncingAll} message={loading ? "Chargement..." : "Synchronisation en cours..."}/>
+      <IonLoading
+        isOpen={loading || syncingAll}
+        message={loading ? "Chargement..." : "Synchronisation en cours..."}
+      />
 
       <IonContent className="ion-padding">
         <div className="row align-items-center">
           <div className="col">
             <IonItem lines="none">
               <IonLabel>Adresse serveur :</IonLabel>
-              <IonText color="primary" className="ms-2">{serverIpPort}</IonText>
+              <IonText color="primary" className="ms-2">
+                {serverIpPort}
+              </IonText>
             </IonItem>
           </div>
           <div className="col-auto">
@@ -390,8 +409,14 @@ const Tab3: React.FC = () => {
         </div>
 
         {hasUnsynced && (
-          <IonButton expand="block" color="success" onClick={synchroniserToutes} disabled={syncingAll || loading} >
-            <IonIcon icon={sync} slot="start"/> Synchroniser toutes les parcelles
+          <IonButton
+            expand="block"
+            color="success"
+            onClick={synchroniserToutes}
+            disabled={syncingAll || loading}
+          >
+            <IonIcon icon={sync} slot="start" /> Synchroniser toutes les
+            parcelles
           </IonButton>
         )}
 
@@ -399,7 +424,7 @@ const Tab3: React.FC = () => {
         <div className="mb-3 mt-3">
           <div
             className="d-flex justify-content-center overflow-auto"
-            style={{ gap: '0.5rem' }}
+            style={{ gap: "0.5rem" }}
           >
             <div className="col-auto">
               <input
@@ -411,7 +436,10 @@ const Tab3: React.FC = () => {
                 checked={filtreParcelle === "tous"}
                 onChange={() => setFiltreParcelle("tous")}
               />
-              <label className="btn btn-outline-primary" htmlFor="tous-outlined">
+              <label
+                className="btn btn-outline-primary"
+                htmlFor="tous-outlined"
+              >
                 Tous
               </label>
             </div>
@@ -425,7 +453,10 @@ const Tab3: React.FC = () => {
                 checked={filtreParcelle === "sync"}
                 onChange={() => setFiltreParcelle("sync")}
               />
-              <label className="btn btn-outline-primary" htmlFor="sync-outlined">
+              <label
+                className="btn btn-outline-primary"
+                htmlFor="sync-outlined"
+              >
                 Synchronisées
               </label>
             </div>
@@ -439,7 +470,10 @@ const Tab3: React.FC = () => {
                 checked={filtreParcelle === "nosync"}
                 onChange={() => setFiltreParcelle("nosync")}
               />
-              <label className="btn btn-outline-primary" htmlFor="nosync-outlined">
+              <label
+                className="btn btn-outline-primary"
+                htmlFor="nosync-outlined"
+              >
                 Non synchronisées
               </label>
             </div>
@@ -453,7 +487,10 @@ const Tab3: React.FC = () => {
                 checked={filtreParcelle === "erreur"}
                 onChange={() => setFiltreParcelle("erreur")}
               />
-              <label className="btn btn-outline-primary" htmlFor="error-outlined">
+              <label
+                className="btn btn-outline-primary"
+                htmlFor="error-outlined"
+              >
                 Avec erreurs
               </label>
             </div>
@@ -464,43 +501,59 @@ const Tab3: React.FC = () => {
           {parcelles
             .filter((p) => {
               if (filtreParcelle === "tous") return true;
-              if (filtreParcelle === "sync") return p.synchronise === true;
-              if (filtreParcelle === "nosync") return p.synchronise === false;
-              if (filtreParcelle === "erreur") return p.synchronise === false;
+              if (filtreParcelle === "sync") return p.synchronise == 1;
+              if (filtreParcelle === "nosync") return p.synchronise == 0 || p.synchronise == 2;
+              if (filtreParcelle === "erreur") return p.synchronise == 2;
               return true;
             })
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
-                  className={`position-badge-custom-tab1 ${parcelle.synchronise ? "bg-success" : "bg-danger"} ${parcelle.syncing || parcelle.synchronise ? "disabled" : ""}`}
+                  className={`position-badge-custom-tab1 ion-color ${
+                    parcelle.synchronise == 0 ? "ion-color-success" : "ion-color-danger"
+                  }  ${parcelle.synchronise ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
-                    if (!parcelle.syncing && !parcelle.synchronise) { synchroniserParcelle(parcelle.code!!!); }
+                    if (parcelle.synchronise === 0 && !parcelle.syncing) {
+                      synchroniserParcelle(parcelle.code!);
+                    }
                   }}
                   role="button"
-                  aria-disabled={parcelle.syncing}
                 >
                   {parcelle.syncing ? (
-                    <IonSpinner name="crescent" color="light" style={{ width: "18px", height: "18px" }} />
+                    <IonSpinner name="crescent" color="light"  style={{ width: "18px", height: "18px" }}
+                    />
                   ) : (
-                    <IonIcon icon={parcelle.synchronise ? checkmark : sync} />
+                    <IonIcon icon={parcelle.synchronise == 0 ? checkmark : sync} />
                   )}
-                  <span className="visually-hidden"> {parcelle.synchronise ? "Parcelle synchronisée" : "Parcelle à synchroniser"} </span>
+                  <span className="visually-hidden">
+                    {" "}
+                    {parcelle.synchronise
+                      ? "Parcelle synchronisée"
+                      : "Parcelle à synchroniser"}{" "}
+                  </span>
                 </span>
 
                 <IonCardHeader className="custom-header-card">
-                  <IonCardTitle><strong>{parcelle.code}</strong></IonCardTitle>
+                  <IonCardTitle>
+                    <strong>{parcelle.code}</strong>
+                  </IonCardTitle>
                   <IonCardSubtitle>
                     {parcelle.lastSync && (
                       <IonChip color="danger">
-                        <IonIcon icon={sync} color='primary'></IonIcon>
-                        <IonLabel> Sync le {new Date(parcelle.lastSync).toLocaleString()} </IonLabel>
+                        <IonIcon icon={sync} color="primary"></IonIcon>
+                        <IonLabel>
+                          {" "}
+                          Sync le {new Date(
+                            parcelle.lastSync
+                          ).toLocaleString()}{" "}
+                        </IonLabel>
                       </IonChip>
                     )}
 
                     {parcelle.syncError && (
                       <IonChip color="danger">
-                        <IonIcon icon={sync} color='warning'></IonIcon>
+                        <IonIcon icon={sync} color="warning"></IonIcon>
                         <IonLabel> ⚠️ {parcelle.syncError}</IonLabel>
                       </IonChip>
                     )}
