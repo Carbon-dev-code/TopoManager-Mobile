@@ -23,23 +23,6 @@
   z-index: 1000;
 }
 
-.debug-info {
-  position: absolute;
-  bottom: 60px;
-  left: 10px;
-  background: rgba(255, 255, 255, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px) saturate(160%);
-  border-radius: 15px 15px 15px 15px;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.1),
-    inset 0 1px 3px rgba(255, 255, 255, 0.3);
-  padding: 5px;
-  font-size: 12px;
-  z-index: 1000;
-  overflow-wrap: break-word;
-}
-
 .glass-btn {
   --padding-start: 0;
   --padding-end: 0;
@@ -160,7 +143,7 @@
   gap: 10px;
 }
 
-.glass-btn-draw {
+ion-fab-button.glass-btn-draw::part(native)  {
   --padding-start: 0;
   --padding-end: 0;
   justify-content: center;
@@ -181,12 +164,24 @@
   transition: background 0.3s ease, transform 0.3s ease;
 }
 
-.glass-btn-draw:active {
-  background: rgba(255, 255, 255, 0);
-}
-
-.glass-btn-draw ion-icon {
-  font-size: 22px;
+ion-fab-button.glass-btn::part(native)  {
+  --padding-start: 0;
+  --padding-end: 0;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.35);
+  /* ultra transparent */
+  backdrop-filter: blur(5px) saturate(50%);
+  border: 1px solid rgba(255, 255, 255, 0.411);
+  border-radius: 50%;
+  box-shadow:
+    0 4px 12px rgba(255, 255, 255, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s ease, transform 0.3s ease;
+  color: red;
 }
 
 .glass-label {
@@ -209,37 +204,32 @@
   transition: background 0.3s ease, transform 0.3s ease;
 }
 
+/* dans Tab2.css */
 .glass-card-bottom {
   position: absolute;
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
-  width: max-content;
-  height: max-content;
-  background: rgba(255, 255, 255, 0.35);
+  width: 90%;
+  max-width: 600px;
+  max-height: 50vh;
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px) saturate(50%);
+  -webkit-backdrop-filter: blur(14px);
   border-radius: 16px;
   padding: 16px;
-  color: black;
+  color: #fff;
   z-index: 1001;
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
-    inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   overflow-y: auto;
   font-size: 14px;
-  max-width: 90vw; /* par défaut */
 }
 
-@media screen and (min-width: 768px) {
+@media (min-width: 768px) {
   .glass-card-bottom {
-    width: 33vw;
-    height: max-content;
+    max-width: 40%;
+    max-height: 40vh;
   }
-}
-
-.glass-card-bottom {
-  animation: fadeInUp 0.3s ease-in-out;
 }
 
 @keyframes fadeInUp {
@@ -264,3 +254,21 @@
   margin: 6px 0;
   color: black;
 }
+
+.fab-horizontal-end {
+    right: calc(-6px + var(--ion-safe-area-right, 0px)) !important;
+}
+
+.fab-vertical-bottom {
+    bottom: 40px !important;
+}
+
+.custom-fab-list {
+  position: absolute;
+  bottom: 40px;
+  right: -8px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
