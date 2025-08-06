@@ -17,6 +17,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
 import Map from "ol/Map";
 import View from "ol/View";
+import Text from "ol/style/Text";
 import TileLayer from "ol/layer/Tile";
 import ScaleLine from "ol/control/ScaleLine";
 import { fromLonLat, transform } from "ol/proj";
@@ -33,6 +34,7 @@ import {
   pencilOutline,
   closeOutline,
   checkmark,
+  information,
 } from "ionicons/icons";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -54,17 +56,15 @@ const Tab2: React.FC = () => {
   const mapElement = useRef<HTMLDivElement>(null);
   const tileCache = useRef<Record<string, string>>({});
   const localLayerRef = useRef<TileLayer<XYZ> | null>(null);
-  const lastDebug = useRef<string>("");
   const [showLocalTiles, setShowLocalTiles] = useState(true);
-  const [stateDrawCarte, setstateDrawCarte] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-  const [debugInfo, setDebugInfo] = useState("");
   const alreadyChecked = useRef(new Set<string>());
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
   const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const [showCard, setShowCard] = useState(true);
   const query = useQuery();
   const from = query.get('from');
   const action = query.get('action');
@@ -116,27 +116,43 @@ const Tab2: React.FC = () => {
 
     parcelles.forEach(parcelle => {
       parcelle.polygone?.forEach(polygone => {
-        const points = polygone.points.map(p => {
-          return transform([p.x, p.y], "EPSG:29702", "EPSG:3857");
-        });
+        const points = polygone.points.map(p =>
+          transform([p.x, p.y], "EPSG:29702", "EPSG:3857") as [number, number]
+        );
+
         if (points.length > 2) {
           const polygon = new Polygon([points]);
-          source.addFeature(new Feature(polygon));
+          const feature = new Feature(polygon);
+
+          feature.set("code", parcelle.code);
+
+          source.addFeature(feature);
         }
       });
     });
 
     const vectorLayer = new VectorLayer({
       source,
-      style: new Style({
-        stroke: new Stroke({ color: "#28a745", width: 2 }),
-        fill: new Fill({ color: "rgba(40, 167, 69, 0.2)" }),
-      }),
+      style: (feature) => {
+        const code = feature.get("code");
+
+        return new Style({
+          stroke: new Stroke({ color: "rgba(0, 99, 248, 0.68)", width: 1.5 }),
+          fill: new Fill({ color: "rgba(0, 99, 248, 0.2)" }),
+          text: new Text({
+            text: code,
+            font: "12px Arial",
+            fill: new Fill({ color: "#000" }),
+            stroke: new Stroke({ color: "#fff", width: 1.5 }),
+            overflow: true,
+            placement: "point",
+          }),
+        });
+      },
     });
 
     mapRef.current.addLayer(vectorLayer);
   }, [parcelles]);
-
 
   const sanitizeName = useCallback((name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
@@ -321,16 +337,11 @@ const Tab2: React.FC = () => {
   }, [drawPoints, updatePolygon]);
 
   const toggleLocalTiles = useCallback(() => {
-    if (!localLayerRef.current || !mapRef.current) return;
-    const layer = localLayerRef.current;
-    const map = mapRef.current;
+    if (!localLayerRef.current) return;
 
-    showLocalTiles ? map.removeLayer(layer) : map.addLayer(layer);
-    setShowLocalTiles(prev => !prev);
-  }, [showLocalTiles]);
-
-  const drawCarte = useCallback(() => {
-    setstateDrawCarte(prev => !prev);
+    const visible = !localLayerRef.current.getVisible();
+    localLayerRef.current.setVisible(visible);
+    setShowLocalTiles(visible);
   }, []);
 
   return (
@@ -364,7 +375,7 @@ const Tab2: React.FC = () => {
 
         <div ref={mapElement} className="map-container"></div>
 
-        {currentParcelle && (
+        {currentParcelle && showCard && (
           <div className="glass-card-bottom">
             <div className="glass-card-header">
               <h3 style={{ margin: 0 }}>
@@ -374,7 +385,7 @@ const Tab2: React.FC = () => {
                 fill="clear"
                 size="small"
                 color="danger"
-                onClick={() => setCurrentParcelle(null)}
+                onClick={() => setShowCard(false)}
               >
                 <IonIcon icon={closeOutline} style={{ fontSize: '24px' }} />
               </IonButton>
@@ -391,6 +402,19 @@ const Tab2: React.FC = () => {
         )}
 
         <div className="map-controls">
+          {currentParcelle && (
+            <IonButton
+              className="glass-btn"
+              fill="clear"
+              onClick={() => setShowCard(true)}
+            >
+              <IonIcon
+                color="dark"
+                icon={information}
+              />
+            </IonButton>
+          )}
+
           <IonFab slot="fixed" vertical="bottom" horizontal="end">
             <IonFabButton
               size="small"
@@ -432,6 +456,7 @@ const Tab2: React.FC = () => {
               </div>
             )}
           </IonFab>
+
           <IonButton
             className="glass-btn"
             fill="clear"

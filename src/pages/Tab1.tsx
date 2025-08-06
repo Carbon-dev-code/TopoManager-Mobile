@@ -298,7 +298,7 @@ const Tab1: React.FC = () => {
                       <IonIcon icon={sync} color={parcelle.synchronise === 1 ? 'success' : 'danger'}></IonIcon>
                       <IonLabel>{parcelle.synchronise === 1 ? 'Parcelle sync' : 'Parcelle non sync'}</IonLabel>
                     </IonChip>
-                    <IonChip color="danger">
+                    <IonChip color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'}>
                       <IonIcon icon={map} color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'}></IonIcon>
                       <IonLabel>{(!parcelle.polygone || parcelle.polygone.length === 0) ? 'Pas de croquis' : 'Avec croquis'}
                       </IonLabel>
