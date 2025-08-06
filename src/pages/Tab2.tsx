@@ -109,6 +109,35 @@ const Tab2: React.FC = () => {
     load();
   }, [from, action, codeParcelle]);
 
+  const drawPolygonesFromParcelles = useCallback(() => {
+    if (!mapRef.current) return;
+
+    const source = new VectorSource();
+
+    parcelles.forEach(parcelle => {
+      parcelle.polygone?.forEach(polygone => {
+        const points = polygone.points.map(p => {
+          return transform([p.x, p.y], "EPSG:29702", "EPSG:3857");
+        });
+        if (points.length > 2) {
+          const polygon = new Polygon([points]);
+          source.addFeature(new Feature(polygon));
+        }
+      });
+    });
+
+    const vectorLayer = new VectorLayer({
+      source,
+      style: new Style({
+        stroke: new Stroke({ color: "#28a745", width: 2 }),
+        fill: new Fill({ color: "rgba(40, 167, 69, 0.2)" }),
+      }),
+    });
+
+    mapRef.current.addLayer(vectorLayer);
+  }, [parcelles]);
+
+
   const sanitizeName = useCallback((name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
   }, []);
@@ -160,39 +189,47 @@ const Tab2: React.FC = () => {
       return;
     }
 
-    const points = drawPoints.map(([x, y]) => {
+    if (drawPoints.length < 3) {
+      alert("Un polygone a besoin d'au moins 3 points.");
+      return;
+    }
+
+    // ✅ Fermer le polygone : si le dernier point ≠ premier, on ajoute le premier à la fin
+    const first = drawPoints[0];
+    const last = drawPoints[drawPoints.length - 1];
+    const isClosed = first[0] === last[0] && first[1] === last[1];
+
+    const closedPoints = isClosed ? drawPoints : [...drawPoints, first];
+
+    // 🔁 Transform to EPSG:29702 + PointC
+    const points = closedPoints.map(([x, y]) => {
       const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number, number];
       return new PointC(tx, ty);
     });
 
     const newPolygone = new Polygone(points);
 
-    // Remplacer ou ajouter le polygone à la parcelle
+    // Ajout au currentParcelle
     const updatedParcelle: Parcelle = {
       ...currentParcelle,
-      polygone: [newPolygone], // ou ajoute à un tableau si multiples polygones possibles
+      polygone: [newPolygone],
     };
 
-    // Met à jour dans la liste
     const updatedParcelles = parcelles.map(p =>
       p.code === updatedParcelle.code ? updatedParcelle : p
     );
 
-    // Appliquer les updates dans l’état
     setCurrentParcelle(updatedParcelle);
     setParcelles(updatedParcelles);
     setDrawPoints([]);
+    setFabOpen(false);
 
-    // 🔒 Sauvegarder dans Preferences
-    try {
-      await Preferences.set({
-        key: "parcelles_data",
-        value: JSON.stringify(updatedParcelles),
-      });
-      console.log("✅ parcelles_data mis à jour avec polygone");
-    } catch (err) {
-      console.error("❌ Échec sauvegarde Preferences:", err);
-    }
+    await Preferences.set({
+      key: "parcelles_data",
+      value: JSON.stringify(updatedParcelles),
+    });
+
+    console.log("✅ Polygone fermé et enregistré");
   };
 
   const getTileUrl = useCallback(async (z: number, x: number, y: number): Promise<string> => {
@@ -270,6 +307,7 @@ const Tab2: React.FC = () => {
     map.addLayer(localLayer);
     localLayerRef.current = localLayer;
     mapRef.current = map;
+    drawPolygonesFromParcelles();
 
     return () => {
       map.setTarget(undefined);
