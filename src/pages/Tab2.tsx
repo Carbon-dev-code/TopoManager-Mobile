@@ -8,6 +8,7 @@ import {
   IonIcon,
   IonButtons,
   IonMenuButton,
+  IonLabel,
 } from "@ionic/react";
 import { useLocation } from 'react-router-dom';
 import { Filesystem, Directory } from "@capacitor/filesystem";
@@ -28,8 +29,8 @@ import {
   eyeOffOutline,
   eyeOutline,
   pencilOutline,
-  checkboxOutline,
   closeOutline,
+  checkmark,
 } from "ionicons/icons";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -53,7 +54,7 @@ const Tab2: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState("");
   const alreadyChecked = useRef(new Set<string>());
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
-  const [currentParcelle,setCurrentParcelle] = useState<string>('');
+  const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
   const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
@@ -87,15 +88,31 @@ const Tab2: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (from === 'tab1' && action === 'croquis' && codeParcelle) {
-      console.log("🔵 Tab2 lancé depuis Tab1 pour dessin");
-      setstateDrawCarte(true); // ou ta logique actuelle pour activer le mode "croquis"
-      setCurrentParcelle(codeParcelle); // si tu veux sélectionner la bonne parcelle
-    } else {
-      console.log("🟢 Tab2 lancé normalement (visualisation)");
-    }
-  }, [from, action, codeParcelle]);
+    const load = async () => {
+      const savedParcelles = await loadParcellesFromStorage();
+      setParcelles(savedParcelles);
 
+      // ✅ Trouve et set la bonne parcelle si c’est une demande de croquis
+      if (from === 'tab1' && action === 'croquis' && codeParcelle) {
+        console.log("🔵 Tab2 lancé depuis Tab1 pour dessin");
+        const found = savedParcelles.find(p => p.code === codeParcelle);
+        if (found) {
+          setCurrentParcelle(found);
+          setstateDrawCarte(true);
+        } else {
+          console.warn("❌ Parcelle introuvable !");
+          setCurrentParcelle(null);
+          setstateDrawCarte(false);
+        }
+      } else {
+        console.log("🟢 Tab2 lancé normalement (visualisation)");
+        setCurrentParcelle(null);
+        setstateDrawCarte(false);
+      }
+    };
+
+    load();
+  }, [from, action, codeParcelle]);
 
   const sanitizeName = useCallback((name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
@@ -168,7 +185,6 @@ const Tab2: React.FC = () => {
     new Polygone(pointObjects);
 
   };
-
 
   const getTileUrl = useCallback(
     async (z: number, x: number, y: number): Promise<string> => {
@@ -346,6 +362,11 @@ const Tab2: React.FC = () => {
           <IonButtons className="glass-btn" slot="start">
             <IonMenuButton />
           </IonButtons>
+          {currentParcelle != null && (
+            <IonLabel className="glass-label" slot="end">
+              Croquis du parcelle {currentParcelle.code}
+            </IonLabel>
+          )}
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
@@ -364,6 +385,33 @@ const Tab2: React.FC = () => {
         )}
 
         <div ref={mapElement} className="map-container"></div>
+
+        {currentParcelle && (
+          <div className="glass-card-bottom">
+            <div className="glass-card-header">
+              <h3 style={{ margin: 0 }}>
+                Parcelle <strong>{currentParcelle.code}</strong>
+              </h3>
+              <IonButton
+                fill="clear"
+                size="small"
+                color="danger"
+                onClick={() => setCurrentParcelle(null)}
+              >
+                <IonIcon icon={closeOutline} style={{fontSize:'24px'}}/>
+              </IonButton>
+            </div>
+
+            <div className="glass-card-content">
+              <p><strong>Date de création :</strong> {currentParcelle.dateCreation || 'N/A'}</p>
+              <p><strong>Consistance :</strong> {currentParcelle.consistance || 'Aucune'}</p>
+              <p><strong>Opposition :</strong> {currentParcelle.oppossition ? 'Oui' : 'Non'}</p>
+              <p><strong>Revandication :</strong> {currentParcelle.revandication ? 'Oui' : 'Non'}</p>
+              <p><strong>Observation :</strong> {currentParcelle.observation || 'Aucune'}</p>
+            </div>
+          </div>
+        )}
+
         <div className="map-controls">
           {stateDrawCarte && (
             <IonButton
@@ -371,7 +419,7 @@ const Tab2: React.FC = () => {
               fill="clear"
               onClick={addPolygone}
             >
-              <IonIcon color="success" icon={checkboxOutline} />
+              <IonIcon color="success" icon={checkmark} />
             </IonButton>
           )}
           <IonButton className="glass-btn" fill="clear" onClick={drawCarte}>

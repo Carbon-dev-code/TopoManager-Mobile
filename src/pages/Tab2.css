@@ -1,4 +1,4 @@
-.custom-header{
+.custom-header {
   box-shadow: none;
 }
 
@@ -46,7 +46,8 @@
   justify-content: center;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.468); /* ultra transparent */
+  background: rgba(255, 255, 255, 0.468);
+  /* ultra transparent */
   backdrop-filter: blur(12px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 50%;
@@ -111,6 +112,7 @@
   background-color: black;
   transform: rotate(0deg);
 }
+
 .cross-symbol::after {
   content: '';
   position: absolute;
@@ -153,8 +155,8 @@
   z-index: 1000;
 }
 
-.draw{
-  display: flex; 
+.draw {
+  display: flex;
   gap: 10px;
 }
 
@@ -164,7 +166,8 @@
   justify-content: center;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.35); /* ultra transparent */
+  background: rgba(255, 255, 255, 0.35);
+  /* ultra transparent */
   backdrop-filter: blur(5px) saturate(50%);
   border: 1px solid rgba(255, 255, 255, 0.411);
   border-radius: 50%;
@@ -184,4 +187,80 @@
 
 .glass-btn-draw ion-icon {
   font-size: 22px;
+}
+
+.glass-label {
+  padding: 5px 10px 5px 10px;
+  margin-right: 10px;
+  color: black;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.35);
+  /* ultra transparent */
+  backdrop-filter: blur(5px) saturate(50%);
+  border: 1px solid rgba(255, 255, 255, 0.411);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgba(255, 255, 255, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.glass-card-bottom {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  height: max-content;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px) saturate(50%);
+  border-radius: 16px;
+  padding: 16px;
+  color: black;
+  z-index: 1001;
+  box-shadow:
+    0 4px 12px rgba(255, 255, 255, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  overflow-y: auto;
+  font-size: 14px;
+  max-width: 90vw; /* par défaut */
+}
+
+@media screen and (min-width: 768px) {
+  .glass-card-bottom {
+    width: 33vw;
+    height: max-content;
+  }
+}
+
+.glass-card-bottom {
+  animation: fadeInUp 0.3s ease-in-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.glass-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.glass-card-content p {
+  margin: 6px 0;
+  color: black;
 }
