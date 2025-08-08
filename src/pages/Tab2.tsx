@@ -220,7 +220,7 @@ const Tab2: React.FC = () => {
 
     // 🔁 Transform to EPSG:29702 + PointC
     const points = closedPoints.map(([x, y]) => {
-      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number, number];
+      const [ty, tx] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number, number];
       return new PointC(tx, ty);
     });
 
