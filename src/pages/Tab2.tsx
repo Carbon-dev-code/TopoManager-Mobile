@@ -89,6 +89,7 @@ const Tab2: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       const savedParcelles = await loadParcellesFromStorage();
+      await drawPolygonesFromParcelles();
       setParcelles(savedParcelles);
     };
     load();
