@@ -22,13 +22,21 @@ import {
   IonText,
   IonProgressBar,
   useIonViewWillEnter,
-  IonPopover
+  IonPopover,
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
-import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { useState, useEffect } from "react";
 import { ConfigService } from "../model/ConfigService";
-import { close, settingsOutline, sync, ellipsisVertical, map } from "ionicons/icons";
+import { Buffer } from "buffer";
+import {
+  close,
+  settingsOutline,
+  sync,
+  ellipsisVertical,
+  map,
+  layersOutline,
+} from "ionicons/icons";
 import "./Tab4.css";
 import { Territoire } from "../model/Territoire";
 import { ParametreTerritoire } from "../model/ParametreTerritoire";
@@ -47,10 +55,13 @@ const Tab4 = () => {
   const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
   const [selectedCommune, setSelectedCommune] = useState<number | null>(null);
-  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(null);
+  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(
+    null
+  );
   const [selectedHameau, setSelectedHameau] = useState<number | null>(null);
   const [parametres, setParametres] = useState<ParametreTerritoire[]>([]);
-  const [parametreActuel, setParametreActuel] = useState<ParametreTerritoire | null>(null);
+  const [parametreActuel, setParametreActuel] =
+    useState<ParametreTerritoire | null>(null);
   const [currentParcelleCode, setCurrentParcelleCode] = useState<string>("");
   const [progression, setProgression] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState(false); // Pour fetchData
@@ -67,9 +78,11 @@ const Tab4 = () => {
         const current = JSON.parse(value);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.coderegion}-${current.district.codedistrict}-${current.commune.codecommune
-          }-${current.fokontany.codefokontany}-${current.hameau.codehameau}-${current.increment + 1
-          }`;
+        const codeComplet = `${current.region.coderegion}-${
+          current.district.codedistrict
+        }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${
+          current.hameau.codehameau
+        }-${current.increment + 1}`;
         setCurrentParcelleCode(codeComplet);
       }
     } catch (error) {
@@ -81,7 +94,7 @@ const Tab4 = () => {
     try {
       const url = await ConfigService.getServerBaseUrl();
       setServerUrl(url); // Mise à jour de l'état
-      const { value } = await Preferences.get({ key: 'territoireData' });
+      const { value } = await Preferences.get({ key: "territoireData" });
       if (value) {
         setTerritoire(JSON.parse(value));
       }
@@ -89,6 +102,125 @@ const Tab4 = () => {
     } catch (error) {
       setError("Configurez l'URL du serveur d'abord");
       throw error; // Propage l'erreur
+    }
+  };
+
+  const fetchPlof = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const currentServerIp = await ConfigService.getServerIp();
+      if (!currentServerIp) throw new Error("Configuration serveur manquante");
+
+      const workspace = "H-topo";
+      const authHeader =
+        "Basic " + Buffer.from("admin:geoserver").toString("base64");
+
+      const protocol = "http";
+      const port = 8080;
+      const baseUrl = `${protocol}://${currentServerIp}:${port}`;
+
+      // 1. Lister tous les datastores
+      const dsUrl = `${baseUrl}/geoserver/rest/workspaces/${workspace}/datastores.json`;
+      const dsResp = await fetch(dsUrl, {
+        headers: {
+          Accept: "application/json",
+          Authorization: authHeader,
+        },
+      });
+      if (!dsResp.ok)
+        throw new Error(`Erreur récupération datastores: ${dsResp.status}`);
+      const dsData = await dsResp.json();
+      const datastores = dsData.dataStores.dataStore.map((ds: any) => ds.name);
+
+      const structure = {
+        workspace,
+        datastores: [],
+      };
+
+      // 2. Pour chaque datastore, lister les couches vecteur
+      for (const dsName of datastores) {
+        const ftUrl = `${baseUrl}/geoserver/rest/workspaces/${workspace}/datastores/${dsName}/featuretypes.json`;
+        const ftResp = await fetch(ftUrl, {
+          headers: {
+            Accept: "application/json",
+            Authorization: authHeader,
+          },
+        });
+        if (!ftResp.ok) {
+          console.warn(`Erreur sur datastore ${dsName}`);
+          continue;
+        }
+        const ftData = await ftResp.json();
+        const layers = ftData.featureTypes.featureType.map((f: any) => f.name);
+
+        const savedLayers = [];
+
+        // 3. Télécharger chaque couche en GeoJSON (WFS)
+        for (const layerName of layers) {
+          const wfsUrl = `${baseUrl}/geoserver/${workspace}/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${workspace}:${layerName}&outputFormat=application/json`;
+
+          const wfsResp = await fetch(wfsUrl, {
+            headers: {
+              Accept: "application/json",
+              Authorization: authHeader,
+            },
+          });
+
+          if (!wfsResp.ok) {
+            console.warn(`Erreur téléchargement couche ${layerName}`);
+            continue;
+          }
+
+          const geojson = await wfsResp.json();
+
+          // Ajout dynamique d'un attribut "name" dans chaque feature
+          if (geojson.features && Array.isArray(geojson.features)) {
+            geojson.features = geojson.features.map((feature: any) => ({
+              ...feature,
+              properties: {
+                ...feature.properties,
+                name: layerName,
+              },
+            }));
+          }
+
+          // 4. Enregistrer localement
+          const localPath = `plof/${dsName}/${layerName}.geojson`;
+          await Filesystem.writeFile({
+            path: localPath,
+            data: JSON.stringify(geojson),
+            directory: Directory.Data,
+            encoding: Encoding.UTF8,
+            recursive: true,
+          });
+
+          savedLayers.push({
+            name: layerName,
+            path: localPath,
+          });
+        }
+
+        // Ajouter au tableau global
+        structure.datastores.push({
+          name: dsName,
+          layers: savedLayers,
+        });
+      }
+
+      // 5. Sauvegarder la structure dans Preferences
+      await Preferences.set({
+        key: "plofData",
+        value: JSON.stringify(structure),
+      });
+
+      console.log("Téléchargement PLOF terminé", structure);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -107,7 +239,13 @@ const Tab4 = () => {
       }
 
       // 3. Fetch des données territoire
-      const [territoireResponse, categorieResponse, statusResponse, repereResponse, typeMoralResponse] = await Promise.all([
+      const [
+        territoireResponse,
+        categorieResponse,
+        statusResponse,
+        repereResponse,
+        typeMoralResponse,
+      ] = await Promise.all([
         fetch(`${currentServerUrl}/getTerritoire`),
         fetch(`${currentServerUrl}/getCategorie`),
         fetch(`${currentServerUrl}/getStatus`),
@@ -132,7 +270,9 @@ const Tab4 = () => {
       }
 
       if (!typeMoralResponse.ok) {
-         throw new Error(`Erreur type de personne moral: ${typeMoralResponse.status}`);
+        throw new Error(
+          `Erreur type de personne moral: ${typeMoralResponse.status}`
+        );
       }
 
       const territoireData = await territoireResponse.json();
@@ -143,40 +283,39 @@ const Tab4 = () => {
 
       // 4. Sauvegarder dans les préférences
       await Preferences.set({
-        key: 'territoireData',
-        value: JSON.stringify(territoireData.data)
+        key: "territoireData",
+        value: JSON.stringify(territoireData.data),
       });
 
       await Preferences.set({
-        key: 'categorieData',
-        value: JSON.stringify(categorieData.data)
+        key: "categorieData",
+        value: JSON.stringify(categorieData.data),
       });
 
       await Preferences.set({
-        key: 'statusData',
-        value: JSON.stringify(statusData.data)
+        key: "statusData",
+        value: JSON.stringify(statusData.data),
       });
 
       await Preferences.set({
-        key: 'repereData',
-        value: JSON.stringify(repereData.data)
+        key: "repereData",
+        value: JSON.stringify(repereData.data),
       });
 
       await Preferences.set({
-        key: 'typeMoralData',
-        value: JSON.stringify(typeMoralData.data)
+        key: "typeMoralData",
+        value: JSON.stringify(typeMoralData.data),
       });
 
       // 5. Mettre à jour l'état local
       setTerritoire(territoireData.data);
       setShowModal(true);
-
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       setError(`Échec de la synchronisation: ${message}`);
       console.error(err);
     } finally {
-       setIsSyncing(false);
+      setIsSyncing(false);
     }
   };
 
@@ -184,15 +323,15 @@ const Tab4 = () => {
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64 = reader.result?.toString().split(',')[1];
-        resolve(base64 ?? '');
+        const base64 = reader.result?.toString().split(",")[1];
+        resolve(base64 ?? "");
       };
       reader.onerror = reject;
       reader.readAsDataURL(blob);
-  });
+    });
 
   const sanitizeName = (name: string): string => {
-    return name.toLowerCase().replace(/[^a-z0-9]/gi, '_'); // remplace caractères spéciaux
+    return name.toLowerCase().replace(/[^a-z0-9]/gi, "_"); // remplace caractères spéciaux
   };
 
   const fetchCarte = async () => {
@@ -209,26 +348,37 @@ const Tab4 = () => {
       }
 
       const selectedRegionNom = sanitizeName(
-        territoire.find(r => r.idregion === selectedRegion)?.nomregion ?? 'inconnu'
+        territoire.find((r) => r.idregion === selectedRegion)?.nomregion ??
+          "inconnu"
       );
       const selectedDistrictNom = sanitizeName(
-        territoire.find(r => r.idregion === selectedRegion)
-          ?.districts.find(d => d.iddistrict === selectedDistrict)?.nomdistrict ?? 'inconnu'
+        territoire
+          .find((r) => r.idregion === selectedRegion)
+          ?.districts.find((d) => d.iddistrict === selectedDistrict)
+          ?.nomdistrict ?? "inconnu"
       );
       const selectedCommuneNom = sanitizeName(
-        territoire.flatMap(r => r.districts)
-          .find(d => d.iddistrict === selectedDistrict)
-          ?.communes.find(c => c.idcommune === selectedCommune)?.nomcommune ?? 'inconnu'
+        territoire
+          .flatMap((r) => r.districts)
+          .find((d) => d.iddistrict === selectedDistrict)
+          ?.communes.find((c) => c.idcommune === selectedCommune)?.nomcommune ??
+          "inconnu"
       );
       const selectedFokontanyNom = sanitizeName(
-        territoire.flatMap(r => r.districts.flatMap(d => d.communes))
-          .find(c => c.idcommune === selectedCommune)
-          ?.fokontany.find(f => f.idfokontany === selectedFokontany)?.nomfokontany ?? 'inconnu'
+        territoire
+          .flatMap((r) => r.districts.flatMap((d) => d.communes))
+          .find((c) => c.idcommune === selectedCommune)
+          ?.fokontany.find((f) => f.idfokontany === selectedFokontany)
+          ?.nomfokontany ?? "inconnu"
       );
       const selectedHameauNom = sanitizeName(
-        territoire.flatMap(r => r.districts.flatMap(d => d.communes.flatMap(c => c.fokontany)))
-          .find(f => f.idfokontany === selectedFokontany)
-          ?.hameaux.find(h => h.idhameau === selectedHameau)?.nomhameau ?? 'inconnu'
+        territoire
+          .flatMap((r) =>
+            r.districts.flatMap((d) => d.communes.flatMap((c) => c.fokontany))
+          )
+          .find((f) => f.idfokontany === selectedFokontany)
+          ?.hameaux.find((h) => h.idhameau === selectedHameau)?.nomhameau ??
+          "inconnu"
       );
 
       const listResponse = await fetch(`${currentServerUrl}/getCarte`);
@@ -251,7 +401,7 @@ const Tab4 = () => {
         const base64 = await blobToBase64(blob);
 
         const localPath = `tiles/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${selectedHameauNom}/fond/${tilePath}`;
-        
+
         await Filesystem.writeFile({
           path: localPath,
           data: base64,
@@ -391,10 +541,26 @@ const Tab4 = () => {
 
     const nouveauParametre = new ParametreTerritoire({
       id: `param-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      region: new Territoire(region.idregion, region.coderegion, region.nomregion),
-      district: new District(district.iddistrict, district.codedistrict, district.nomdistrict),
-      commune: new Commune(commune.idcommune, commune.codecommune, commune.nomcommune),
-      fokontany: new Fokontany(fokontany.idfokontany, fokontany.codefokontany, fokontany.nomfokontany),
+      region: new Territoire(
+        region.idregion,
+        region.coderegion,
+        region.nomregion
+      ),
+      district: new District(
+        district.iddistrict,
+        district.codedistrict,
+        district.nomdistrict
+      ),
+      commune: new Commune(
+        commune.idcommune,
+        commune.codecommune,
+        commune.nomcommune
+      ),
+      fokontany: new Fokontany(
+        fokontany.idfokontany,
+        fokontany.codefokontany,
+        fokontany.nomfokontany
+      ),
       hameau: new Hameau(hameau.idhameau, hameau.codehameau, hameau.nomhameau),
       code_parcelle: 0,
       increment: 0,
@@ -415,9 +581,13 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
-        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany}-${nouveauParametre.hameau.codehameau
-        }-${nouveauParametre.increment + 1}`;
+      const codeComplet = `${nouveauParametre.region.coderegion}-${
+        nouveauParametre.district.codedistrict
+      }-${nouveauParametre.commune.codecommune}-${
+        nouveauParametre.fokontany.codefokontany
+      }-${nouveauParametre.hameau.codehameau}-${
+        nouveauParametre.increment + 1
+      }`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -434,9 +604,11 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.coderegion}-${parametre.district.codedistrict
-        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
-        }-${parametre.increment + 1}`;
+      const codeComplet = `${parametre.region.coderegion}-${
+        parametre.district.codedistrict
+      }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${
+        parametre.hameau.codehameau
+      }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);
@@ -477,9 +649,7 @@ const Tab4 = () => {
             <IonMenuButton />
           </IonButtons>
 
-          <IonTitle className="ion-text-center">
-            Paramètrage
-          </IonTitle>
+          <IonTitle className="ion-text-center">Paramètrage</IonTitle>
 
           <IonButtons slot="end">
             <IonButton id="dropdown-trigger">
@@ -490,11 +660,7 @@ const Tab4 = () => {
           <IonPopover trigger="dropdown-trigger" triggerAction="click">
             <IonContent>
               <IonList>
-                <IonItem
-                  button
-                  onClick={fetchData}
-                  disabled={isLoading}
-                >
+                <IonItem button onClick={fetchData} disabled={isLoading}>
                   <IonIcon icon={sync} slot="start" />
                   <IonLabel>Maj. locale</IonLabel>
                 </IonItem>
@@ -506,13 +672,15 @@ const Tab4 = () => {
                   <IonIcon icon={map} slot="start" />
                   <IonLabel>Ajouter une carte</IonLabel>
                 </IonItem>
-                {/* Tu peux ajouter d'autres options ici */}
+                <IonItem button onClick={fetchPlof} disabled={isLoading}>
+                  <IonIcon icon={layersOutline} slot="start" />
+                  <IonLabel>Maj. plof local</IonLabel>
+                </IonItem>
               </IonList>
             </IonContent>
           </IonPopover>
         </IonToolbar>
       </IonHeader>
-
 
       <IonContent className="ion-padding" color="light">
         {/* Carte du paramètre actuel */}
@@ -526,11 +694,13 @@ const Tab4 = () => {
                 justifyContent: "center",
               }}
             >
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <IonIcon
                   icon={settingsOutline}
                   color="primary"
@@ -554,7 +724,8 @@ const Tab4 = () => {
                   <IonItem lines="none" className="param-item">
                     <IonLabel>
                       <IonText color="medium">
-                        (Code region-Code district-Code commune-Code fokontany-Code hameau-Numero auto increment)
+                        (Code region-Code district-Code commune-Code
+                        fokontany-Code hameau-Numero auto increment)
                       </IonText>
                       <p>
                         <b>{currentParcelleCode || "Aucun code disponible"}</b>
@@ -674,10 +845,12 @@ const Tab4 = () => {
                     <IonLabel className="param-label">
                       <IonText>
                         <h3>
-                          {param.region.nomregion} → {param.district.nomdistrict}
+                          {param.region.nomregion} →{" "}
+                          {param.district.nomdistrict}
                         </h3>
                         <p>
-                          {param.commune.nomcommune} → {param.fokontany.nomfokontany} →{" "}
+                          {param.commune.nomcommune} →{" "}
+                          {param.fokontany.nomfokontany} →{" "}
                           {param.hameau.nomhameau}
                         </p>
                         <p>{new Date(param.dateSelection).toLocaleString()}</p>
@@ -894,7 +1067,6 @@ const Tab4 = () => {
             </div>
           )}
         </IonContent>
-
       </IonModal>
 
       {/* Modal de sélection des paramètres */}

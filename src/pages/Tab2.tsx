@@ -15,7 +15,7 @@ import {
   useIonViewWillEnter,
 } from "@ionic/react";
 import { useLocation } from "react-router-dom";
-import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
 import Map from "ol/Map";
 import View from "ol/View";
@@ -40,6 +40,7 @@ import {
 } from "ionicons/icons";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
+import GeoJSON from "ol/format/GeoJSON";
 import { Feature } from "ol";
 import Polygon from "ol/geom/Polygon";
 import { Style, Stroke, Fill } from "ol/style";
@@ -63,15 +64,136 @@ const Tab2: React.FC = () => {
   const alreadyChecked = useRef(new Set<string>());
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
+    number[] | null
+  >(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const [geoJsonLayers, setGeoJsonLayers] = useState<
+    VectorLayer<VectorSource>[]
+  >([]);
   const [showCard, setShowCard] = useState(true);
   const query = useQuery();
   const from = query.get("from");
   const action = query.get("action");
   const codeParcelle = query.get("code");
   const STORAGE_KEY = "parcelles_data";
+  const STORAGE_KEY_GEOJSON = "plofData";
+
+  const layerOrder = [
+    "region",
+    "district",
+    "commune",
+    "fokontany",
+    "ipss",
+    "demandecf",
+    "requisition",
+    "titre",
+    "certificat",
+    "cadastre",
+    "demandefn",
+  ];
+
+  const styleByType = (feature: Feature): Style => {
+    const type = feature.get("name"); // ton attribut type
+
+    // Fonction pour récupérer le label selon le type
+    const getLabel = () => {
+      switch (type) {
+        case "requisition":
+          return feature.get("num_requisition") || "";
+        case "certificat":
+          return feature.get("numerocertificat") || "";
+        case "ipss":
+          return feature.get("code_parcelle") || "";
+        case "demandecf":
+          return feature.get("numdemande") || "";
+        case "titre":
+          return feature.get("titres_req") || "";
+        default:
+          return feature.get("name") || "";
+      }
+    };
+
+    const labelText = getLabel();
+
+    const styleMap: Record<string, Style> = {
+      ipss: new Style({
+        stroke: new Stroke({ color: "rgba(5, 59, 255, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(5, 59, 255, 0.3)" }),
+      }),
+      certificat: new Style({
+        stroke: new Stroke({ color: "rgba(251, 255, 0, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(251, 255, 0, 0.3)" }),
+      }),
+      demandecf: new Style({
+        stroke: new Stroke({ color: "rgba(148, 52, 211, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(148, 52, 211, 0.3)" }),
+      }),
+      requisition: new Style({
+        stroke: new Stroke({ color: "rgba(148, 52, 211, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(148, 52, 211, 0.3)" }),
+      }),
+      titre: new Style({
+        stroke: new Stroke({ color: "rgba(255, 0, 0, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(255, 0, 0, 0.3)" }),
+      }),
+    };
+
+    if (styleMap[type]) {
+      const baseStyle = styleMap[type].clone();
+      baseStyle.setText(
+        new Text({
+          text: labelText,
+          font: "bold 10px Arial",
+          fill: new Fill({ color: "#000" }),
+          stroke: new Stroke({ color: "#fff", width: 1.5 }),
+          overflow: true,
+          placement: "point",
+        })
+      );
+      return baseStyle;
+    }
+
+    return new Style({
+      stroke: new Stroke({ color: "#7f7f7f", width: 1 }),
+      fill: new Fill({ color: "rgba(127, 127, 127, 0.2)" }),
+      text: new Text({
+        text: labelText,
+        font: "bold 14px Arial",
+        fill: new Fill({ color: "#333" }),
+        stroke: new Stroke({ color: "#fff", width: 3 }),
+        overflow: true,
+        placement: "point",
+      }),
+    });
+  };
+
+  const createVectorLayerFromGeoJSON = (
+    geojson: any
+  ): VectorLayer<VectorSource> => {
+    const format = new GeoJSON();
+    const features = format.readFeatures(geojson, {
+      featureProjection: "EPSG:3857",
+    });
+
+    const vectorSource = new VectorSource({ features });
+
+    // Trouve le type de la couche à partir de la première feature (ou autrement)
+    const firstFeature = features[0];
+    const type = firstFeature?.get("name")?.toLowerCase() || "";
+
+    const vectorLayer = new VectorLayer({
+      source: vectorSource,
+      style: styleByType, // ta fonction de style dynamique
+    });
+
+    // Définit le zIndex selon la position dans layerOrder
+    const zIndex = layerOrder.indexOf(type);
+    vectorLayer.setZIndex(zIndex === -1 ? 0 : zIndex);
+
+    return vectorLayer;
+  };
 
   const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
     const result = await Preferences.get({ key: STORAGE_KEY });
@@ -88,8 +210,45 @@ const Tab2: React.FC = () => {
     return [];
   };
 
+  const loadGeoJsonFromStorage = async () => {
+    try {
+      const plofDataStr = await Preferences.get({ key: STORAGE_KEY_GEOJSON });
+      if (!plofDataStr.value) throw new Error("Aucune donnée PLOF trouvée");
+
+      const structure = JSON.parse(plofDataStr.value);
+
+      const allFeatures = [];
+
+      for (const datastore of structure.datastores) {
+        for (const layer of datastore.layers) {
+          // Lire fichier local GeoJSON
+          const file = await Filesystem.readFile({
+            path: layer.path,
+            directory: Directory.Data,
+            encoding: Encoding.UTF8,
+          });
+
+          const geojson = JSON.parse(file.data);
+          allFeatures.push(geojson);
+        }
+      }
+
+      return allFeatures; // tableau de GeoJSONs
+    } catch (err) {
+      console.error("Erreur lecture fichiers PLOF:", err);
+      return [];
+    }
+  };
+
   const load = async () => {
     setParcelles(await loadParcellesFromStorage());
+
+    const geojsons = await loadGeoJsonFromStorage(); // tableau de GeoJSON purs
+
+    const vectorLayers = geojsons.map(createVectorLayerFromGeoJSON);
+
+    setGeoJsonLayers(vectorLayers);
+
     drawPolygonesFromParcelles();
   };
 
@@ -222,7 +381,10 @@ const Tab2: React.FC = () => {
     const closedPoints = isClosed ? drawPoints : [...drawPoints, first];
 
     const points = closedPoints.map(([x, y]) => {
-      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number,number];
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
+        number,
+        number
+      ];
       return new PointC(tx, ty);
     });
 
@@ -355,12 +517,19 @@ const Tab2: React.FC = () => {
     mapRef.current = map;
     drawPolygonesFromParcelles();
 
+    // Ajouter toutes les couches vectorielles GeoJSON chargées
+    geoJsonLayers.forEach((layer) => {
+      if (!mapRef.current?.getLayers().getArray().includes(layer)) {
+        mapRef.current?.addLayer(layer);
+      }
+    });
+
     return () => {
       map.setTarget(undefined);
       map.dispose();
       tileCache.current = {};
     };
-  }, [getTileUrl]);
+  }, [drawPolygonesFromParcelles, geoJsonLayers, getTileUrl]);
 
   useEffect(() => {
     updatePolygon();
