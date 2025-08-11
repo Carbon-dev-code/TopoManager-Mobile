@@ -48,16 +48,16 @@ import { Hameau } from "../model/limite/Hameau";
 const Tab4 = () => {
   const [territoire, setTerritoire] = useState<Territoire[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [allLoader, setAllLoader] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [serverUrl, setServerUrl] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
   const [showModalCarte, setShowModalCarte] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
   const [selectedCommune, setSelectedCommune] = useState<number | null>(null);
-  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(
-    null
-  );
+  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(null);
   const [selectedHameau, setSelectedHameau] = useState<number | null>(null);
   const [parametres, setParametres] = useState<ParametreTerritoire[]>([]);
   const [parametreActuel, setParametreActuel] =
@@ -106,8 +106,9 @@ const Tab4 = () => {
   };
 
   const fetchPlof = async () => {
-    setIsLoading(true);
+    setAllLoader(true);
     setError(null);
+    setSuccess(null);
 
     try {
       const currentServerIp = await ConfigService.getServerIp();
@@ -215,12 +216,13 @@ const Tab4 = () => {
         value: JSON.stringify(structure),
       });
 
-      console.log("Téléchargement PLOF terminé", structure);
+      setSuccess("Téléchargement PLOF terminé")
+
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
-      setIsLoading(false);
+      setAllLoader(false);
     }
   };
 
@@ -872,6 +874,26 @@ const Tab4 = () => {
           </div>
         </>
       )}
+      {allLoader ? (
+        <IonLoading isOpen={true} message="Chargement..." />
+      ) : error ? (
+        <IonAlert
+          isOpen={!!error}
+          onDidDismiss={() => setError(null)}
+          header="Erreur"
+          message={error}
+          buttons={["OK"]}
+        />
+      ) : success ? (
+        <IonAlert
+          isOpen={!!success}
+          onDidDismiss={() => setSuccess(null)}
+          header="Success"
+          message={success}
+          buttons={["OK"]}
+        />
+      ) : null}
+
       <IonModal
         isOpen={showModalCarte}
         onDidDismiss={() => setShowModalCarte(false)}
