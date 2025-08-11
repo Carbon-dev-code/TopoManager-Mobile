@@ -75,9 +75,7 @@ const Tab1: React.FC = () => {
   const [isPhysique, setIsPhysique] = useState(0);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
-    "demandeur"
-  );
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur");
 
   const history = useHistory();
 

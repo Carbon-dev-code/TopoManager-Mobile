@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   IonContent,
@@ -11,8 +12,9 @@ import {
   IonLabel,
   IonFab,
   IonFabButton,
+  useIonViewWillEnter,
 } from "@ionic/react";
-import { useLocation } from 'react-router-dom';
+import { useLocation } from "react-router-dom";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
 import Map from "ol/Map";
@@ -66,9 +68,9 @@ const Tab2: React.FC = () => {
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const [showCard, setShowCard] = useState(true);
   const query = useQuery();
-  const from = query.get('from');
-  const action = query.get('action');
-  const codeParcelle = query.get('code');
+  const from = query.get("from");
+  const action = query.get("action");
+  const codeParcelle = query.get("code");
   const STORAGE_KEY = "parcelles_data";
 
   const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
@@ -86,22 +88,22 @@ const Tab2: React.FC = () => {
     return [];
   };
 
-  useEffect(() => {
-    const load = async () => {
-      const savedParcelles = await loadParcellesFromStorage();
-      await drawPolygonesFromParcelles();
-      setParcelles(savedParcelles);
-    };
+  const load = async () => {
+    setParcelles(await loadParcellesFromStorage());
+    drawPolygonesFromParcelles();
+  };
+
+  useIonViewWillEnter(() => {
     load();
-  }, []);
+  });
 
   useEffect(() => {
     const load = async () => {
       const savedParcelles = await loadParcellesFromStorage();
       setParcelles(savedParcelles);
 
-      if (from === 'tab1' && action === 'croquis' && codeParcelle) {
-        const found = savedParcelles.find(p => p.code === codeParcelle);
+      if (from === "tab1" && action === "croquis" && codeParcelle) {
+        const found = savedParcelles.find((p) => p.code === codeParcelle);
         setCurrentParcelle(found || null);
       } else {
         setCurrentParcelle(null);
@@ -115,10 +117,11 @@ const Tab2: React.FC = () => {
 
     const source = new VectorSource();
 
-    parcelles.forEach(parcelle => {
-      parcelle.polygone?.forEach(polygone => {
-        const points = polygone.points.map(p =>
-          transform([p.x, p.y], "EPSG:29702", "EPSG:3857") as [number, number]
+    parcelles.forEach((parcelle) => {
+      parcelle.polygone?.forEach((polygone) => {
+        const points = polygone.points.map(
+          (p) =>
+            transform([p.x, p.y], "EPSG:29702", "EPSG:3857") as [number, number]
         );
 
         if (points.length > 2) {
@@ -168,15 +171,16 @@ const Tab2: React.FC = () => {
       source.addFeature(new Feature(polygon));
     }
 
-    drawPoints.forEach(pt => {
+    drawPoints.forEach((pt) => {
       source.addFeature(new Feature({ geometry: new Point(pt) }));
     });
 
-    if (vectorLayerRef.current) mapRef.current.removeLayer(vectorLayerRef.current);
+    if (vectorLayerRef.current)
+      mapRef.current.removeLayer(vectorLayerRef.current);
 
     const vectorLayer = new VectorLayer({
       source,
-      style: feature => {
+      style: (feature) => {
         const geometry = feature.getGeometry();
         if (geometry instanceof Point) {
           return new Style({
@@ -184,7 +188,7 @@ const Tab2: React.FC = () => {
               radius: 3,
               fill: new Fill({ color: "#ff0000" }),
               stroke: new Stroke({ color: "#fff", width: 1 }),
-            })
+            }),
           });
         } else if (geometry instanceof Polygon) {
           return new Style({
@@ -193,7 +197,7 @@ const Tab2: React.FC = () => {
           });
         }
         return undefined;
-      }
+      },
     });
 
     vectorLayerRef.current = vectorLayer;
@@ -211,28 +215,25 @@ const Tab2: React.FC = () => {
       return;
     }
 
-    // ✅ Fermer le polygone : si le dernier point ≠ premier, on ajoute le premier à la fin
     const first = drawPoints[0];
     const last = drawPoints[drawPoints.length - 1];
     const isClosed = first[0] === last[0] && first[1] === last[1];
 
     const closedPoints = isClosed ? drawPoints : [...drawPoints, first];
 
-    // 🔁 Transform to EPSG:29702 + PointC
     const points = closedPoints.map(([x, y]) => {
-      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number, number];
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number,number];
       return new PointC(tx, ty);
     });
 
     const newPolygone = new Polygone(points);
 
-    // Ajout au currentParcelle
     const updatedParcelle: Parcelle = {
       ...currentParcelle,
       polygone: [newPolygone],
     };
 
-    const updatedParcelles = parcelles.map(p =>
+    const updatedParcelles = parcelles.map((p) =>
       p.code === updatedParcelle.code ? updatedParcelle : p
     );
 
@@ -246,32 +247,49 @@ const Tab2: React.FC = () => {
       value: JSON.stringify(updatedParcelles),
     });
 
+    //eto tokn solona popup kely
     console.log("✅ Polygone fermé et enregistré");
   };
 
-  const getTileUrl = useCallback(async (z: number, x: number, y: number): Promise<string> => {
-    const cacheKey = `${z}/${x}/${y}`;
-    if (tileCache.current[cacheKey] !== undefined) return tileCache.current[cacheKey];
+  const getTileUrl = useCallback(
+    async (z: number, x: number, y: number): Promise<string> => {
+      const cacheKey = `${z}/${x}/${y}`;
+      if (tileCache.current[cacheKey] !== undefined)
+        return tileCache.current[cacheKey];
 
-    try {
-      const { value } = await Preferences.get({ key: "parametreActuel" });
-      if (!value) return "";
+      try {
+        const { value } = await Preferences.get({ key: "parametreActuel" });
+        if (!value) return "";
 
-      const params = JSON.parse(value);
-      const tilePath = `tiles/${sanitizeName(params.region.nomregion)}/${sanitizeName(params.district.nomdistrict)}/${sanitizeName(params.commune.nomcommune)}/${sanitizeName(params.fokontany.nomfokontany)}/${sanitizeName(params.hameau.nomhameau)}/fond/${z}/${x}/${y}.png`;
+        const params = JSON.parse(value);
+        const tilePath = `tiles/${sanitizeName(
+          params.region.nomregion
+        )}/${sanitizeName(params.district.nomdistrict)}/${sanitizeName(
+          params.commune.nomcommune
+        )}/${sanitizeName(params.fokontany.nomfokontany)}/${sanitizeName(
+          params.hameau.nomhameau
+        )}/fond/${z}/${x}/${y}.png`;
 
-      const file = await Filesystem.readFile({ path: tilePath, directory: Directory.Data });
-      const url = `data:image/png;base64,${file.data}`;
-      tileCache.current[cacheKey] = url;
-      return url;
-    } catch (error) {
-      tileCache.current[cacheKey] = "";
-      return "";
-    }
-  }, [sanitizeName]);
+        const file = await Filesystem.readFile({
+          path: tilePath,
+          directory: Directory.Data,
+        });
+        const url = `data:image/png;base64,${file.data}`;
+        tileCache.current[cacheKey] = url;
+        return url;
+      } catch (error) {
+        tileCache.current[cacheKey] = "";
+        return "";
+      }
+    },
+    [sanitizeName]
+  );
 
   useEffect(() => {
-    proj4.defs("EPSG:29702", "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs");
+    proj4.defs(
+      "EPSG:29702",
+      "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs"
+    );
     register(proj4);
   }, []);
 
@@ -286,7 +304,16 @@ const Tab2: React.FC = () => {
     });
 
     const map = new Map({
-      controls: [new ScaleLine({ units: "metric", bar: true, steps: 1, text: true, minWidth: 135, maxWidth: 200 })],
+      controls: [
+        new ScaleLine({
+          units: "metric",
+          bar: true,
+          steps: 1,
+          text: true,
+          minWidth: 135,
+          maxWidth: 200,
+        }),
+      ],
       target: mapElement.current,
       layers: [new TileLayer({ source: new OSM() })],
       view,
@@ -295,7 +322,9 @@ const Tab2: React.FC = () => {
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center) {
-        setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702") as [number, number]);
+        setCenterCoordsProjected(
+          transform(center, "EPSG:3857", "EPSG:29702") as [number, number]
+        );
       }
     });
 
@@ -317,7 +346,7 @@ const Tab2: React.FC = () => {
         }
 
         return "assets/placeholder-tile.png";
-      }
+      },
     });
 
     const localLayer = new TileLayer({ source: localSource });
@@ -388,16 +417,31 @@ const Tab2: React.FC = () => {
                 color="danger"
                 onClick={() => setShowCard(false)}
               >
-                <IonIcon icon={closeOutline} style={{ fontSize: '24px' }} />
+                <IonIcon icon={closeOutline} style={{ fontSize: "24px" }} />
               </IonButton>
             </div>
 
             <div className="glass-card-content">
-              <p><strong>Date de création :</strong> {currentParcelle.dateCreation || 'N/A'}</p>
-              <p><strong>Consistance :</strong> {currentParcelle.consistance || 'Aucune'}</p>
-              <p><strong>Opposition :</strong> {currentParcelle.oppossition ? 'Oui' : 'Non'}</p>
-              <p><strong>Revandication :</strong> {currentParcelle.revandication ? 'Oui' : 'Non'}</p>
-              <p><strong>Observation :</strong> {currentParcelle.observation || 'Aucune'}</p>
+              <p>
+                <strong>Date de création :</strong>{" "}
+                {currentParcelle.dateCreation || "N/A"}
+              </p>
+              <p>
+                <strong>Consistance :</strong>{" "}
+                {currentParcelle.consistance || "Aucune"}
+              </p>
+              <p>
+                <strong>Opposition :</strong>{" "}
+                {currentParcelle.oppossition ? "Oui" : "Non"}
+              </p>
+              <p>
+                <strong>Revandication :</strong>{" "}
+                {currentParcelle.revandication ? "Oui" : "Non"}
+              </p>
+              <p>
+                <strong>Observation :</strong>{" "}
+                {currentParcelle.observation || "Aucune"}
+              </p>
             </div>
           </div>
         )}
@@ -409,10 +453,7 @@ const Tab2: React.FC = () => {
               fill="clear"
               onClick={() => setShowCard(true)}
             >
-              <IonIcon
-                color="dark"
-                icon={information}
-              />
+              <IonIcon color="dark" icon={information} />
             </IonButton>
           )}
 
@@ -420,7 +461,7 @@ const Tab2: React.FC = () => {
             <IonFabButton
               size="small"
               className="glass-btn"
-              onClick={() => setFabOpen(prev => !prev)}
+              onClick={() => setFabOpen((prev) => !prev)}
             >
               <IonIcon icon={pencilOutline}></IonIcon>
             </IonFabButton>
@@ -434,14 +475,18 @@ const Tab2: React.FC = () => {
                   className="glass-btn-draw"
                   onClick={() => {
                     const center = mapRef.current?.getView().getCenter();
-                    if (center) setDrawPoints(prev => [...prev, center as [number, number]]);
+                    if (center)
+                      setDrawPoints((prev) => [
+                        ...prev,
+                        center as [number, number],
+                      ]);
                   }}
                 >
                   <IonIcon color="blue" icon={addOutline} />
                 </IonFabButton>
                 <IonFabButton
                   className="glass-btn-draw"
-                  onClick={() => setDrawPoints(prev => prev.slice(0, -1))}
+                  onClick={() => setDrawPoints((prev) => prev.slice(0, -1))}
                 >
                   <IonIcon color="danger" icon={removeOutline} />
                 </IonFabButton>
