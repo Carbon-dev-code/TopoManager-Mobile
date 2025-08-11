@@ -170,7 +170,7 @@ const Tab2: React.FC = () => {
   };
 
   const createVectorLayerFromGeoJSON = (
-    geojson: any
+    geojson: unknown
   ): VectorLayer<VectorSource> => {
     const format = new GeoJSON();
     const features = format.readFeatures(geojson, {
@@ -179,7 +179,6 @@ const Tab2: React.FC = () => {
 
     const vectorSource = new VectorSource({ features });
 
-    // Trouve le type de la couche à partir de la première feature (ou autrement)
     const firstFeature = features[0];
     const type = firstFeature?.get("name")?.toLowerCase() || "";
 
