@@ -79,6 +79,7 @@ const Tab2: React.FC = () => {
   const codeParcelle = query.get("code");
   const STORAGE_KEY = "parcelles_data";
   const STORAGE_KEY_GEOJSON = "plofData";
+  const paramsRef = useRef<any>(null);
 
   const layerOrder = [
     "region",
@@ -412,29 +413,43 @@ const Tab2: React.FC = () => {
     console.log("✅ Polygone fermé et enregistré");
   };
 
+  // Charger parametreActuel une seule fois au montage
+  useEffect(() => {
+    Preferences.get({ key: "parametreActuel" }).then(({ value }) => {
+      if (value) {
+        try {
+          paramsRef.current = JSON.parse(value);
+        } catch {
+          paramsRef.current = null;
+        }
+      }
+    });
+  }, []);
+
   const getTileUrl = useCallback(
     async (z: number, x: number, y: number): Promise<string> => {
       const cacheKey = `${z}/${x}/${y}`;
-      if (tileCache.current[cacheKey] !== undefined)
+      if (tileCache.current[cacheKey] !== undefined) {
         return tileCache.current[cacheKey];
+      }
 
       try {
-        const { value } = await Preferences.get({ key: "parametreActuel" });
-        if (!value) return "";
+        if (!paramsRef.current) return "";
 
-        const params = JSON.parse(value);
+        const p = paramsRef.current;
         const tilePath = `tiles/${sanitizeName(
-          params.region.nomregion
-        )}/${sanitizeName(params.district.nomdistrict)}/${sanitizeName(
-          params.commune.nomcommune
-        )}/${sanitizeName(params.fokontany.nomfokontany)}/${sanitizeName(
-          params.hameau.nomhameau
+          p.region.nomregion
+        )}/${sanitizeName(p.district.nomdistrict)}/${sanitizeName(
+          p.commune.nomcommune
+        )}/${sanitizeName(p.fokontany.nomfokontany)}/${sanitizeName(
+          p.hameau.nomhameau
         )}/fond/${z}/${x}/${y}.png`;
 
         const file = await Filesystem.readFile({
           path: tilePath,
           directory: Directory.Data,
         });
+
         const url = `data:image/png;base64,${file.data}`;
         tileCache.current[cacheKey] = url;
         return url;
@@ -459,12 +474,14 @@ const Tab2: React.FC = () => {
 
     const view = new View({
       center: fromLonLat([46.383814, -25.041426]),
-      zoom: 12,
+      zoom: 15,
       minZoom: 11,
-      maxZoom: 21,
+      maxZoom: 17,
     });
 
     const map = new Map({
+      target: mapElement.current,
+      view,
       controls: [
         new ScaleLine({
           units: "metric",
@@ -475,17 +492,14 @@ const Tab2: React.FC = () => {
           maxWidth: 200,
         }),
       ],
-      target: mapElement.current,
-      layers: [new TileLayer({ source: new OSM() })],
-      view,
     });
+
+    mapRef.current = map;
 
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center) {
-        setCenterCoordsProjected(
-          transform(center, "EPSG:3857", "EPSG:29702") as [number, number]
-        );
+        setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
       }
     });
 
@@ -505,30 +519,31 @@ const Tab2: React.FC = () => {
             if (tileCache.current[cacheKey]) localSource.refresh();
           });
         }
-
-        return "assets/placeholder-tile.png";
+        // Image par défaut en attendant le vrai tile
+        return "assets/logo/logo3.png";
       },
     });
 
     const localLayer = new TileLayer({ source: localSource });
     map.addLayer(localLayer);
     localLayerRef.current = localLayer;
-    mapRef.current = map;
-    drawPolygonesFromParcelles();
 
-    // Ajouter toutes les couches vectorielles GeoJSON chargées
     geoJsonLayers.forEach((layer) => {
-      if (!mapRef.current?.getLayers().getArray().includes(layer)) {
-        mapRef.current?.addLayer(layer);
+      if (!map.getLayers().getArray().includes(layer)) {
+        map.addLayer(layer);
       }
     });
+
+    localSource.refresh();
+
 
     return () => {
       map.setTarget(undefined);
       map.dispose();
       tileCache.current = {};
+      alreadyChecked.current.clear();
     };
-  }, [drawPolygonesFromParcelles, geoJsonLayers, getTileUrl]);
+  }, [geoJsonLayers, getTileUrl, setCenterCoordsProjected]);
 
   useEffect(() => {
     updatePolygon();
@@ -626,13 +641,15 @@ const Tab2: React.FC = () => {
           )}
 
           <IonFab slot="fixed" vertical="bottom" horizontal="end">
-            <IonFabButton
-              size="small"
-              className="glass-btn"
-              onClick={() => setFabOpen((prev) => !prev)}
-            >
-              <IonIcon icon={pencilOutline}></IonIcon>
-            </IonFabButton>
+            {currentParcelle && (
+              <IonFabButton
+                size="small"
+                className="glass-btn"
+                onClick={() => setFabOpen((prev) => !prev)}
+              >
+                <IonIcon icon={pencilOutline}></IonIcon>
+              </IonFabButton>
+            )}
 
             {fabOpen && (
               <div className="custom-fab-list">
