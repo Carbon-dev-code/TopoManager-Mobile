@@ -16,6 +16,7 @@ import {
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
 import { documentOutline, mapOutline, cloudUploadOutline, settings} from 'ionicons/icons';
+import topomanager from "./assets/image/BackGround/TM.jpeg";
 
 import Tab1 from './pages/Tab1';
 import Tab2 from './pages/Tab2';
@@ -45,7 +46,10 @@ const MainRouter: React.FC = () => {
       <IonMenu contentId="main-content" type="overlay">
         <IonHeader>
           <IonToolbar>
-            <IonTitle>TopoManager</IonTitle>
+            <IonTitle >
+              <img src={topomanager} alt="Logo TopoManager" style={{width: "80px", marginRight: "15px"}}/>
+              <IonLabel style={{fontSize:"20px"}}>TOPOMANAGER</IonLabel> 
+            </IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">

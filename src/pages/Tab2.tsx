@@ -13,6 +13,7 @@ import {
   IonFab,
   IonFabButton,
   useIonViewWillEnter,
+  IonInput,
 } from "@ionic/react";
 import { useLocation } from "react-router-dom";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
@@ -37,6 +38,7 @@ import {
   closeOutline,
   checkmark,
   information,
+  search,
 } from "ionicons/icons";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -73,6 +75,7 @@ const Tab2: React.FC = () => {
     VectorLayer<VectorSource>[]
   >([]);
   const [showCard, setShowCard] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
   const query = useQuery();
   const from = query.get("from");
   const action = query.get("action");
@@ -146,7 +149,7 @@ const Tab2: React.FC = () => {
       baseStyle.setText(
         new Text({
           text: labelText,
-          font: "bold 10px Arial",
+          font: "12px Arial",
           fill: new Fill({ color: "#000" }),
           stroke: new Stroke({ color: "#fff", width: 1.5 }),
           overflow: true,
@@ -161,14 +164,22 @@ const Tab2: React.FC = () => {
       fill: new Fill({ color: "rgba(127, 127, 127, 0.2)" }),
       text: new Text({
         text: labelText,
-        font: "bold 14px Arial",
+        font: "12px Arial",
         fill: new Fill({ color: "#333" }),
-        stroke: new Stroke({ color: "#fff", width: 3 }),
+        stroke: new Stroke({ color: "#fff", width: 1.5 }),
         overflow: true,
         placement: "point",
       }),
     });
   };
+
+  const stateSearch = () => {
+    if (showSearch) {
+      setShowSearch(false);
+    }else{
+      setShowSearch(true);
+    }
+  }
 
   const createVectorLayerFromGeoJSON = (
     geojson: unknown
@@ -565,10 +576,16 @@ const Tab2: React.FC = () => {
             <IonMenuButton />
           </IonButtons>
           {currentParcelle != null && (
-            <IonLabel className="glass-label" slot="end">
+            <IonLabel className="glass-label" slot="start">
               Croquis du parcelle {currentParcelle.code}
             </IonLabel>
           )}
+          <IonButtons
+            onClick={stateSearch}
+            className="glass-btn"
+            slot="end">
+            <IonIcon icon={search} />
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
@@ -629,7 +646,71 @@ const Tab2: React.FC = () => {
           </div>
         )}
 
+        {showSearch && (
+          <div className="map-search">
+            <div className="search-glass">
+              <IonInput
+                type="text"
+                placeholder="Recherche titre, karatany, ipss, ..."
+              />
+            </div>
+          </div>
+        )}
+
         <div className="map-controls">
+          {fabOpen && (
+            <div>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={addPolygone}>
+                <IonIcon color="success" icon={checkmark} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => {
+                  const center = mapRef.current?.getView().getCenter();
+                  if (center)
+                    setDrawPoints((prev) => [
+                      ...prev,
+                      center as [number, number],
+                    ]);
+                }}
+              >
+                <IonIcon color="primary" icon={addOutline} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => setDrawPoints((prev) => prev.slice(0, -1))}
+              >
+                <IonIcon color="danger" icon={removeOutline} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => {
+                  setDrawPoints([]);
+                  setFabOpen(false);
+                }}
+              >
+                <IonIcon color="dark" icon={closeOutline} />
+              </IonButton>
+            </div>
+          )}
+
+          {currentParcelle && (
+            <IonButton
+              fill="clear"
+              className="glass-btn"
+
+              onClick={() => setFabOpen((prev) => !prev)}
+            >
+              <IonIcon color="danger" icon={pencilOutline}></IonIcon>
+            </IonButton>
+          )}
+
           {currentParcelle && (
             <IonButton
               className="glass-btn"
@@ -639,54 +720,6 @@ const Tab2: React.FC = () => {
               <IonIcon color="dark" icon={information} />
             </IonButton>
           )}
-
-          <IonFab slot="fixed" vertical="bottom" horizontal="end">
-            {currentParcelle && (
-              <IonFabButton
-                size="small"
-                className="glass-btn"
-                onClick={() => setFabOpen((prev) => !prev)}
-              >
-                <IonIcon icon={pencilOutline}></IonIcon>
-              </IonFabButton>
-            )}
-
-            {fabOpen && (
-              <div className="custom-fab-list">
-                <IonFabButton className="glass-btn-draw" onClick={addPolygone}>
-                  <IonIcon color="green" icon={checkmark} />
-                </IonFabButton>
-                <IonFabButton
-                  className="glass-btn-draw"
-                  onClick={() => {
-                    const center = mapRef.current?.getView().getCenter();
-                    if (center)
-                      setDrawPoints((prev) => [
-                        ...prev,
-                        center as [number, number],
-                      ]);
-                  }}
-                >
-                  <IonIcon color="blue" icon={addOutline} />
-                </IonFabButton>
-                <IonFabButton
-                  className="glass-btn-draw"
-                  onClick={() => setDrawPoints((prev) => prev.slice(0, -1))}
-                >
-                  <IonIcon color="danger" icon={removeOutline} />
-                </IonFabButton>
-                <IonFabButton
-                  className="glass-btn-draw"
-                  onClick={() => {
-                    setDrawPoints([]);
-                    setFabOpen(false);
-                  }}
-                >
-                  <IonIcon color="dark" icon={closeOutline} />
-                </IonFabButton>
-              </div>
-            )}
-          </IonFab>
 
           <IonButton
             className="glass-btn"

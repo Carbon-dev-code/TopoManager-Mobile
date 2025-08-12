@@ -23,6 +23,37 @@
   z-index: 1000;
 }
 
+.map-search {
+  position: relative;
+  height: 40px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-glass{
+  padding: 0px 20px 0px 20px ;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.468);
+  backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  width: 80%;
+  height: 100%;
+  position: relative;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.search-glass ion-input {
+  font-size: 15px;
+}
+
 .glass-btn {
   --padding-start: 0;
   --padding-end: 0;
@@ -50,6 +81,10 @@
 }
 
 .glass-btn ion-icon {
+  font-size: 20px;
+}
+
+.glass-btn-draw ion-icon {
   font-size: 20px;
 }
 
@@ -127,16 +162,15 @@
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
 }
 
-ion-fab-button.glass-btn-draw::part(native)  {
+.glass-btn {
   --padding-start: 0;
   --padding-end: 0;
   justify-content: center;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.35);
-  /* ultra transparent */
-  backdrop-filter: blur(5px) saturate(50%);
-  border: 1px solid rgba(255, 255, 255, 0.411);
+  background: rgba(255, 255, 255, 0.521);
+  backdrop-filter: blur(10px) saturate(50%);
+  border: 1px solid rgba(255, 255, 255, 0.761);
   border-radius: 50%;
   box-shadow:
     0 4px 12px rgba(255, 255, 255, 0.1),
@@ -148,37 +182,17 @@ ion-fab-button.glass-btn-draw::part(native)  {
   transition: background 0.3s ease, transform 0.3s ease;
 }
 
-ion-fab-button.glass-btn::part(native)  {
-  --padding-start: 0;
-  --padding-end: 0;
-  justify-content: center;
-  display: flex;
+.glass-label{
   align-items: center;
-  background: rgba(255, 255, 255, 0.35);
-  /* ultra transparent */
-  backdrop-filter: blur(5px) saturate(50%);
-  border: 1px solid rgba(255, 255, 255, 0.411);
-  border-radius: 50%;
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
-    inset 0 1px 3px rgba(255, 255, 255, 0.2);
-  position: relative;
-  overflow: hidden;
-  transition: background 0.3s ease, transform 0.3s ease;
-  color: red;
-}
-
-.glass-label {
   padding: 5px 10px 5px 10px;
-  margin-right: 10px;
+  margin-left: 10px;
   color: black;
   justify-content: center;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.35);
-  /* ultra transparent */
-  backdrop-filter: blur(5px) saturate(50%);
-  border: 1px solid rgba(255, 255, 255, 0.411);
+  background: rgba(255, 255, 255, 0.548);
+  backdrop-filter: blur(5px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   box-shadow:
     0 4px 12px rgba(255, 255, 255, 0.1),
@@ -191,15 +205,15 @@ ion-fab-button.glass-btn::part(native)  {
 /* dans Tab2.css */
 .glass-card-bottom {
   position: absolute;
-  bottom: 16px;
+  top: 50px;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
+  width: 40vh;
   max-width: 600px;
   max-height: 50vh;
   background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(5px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 16px;
   padding: 16px;
   color: #fff;
@@ -221,6 +235,7 @@ ion-fab-button.glass-btn::part(native)  {
     opacity: 0;
     transform: translate(-50%, 20px);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0);
@@ -239,20 +254,6 @@ ion-fab-button.glass-btn::part(native)  {
   color: black;
 }
 
-.fab-horizontal-end {
-    right: calc(-6px + var(--ion-safe-area-right, 0px)) !important;
+.sc-ion-input-md-h{
+  --highlight-color-focused: none !important;
 }
-
-.fab-vertical-bottom {
-    bottom: 81px !important;
-}
-
-.custom-fab-list {
-  position: absolute;
-  bottom: 40px;
-  right: -8px;
-  display: flex;
-  flex-direction: column;
-  z-index: 1000;
-}
-
