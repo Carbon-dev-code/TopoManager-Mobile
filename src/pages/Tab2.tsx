@@ -14,6 +14,7 @@ import {
   IonFabButton,
   useIonViewWillEnter,
   IonInput,
+  IonToast,
 } from "@ionic/react";
 import { useLocation } from "react-router-dom";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
@@ -57,6 +58,7 @@ function useQuery() {
 }
 
 const Tab2: React.FC = () => {
+  const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const mapRef = useRef<Map | null>(null);
   const mapElement = useRef<HTMLDivElement>(null);
   const tileCache = useRef<Record<string, string>>({});
@@ -66,14 +68,10 @@ const Tab2: React.FC = () => {
   const alreadyChecked = useRef(new Set<string>());
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
-    number[] | null
-  >(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-  const [geoJsonLayers, setGeoJsonLayers] = useState<
-    VectorLayer<VectorSource>[]
-  >([]);
+  const [geoJsonLayers, setGeoJsonLayers] = useState<VectorLayer<VectorSource>[]>([]);
   const [showCard, setShowCard] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const query = useQuery();
@@ -83,6 +81,8 @@ const Tab2: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
   const STORAGE_KEY_GEOJSON = "plofData";
   const paramsRef = useRef<any>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
 
   const layerOrder = [
     "region",
@@ -176,7 +176,7 @@ const Tab2: React.FC = () => {
   const stateSearch = () => {
     if (showSearch) {
       setShowSearch(false);
-    }else{
+    } else {
       setShowSearch(true);
     }
   }
@@ -568,6 +568,110 @@ const Tab2: React.FC = () => {
     setShowLocalTiles(visible);
   }, []);
 
+  const blinkFeature = useCallback((feature: Feature) => {
+    if (!mapRef.current) return;
+
+    // Supprimer ancien highlight
+    if (highlightLayerRef.current) {
+      mapRef.current.removeLayer(highlightLayerRef.current);
+    }
+
+    const highlightSource = new VectorSource({
+      features: [feature],
+    });
+
+    let visible = true;
+    const highlightStyle = (visible: boolean) =>
+      new Style({
+        stroke: new Stroke({
+          color: visible ? "rgba(0, 0, 0, 0.63)" : "rgba(255, 0, 0, 0.63)",
+          width: 3,
+        }),
+        fill: new Fill({
+          color: visible ? "rgba(255, 0, 0, 1)" : "rgba(0, 0, 0, 1)",
+        }),
+      });
+
+    const vectorLayer = new VectorLayer({
+      source: highlightSource,
+      style: highlightStyle(true),
+      zIndex: 9999,
+    });
+
+    mapRef.current.addLayer(vectorLayer);
+    highlightLayerRef.current = vectorLayer;
+
+    // Intervalle clignotant
+    const blinkInterval = setInterval(() => {
+      visible = !visible;
+      vectorLayer.setStyle(highlightStyle(visible));
+    }, 500); // 500ms ON/OFF
+
+    // Stop après 5 secondes
+    setTimeout(() => {
+      clearInterval(blinkInterval);
+      if (mapRef.current && highlightLayerRef.current) {
+        mapRef.current.removeLayer(highlightLayerRef.current);
+        highlightLayerRef.current = null;
+      }
+    }, 5000);
+  }, []);
+
+
+
+  const searchAndZoom = useCallback((searchTerm: string) => {
+    if (!mapRef.current) return;
+
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return;
+
+    let foundFeature: Feature | null = null;
+
+    // 🔍 Parcourir toutes les couches GeoJSON
+    for (const layer of geoJsonLayers) {
+      const source = layer.getSource();
+      if (!source) continue;
+
+      source.forEachFeature((feature) => {
+        const props = feature.getProperties();
+        for (const key in props) {
+          if (typeof props[key] === "string" && props[key].toLowerCase().includes(term)) {
+            foundFeature = feature;
+            return;
+          }
+        }
+      });
+
+      if (foundFeature) break;
+    }
+
+    // 🔍 Si non trouvé, essayer dans les parcelles
+    if (!foundFeature && parcelles.length > 0) {
+      parcelles.forEach((p) => {
+        if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
+          const points = p.polygone[0].points.map((pt) =>
+            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857")
+          );
+          const polygon = new Polygon([points]);
+          foundFeature = new Feature(polygon);
+        }
+      });
+    }
+
+    // 📌 Zoomer si trouvé
+    if (foundFeature) {
+      const extent = foundFeature.getGeometry()?.getExtent();
+      if (extent) {
+        mapRef.current.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
+        blinkFeature(foundFeature);
+
+      }
+    } else {
+      setToastMessage(`Aucun parcelle trouvé pour : ${searchTerm}`);
+    }
+  }, [geoJsonLayers, parcelles]);
+
+
   return (
     <IonPage>
       <IonHeader className="custom-header">
@@ -650,12 +754,28 @@ const Tab2: React.FC = () => {
           <div className="map-search">
             <div className="search-glass">
               <IonInput
-                type="text"
+                type="search"
                 placeholder="Recherche titre, karatany, ipss, ..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const target = e.target as HTMLInputElement;
+                    const val = target.value;
+                    if (val && val.trim()) {
+                      searchAndZoom(val.trim());
+                    }
+                  }
+                }}
               />
             </div>
           </div>
         )}
+        <IonToast
+          isOpen={!!toastMessage}
+          message={toastMessage || ""}
+          duration={2000}
+          color="danger"
+          onDidDismiss={() => setToastMessage(null)}
+        />
 
         <div className="map-controls">
           {fabOpen && (
