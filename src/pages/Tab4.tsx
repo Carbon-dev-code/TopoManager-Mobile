@@ -404,7 +404,8 @@ const Tab4 = () => {
       let done = 0;
 
       for (const tilePath of tiles) {
-        const tileUrl = `${currentServerUrl}/fonds/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${tilePath}`;
+        const tileUrl = `${currentServerUrl}/fonds/${tilePath}`;
+        
         const response = await fetch(tileUrl);
         if (!response.ok) {
           done++;
@@ -415,8 +416,7 @@ const Tab4 = () => {
         const blob = await response.blob();
         const base64 = await blobToBase64(blob);
 
-        const localPath = `tiles/fond/${tilePath}`;
-        //const localPath = `tiles/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${selectedHameauNom}/fond/${tilePath}`;
+        const localPath = `tiles/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${selectedHameauNom}/fond/${tilePath}`;
 
         await Filesystem.writeFile({
           path: localPath,
