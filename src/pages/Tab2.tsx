@@ -448,13 +448,7 @@ const Tab2: React.FC = () => {
         if (!paramsRef.current) return "";
 
         const p = paramsRef.current;
-        const tilePath = `tiles/${sanitizeName(
-          p.region.nomregion
-        )}/${sanitizeName(p.district.nomdistrict)}/${sanitizeName(
-          p.commune.nomcommune
-        )}/${sanitizeName(p.fokontany.nomfokontany)}/${sanitizeName(
-          p.hameau.nomhameau
-        )}/fond/${z}/${x}/${y}.png`;
+        const tilePath = `tiles/fond/${z}/${x}/${y}.png`;
 
         const file = await Filesystem.readFile({
           path: tilePath,
