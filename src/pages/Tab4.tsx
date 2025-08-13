@@ -416,6 +416,7 @@ const Tab4 = () => {
         const base64 = await blobToBase64(blob);
 
         const localPath = `tiles/fond/${tilePath}`;
+        //const localPath = `tiles/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${selectedHameauNom}/fond/${tilePath}`;
 
         await Filesystem.writeFile({
           path: localPath,
