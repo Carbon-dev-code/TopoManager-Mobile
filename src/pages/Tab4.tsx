@@ -57,7 +57,9 @@ const Tab4 = () => {
   const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
   const [selectedCommune, setSelectedCommune] = useState<number | null>(null);
-  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(null);
+  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(
+    null
+  );
   const [selectedHameau, setSelectedHameau] = useState<number | null>(null);
   const [parametres, setParametres] = useState<ParametreTerritoire[]>([]);
   const [parametreActuel, setParametreActuel] =
@@ -216,8 +218,7 @@ const Tab4 = () => {
         value: JSON.stringify(structure),
       });
 
-      setSuccess("Téléchargement PLOF terminé")
-
+      setSuccess("Téléchargement PLOF terminé");
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -383,7 +384,19 @@ const Tab4 = () => {
           "inconnu"
       );
 
-      const listResponse = await fetch(`${currentServerUrl}/getCarte`);
+      const listResponse = await fetch(`${currentServerUrl}/getCarte`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          region: selectedRegionNom,
+          district: selectedDistrictNom,
+          commune: selectedCommuneNom,
+          fokontany: selectedFokontanyNom,
+        }),
+      });
+
       if (!listResponse.ok) throw new Error("Impossible de lister les tuiles");
 
       const tiles: string[] = await listResponse.json();
@@ -391,7 +404,7 @@ const Tab4 = () => {
       let done = 0;
 
       for (const tilePath of tiles) {
-        const tileUrl = `${currentServerUrl}/fonds/${tilePath}`;
+        const tileUrl = `${currentServerUrl}/fonds/${selectedRegionNom}/${selectedDistrictNom}/${selectedCommuneNom}/${selectedFokontanyNom}/${tilePath}`;
         const response = await fetch(tileUrl);
         if (!response.ok) {
           done++;

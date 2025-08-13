@@ -487,7 +487,7 @@ const Tab2: React.FC = () => {
       center: fromLonLat([46.383814, -25.041426]),
       zoom: 15,
       minZoom: 11,
-      maxZoom: 17,
+      maxZoom: 21,
     });
 
     const map = new Map({
