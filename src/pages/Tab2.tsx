@@ -320,17 +320,17 @@ const Tab2: React.FC = () => {
         const code = feature.get("code");
 
         return new Style({
-          stroke: new Stroke({ color: "rgba(0, 99, 248, 0.68)", width: 1.5 }),
-          fill: new Fill({ color: "rgba(0, 99, 248, 0.2)" }),
+          stroke: new Stroke({ color: "rgba(5, 59, 255, 1)", width: 1.5 }),
+          fill: new Fill({ color: "rgba(5, 59, 255, 0.3)" }),
           text: new Text({
-            text: code,
+            text: code!,
             font: "12px Arial",
             fill: new Fill({ color: "#000" }),
             stroke: new Stroke({ color: "#fff", width: 1.5 }),
             overflow: true,
             placement: "point",
           }),
-        });
+        })
       },
     });
 
@@ -433,21 +433,21 @@ const Tab2: React.FC = () => {
     const vectorLayer = vectorLayerRef.current;
     if (vectorLayer) {
       const source = vectorLayer.getSource();
+
+      // Transformer points EPSG:29702 -> EPSG:3857
       const featurePoints = points.map((p) =>
         transform([p.x, p.y], "EPSG:29702", "EPSG:3857")
       );
+
       const polygon = new Polygon([featurePoints]);
       const feature = new Feature(polygon);
 
-      feature.set("code", updatedParcelle.code);
-
-      // Style avec label du code
       feature.setStyle(
         new Style({
-          stroke: new Stroke({ color: "rgba(0, 99, 248, 0.68)", width: 1.5 }),
-          fill: new Fill({ color: "rgba(0, 99, 248, 0.2)" }),
+          stroke: new Stroke({ color: "rgba(5, 59, 255, 1)", width: 1.5 }),
+          fill: new Fill({ color: "rgba(5, 59, 255, 0.3)" }),
           text: new Text({
-            text: updatedParcelle.code,
+            text: updatedParcelle.code!,
             font: "12px Arial",
             fill: new Fill({ color: "#000" }),
             stroke: new Stroke({ color: "#fff", width: 1.5 }),
@@ -456,7 +456,7 @@ const Tab2: React.FC = () => {
           }),
         })
       );
-
+      feature.set("code", updatedParcelle.code);
       source.addFeature(feature);
     }
     //eto tokn solona popup kely
@@ -475,33 +475,41 @@ const Tab2: React.FC = () => {
     })();
   }, []);
 
+  const getTileUrl = useCallback(
+    async (z: number, x: number, y: number): Promise<string> => {
+      const cacheKey = `${z}/${x}/${y}`;
 
-  const getTileUrl = useCallback(async (z: number, x: number, y: number): Promise<string> => {
-    const cacheKey = `${z}/${x}/${y}`;
-    if (tileCache.current[cacheKey] !== undefined) return tileCache.current[cacheKey];
+      // 1️⃣ Retour du cache si disponible
+      if (tileCache.current[cacheKey] !== undefined) return tileCache.current[cacheKey];
 
-    if (!paramsRef.current) return "";
+      // 2️⃣ Paramètres non chargés → tuile vide
+      if (!paramsRef.current) return "";
 
-    try {
-      const file = await Filesystem.readFile({
-        path: `tiles/fond/${z}/${x}/${y}.png`,
-        directory: Directory.Data,
-      });
+      try {
+        // Lecture du fichier local
+        const file = await Filesystem.readFile({
+          path: `tiles/fond/${z}/${x}/${y}.png`,
+          directory: Directory.Data,
+        });
 
-      if (!file?.data) {
+        if (!file?.data) {
+          tileCache.current[cacheKey] = "";
+          return "";
+        }
+
+        // Conversion en data URL
+        const url = `data:image/png;base64,${file.data}`;
+        tileCache.current[cacheKey] = url;
+
+        return url;
+      } catch {
+        // Marquer comme manquant pour éviter relances inutiles
         tileCache.current[cacheKey] = "";
         return "";
       }
-
-      const url = `data:image/png;base64,${file.data}`;
-      tileCache.current[cacheKey] = url;
-      return url;
-    } catch {
-      // Marquer comme manquant pour éviter relance inutile
-      tileCache.current[cacheKey] = "";
-      return "";
-    }
-  }, []); // plus besoin de sanitizeName ici
+    },
+    [] // pas besoin de sanitizeName ici
+  );
 
   useEffect(() => {
     if (!mapElement.current) return;
@@ -593,14 +601,11 @@ const Tab2: React.FC = () => {
     map.addLayer(localLayer);
     localLayerRef.current = localLayer;
 
-    geoJsonLayers.forEach((layer) => {
-      if (!map.getLayers().getArray().includes(layer)) {
-        map.addLayer(layer);
-      }
-    });
+    drawPolygonesFromParcelles(); // draw all
+    geoJsonLayers.forEach((layer) => { if (!map.getLayers().getArray().includes(layer)) { map.addLayer(layer); } });
+
     // Refresh initial
     localSource.refresh();
-    drawPolygonesFromParcelles();
 
     return () => {
       map.setTarget(undefined);

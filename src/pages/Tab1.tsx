@@ -33,6 +33,7 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonChip,
+  useIonViewWillEnter,
 } from "@ionic/react";
 import {
   trash,
@@ -98,13 +99,14 @@ const Tab1: React.FC = () => {
     return [];
   };
 
-  useEffect(() => {
-    const load = async () => {
-      const savedParcelles = await loadParcellesFromStorage();
-      setParcelles(savedParcelles);
-    };
+  const load = async () => {
+    const savedParcelles = await loadParcellesFromStorage();
+    setParcelles(savedParcelles);
+  };
+
+  useIonViewWillEnter(() => {
     load();
-  }, []);
+  });
 
   const nextCodeParcelle = async () => {
     try {

@@ -345,11 +345,11 @@ const Tab4 = () => {
       if (!currentServerUrl) throw new Error("Configuration serveur manquante");
       setServerUrl(currentServerUrl);
 
-      const region = territoire.find(r => r.idregion === selectedRegion);
-      const district = region?.districts.find(d => d.iddistrict === selectedDistrict);
-      const commune = district?.communes.find(c => c.idcommune === selectedCommune);
-      const fokontany = commune?.fokontany.find(f => f.idfokontany === selectedFokontany);
-      const hameau = fokontany?.hameaux.find(h => h.idhameau === selectedHameau);
+      const region = territoire.find((r) => r.idregion === selectedRegion);
+      const district = region?.districts.find((d) => d.iddistrict === selectedDistrict);
+      const commune = district?.communes.find((c) => c.idcommune === selectedCommune);
+      const fokontany = commune?.fokontany.find((f) => f.idfokontany === selectedFokontany);
+      const hameau = fokontany?.hameaux.find((h) => h.idhameau === selectedHameau);
 
       const payload = {
         region: sanitizeName(region?.nomregion ?? "inconnu"),
@@ -370,22 +370,21 @@ const Tab4 = () => {
       const tiles: string[] = await listResponse.json();
       const total = tiles.length;
       let done = 0;
+
+      // --- Détection device pour adaptatif ---
       const cores = navigator.hardwareConcurrency || 4;
-      const MAX_CONCURRENCY = Math.min(cores, 12);
-      let concurrency = 1;
-      const tileQueue = [...tiles];
+      const MAX_CONCURRENCY = Math.min(cores, 12); // limite max
+      let concurrency = 1; // démarrage safe
       let lastUpdate = 0;
+      const tileQueue = [...tiles];
 
       const processTile = async (tilePath: string) => {
         try {
           const response = await fetch(`${currentServerUrl}/fonds/${tilePath}`);
           if (!response.ok) return;
 
-          const blob = await response.blob();
-          const arrayBuffer = await blob.arrayBuffer();
-          const base64 = btoa(
-            String.fromCharCode(...new Uint8Array(arrayBuffer))
-          );
+          let blob = await response.blob();
+          let base64 = await blobToBase64(blob);
 
           await Filesystem.writeFile({
             path: `tiles/fond/${tilePath}`,
@@ -393,6 +392,9 @@ const Tab4 = () => {
             directory: Directory.Data,
             recursive: true,
           });
+
+          blob = null as any;
+          base64 = null as any;
 
         } catch {
           // silencieux
@@ -407,19 +409,33 @@ const Tab4 = () => {
       };
 
       const runWithConcurrency = async (level: number) => {
+        const start = performance.now();
         const batch: Promise<void>[] = [];
+
         for (let i = 0; i < level && tileQueue.length; i++) {
           const tilePath = tileQueue.splice(0, 1)[0];
           if (tilePath) batch.push(processTile(tilePath));
         }
+
         await Promise.all(batch);
-        await new Promise((r) => setTimeout(r, cores <= 4 ? 50 : cores <= 8 ? 25 : 10));
+
+        // --- Pause adaptative selon cores ---
+        const pause = cores <= 4 ? 50 : cores <= 8 ? 25 : 10;
+        await new Promise((r) => setTimeout(r, pause));
+
+        return performance.now() - start;
       };
 
       while (tileQueue.length) {
         const duration = await runWithConcurrency(concurrency);
-        if (duration < 500 && concurrency < MAX_CONCURRENCY) concurrency++;
-        else if (duration > 2000 && concurrency > 1) concurrency = Math.floor(concurrency / 2);
+
+        // --- Ajustement dynamique de la concurrence ---
+        if (duration < 500 && concurrency < MAX_CONCURRENCY) {
+          concurrency++;
+        } else if (duration > 2000 && concurrency > 1) {
+          concurrency = Math.floor(concurrency / 2);
+        }
+
         if (concurrency < 1) concurrency = 1;
       }
 
@@ -430,6 +446,7 @@ const Tab4 = () => {
       setError(`Échec de la synchronisation: ${message}`);
       console.error(err);
     } finally {
+      setIsLoading(false);
       setIsDownloadingTiles(false);
       setTimeout(() => setProgression(0), 1000);
     }
