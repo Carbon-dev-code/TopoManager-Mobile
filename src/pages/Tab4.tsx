@@ -338,64 +338,41 @@ const Tab4 = () => {
   };
 
   const fetchCarte = async () => {
-    setIsDownloadingTiles(true); // ← Nouvel état dédié
+    setIsDownloadingTiles(true);
     setError(null);
-    setProgression(0); // Reset
+    setProgression(0);
 
     try {
       const currentServerUrl = await ConfigService.getServerBaseUrl();
+      if (!currentServerUrl) throw new Error("Configuration serveur manquante");
       setServerUrl(currentServerUrl);
 
-      if (!currentServerUrl) {
-        throw new Error("Configuration serveur manquante");
-      }
+      const region = territoire.find((r) => r.idregion === selectedRegion);
+      const district = region?.districts.find(
+        (d) => d.iddistrict === selectedDistrict
+      );
+      const commune = district?.communes.find(
+        (c) => c.idcommune === selectedCommune
+      );
+      const fokontany = commune?.fokontany.find(
+        (f) => f.idfokontany === selectedFokontany
+      );
+      const hameau = fokontany?.hameaux.find(
+        (h) => h.idhameau === selectedHameau
+      );
 
-      const selectedRegionNom = sanitizeName(
-        territoire.find((r) => r.idregion === selectedRegion)?.nomregion ??
-          "inconnu"
-      );
-      const selectedDistrictNom = sanitizeName(
-        territoire
-          .find((r) => r.idregion === selectedRegion)
-          ?.districts.find((d) => d.iddistrict === selectedDistrict)
-          ?.nomdistrict ?? "inconnu"
-      );
-      const selectedCommuneNom = sanitizeName(
-        territoire
-          .flatMap((r) => r.districts)
-          .find((d) => d.iddistrict === selectedDistrict)
-          ?.communes.find((c) => c.idcommune === selectedCommune)?.nomcommune ??
-          "inconnu"
-      );
-      const selectedFokontanyNom = sanitizeName(
-        territoire
-          .flatMap((r) => r.districts.flatMap((d) => d.communes))
-          .find((c) => c.idcommune === selectedCommune)
-          ?.fokontany.find((f) => f.idfokontany === selectedFokontany)
-          ?.nomfokontany ?? "inconnu"
-      );
-      const selectedHameauNom = sanitizeName(
-        territoire
-          .flatMap((r) =>
-            r.districts.flatMap((d) => d.communes.flatMap((c) => c.fokontany))
-          )
-          .find((f) => f.idfokontany === selectedFokontany)
-          ?.hameaux.find((h) => h.idhameau === selectedHameau)?.nomhameau ??
-          "inconnu"
-      );
+      const payload = {
+        region: sanitizeName(region?.nomregion ?? "inconnu"),
+        district: sanitizeName(district?.nomdistrict ?? "inconnu"),
+        commune: sanitizeName(commune?.nomcommune ?? "inconnu"),
+        fokontany: sanitizeName(fokontany?.nomfokontany ?? "inconnu"),
+        hameau: sanitizeName(hameau?.nomhameau ?? "inconnu"),
+      };
 
       const listResponse = await fetch(`${currentServerUrl}/getCarte`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          region: selectedRegionNom,
-          district: selectedDistrictNom,
-          commune: selectedCommuneNom,
-          fokontany: selectedFokontanyNom,
-          hameau: selectedHameauNom
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       if (!listResponse.ok) throw new Error("Impossible de lister les tuiles");
@@ -403,30 +380,60 @@ const Tab4 = () => {
       const tiles: string[] = await listResponse.json();
       const total = tiles.length;
       let done = 0;
+      let concurrency = 1;
 
-      for (const tilePath of tiles) {
-        const tileUrl = `${currentServerUrl}/fonds/${tilePath}`;
-        const response = await fetch(tileUrl);
-        if (!response.ok) {
+      const tileQueue = [...tiles];
+
+      const processTile = async (tilePath: string) => {
+        try {
+          const response = await fetch(`${currentServerUrl}/fonds/${tilePath}`);
+          if (!response.ok) return;
+
+          const blob = await response.blob();
+          const base64 = await blobToBase64(blob);
+          await Filesystem.writeFile({
+            path: `tiles/fond/${tilePath}`,
+            data: base64,
+            directory: Directory.Data,
+            recursive: true,
+          });
+        } catch {
+          // Silencieux
+        } finally {
           done++;
-          setProgression(done / total);
-          continue;
+          if (done % 5 === 0 || done === total) {
+            setProgression(done / total);
+          }
+        }
+      };
+
+      const runWithConcurrency = async (level: number) => {
+        const start = performance.now();
+
+        const batch: Promise<void>[] = [];
+        for (let i = 0; i < level && tileQueue.length; i++) {
+          const tilePath = tileQueue.shift();
+          if (tilePath) {
+            batch.push(processTile(tilePath));
+          }
         }
 
-        const blob = await response.blob();
-        const base64 = await blobToBase64(blob);
+        await Promise.all(batch);
+        return performance.now() - start;
+      };
 
-        const localPath = `tiles/fond/${tilePath}`;
+      while (tileQueue.length) {
+        const duration = await runWithConcurrency(concurrency);
 
-        await Filesystem.writeFile({
-          path: localPath,
-          data: base64,
-          directory: Directory.Data,
-          recursive: true,
-        });
+        // Auto-scaling : durée courte → monter ; durée longue → redescendre
+        if (duration < 500) {
+          concurrency += 1;
+        } else if (duration > 2000 && concurrency > 1) {
+          concurrency = Math.floor(concurrency / 2); // Réduction agressive si surcharge
+        }
 
-        done++;
-        setProgression(done / total);
+        // Sécurité anti-boucle infinie
+        if (concurrency < 1) concurrency = 1;
       }
 
       setProgression(1);
@@ -437,9 +444,7 @@ const Tab4 = () => {
     } finally {
       setIsLoading(false);
       setIsDownloadingTiles(false);
-      setTimeout(() => {
-        setProgression(0); // Reset
-      }, 1000);
+      setTimeout(() => setProgression(0), 1000);
     }
   };
 
