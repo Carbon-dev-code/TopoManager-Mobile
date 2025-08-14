@@ -26,7 +26,6 @@ import { fromLonLat, transform } from "ol/proj";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { XYZ } from "ol/source";
-import { debounce } from "lodash";
 import "ol/ol.css";
 import "./Tab2.css";
 import {
@@ -56,6 +55,12 @@ import { Coordinate } from "ol/coordinate";
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
+
+proj4.defs(
+  "EPSG:29702",
+  "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs"
+);
+register(proj4);
 
 const Tab2: React.FC = () => {
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
@@ -304,6 +309,7 @@ const Tab2: React.FC = () => {
           feature.set("code", parcelle.code);
 
           source.addFeature(feature);
+
         }
       });
     });
@@ -423,68 +429,91 @@ const Tab2: React.FC = () => {
       value: JSON.stringify(updatedParcelles),
     });
 
+    // 🔹 Ajouter seulement ce nouveau polygone au layer existant
+    const vectorLayer = vectorLayerRef.current;
+    if (vectorLayer) {
+      const source = vectorLayer.getSource();
+      const featurePoints = points.map((p) =>
+        transform([p.x, p.y], "EPSG:29702", "EPSG:3857")
+      );
+      const polygon = new Polygon([featurePoints]);
+      const feature = new Feature(polygon);
+
+      feature.set("code", updatedParcelle.code);
+
+      // Style avec label du code
+      feature.setStyle(
+        new Style({
+          stroke: new Stroke({ color: "rgba(0, 99, 248, 0.68)", width: 1.5 }),
+          fill: new Fill({ color: "rgba(0, 99, 248, 0.2)" }),
+          text: new Text({
+            text: updatedParcelle.code,
+            font: "12px Arial",
+            fill: new Fill({ color: "#000" }),
+            stroke: new Stroke({ color: "#fff", width: 1.5 }),
+            overflow: true,
+            placement: "point",
+          }),
+        })
+      );
+
+      source.addFeature(feature);
+    }
     //eto tokn solona popup kely
     console.log("✅ Polygone fermé et enregistré");
   };
 
   // Charger parametreActuel une seule fois au montage
-  const updateCenterCoords = useCallback(
-    debounce((center: Coordinate) => {
-      setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
-    }, 100), // délai de 200ms
-    []
-  );
   useEffect(() => {
-    Preferences.get({ key: "parametreActuel" }).then(({ value }) => {
-      if (value) {
-        try {
-          paramsRef.current = JSON.parse(value);
-        } catch {
-          paramsRef.current = null;
-        }
+    (async () => {
+      try {
+        const { value } = await Preferences.get({ key: "parametreActuel" });
+        if (value) paramsRef.current = JSON.parse(value);
+      } catch {
+        paramsRef.current = null;
       }
-    });
+    })();
   }, []);
 
-  const getTileUrl = useCallback(
-    async (z: number, x: number, y: number): Promise<string> => {
-      const cacheKey = `${z}/${x}/${y}`;
-      if (tileCache.current[cacheKey] !== undefined) {
-        return tileCache.current[cacheKey];
-      }
 
-      try {
-        if (!paramsRef.current) return "";
+  const getTileUrl = useCallback(async (z: number, x: number, y: number): Promise<string> => {
+    const cacheKey = `${z}/${x}/${y}`;
+    if (tileCache.current[cacheKey] !== undefined) return tileCache.current[cacheKey];
 
-        const p = paramsRef.current;
-        const tilePath = `tiles/fond/${z}/${x}/${y}.png`;
+    if (!paramsRef.current) return "";
 
-        const file = await Filesystem.readFile({
-          path: tilePath,
-          directory: Directory.Data,
-        });
+    try {
+      const file = await Filesystem.readFile({
+        path: `tiles/fond/${z}/${x}/${y}.png`,
+        directory: Directory.Data,
+      });
 
-        const url = `data:image/png;base64,${file.data}`;
-        tileCache.current[cacheKey] = url;
-        return url;
-      } catch (error) {
+      if (!file?.data) {
         tileCache.current[cacheKey] = "";
         return "";
       }
-    },
-    [sanitizeName]
-  );
 
-  useEffect(() => {
-    proj4.defs(
-      "EPSG:29702",
-      "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs"
-    );
-    register(proj4);
-  }, []);
+      const url = `data:image/png;base64,${file.data}`;
+      tileCache.current[cacheKey] = url;
+      return url;
+    } catch {
+      // Marquer comme manquant pour éviter relance inutile
+      tileCache.current[cacheKey] = "";
+      return "";
+    }
+  }, []); // plus besoin de sanitizeName ici
 
   useEffect(() => {
     if (!mapElement.current) return;
+
+    // Détection device
+    const cores = navigator.hardwareConcurrency || 4;
+    const isLowEnd = cores <= 4;
+    const isMedium = cores <= 8 && cores > 4;
+    const isHighEnd = cores > 8;
+
+    // Throttle adaptatif pour refresh
+    const refreshDelay = isLowEnd ? 200 : isMedium ? 100 : 50;
 
     const view = new View({
       center: fromLonLat([46.383814, -25.041426]),
@@ -507,15 +536,26 @@ const Tab2: React.FC = () => {
         }),
       ],
     });
-
     mapRef.current = map;
 
     map.on("moveend", () => {
       const center = map.getView().getCenter();
-      if (center) {
-        updateCenterCoords(center);
-      }
+      if (center) setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
     });
+
+    // Throttle refresh
+    let refreshTimeout: NodeJS.Timeout | null = null;
+    const scheduleRefresh = () => {
+      if (!refreshTimeout) {
+        refreshTimeout = setTimeout(() => {
+          localSource.refresh();
+          refreshTimeout = null;
+        }, refreshDelay);
+      }
+    };
+
+    // Préchargement adaptatif autour de la vue
+    const preloadRange = isLowEnd ? 1 : isMedium ? 2 : 3; // nombre de tiles autour à précharger
 
     const localSource = new XYZ({
       tileUrlFunction: ([z, x, y]) => {
@@ -529,12 +569,23 @@ const Tab2: React.FC = () => {
 
         if (!alreadyChecked.current.has(cacheKey)) {
           alreadyChecked.current.add(cacheKey);
-          getTileUrl(z, x, y).then(() => {
-            if (tileCache.current[cacheKey]) localSource.refresh();
+          getTileUrl(z, x, y).then((tileUrl) => {
+            if (tileUrl) scheduleRefresh();
+
+            // Préchargement tiles voisines (medium/high)
+            if (!isLowEnd) {
+              for (let dx = -preloadRange; dx <= preloadRange; dx++) {
+                for (let dy = -preloadRange; dy <= preloadRange; dy++) {
+                  if (dx === 0 && dy === 0) continue;
+                  const neighborKey = `${z}/${x + dx}/${y + dy}`;
+                  if (!tileCache.current[neighborKey]) getTileUrl(z, x + dx, y + dy);
+                }
+              }
+            }
           });
         }
-        // Image par défaut en attendant le vrai tile
-        return "assets/logo/logo3.png";
+
+        return "assets/logo/logo3.png"; // tuile par défaut
       },
     });
 
@@ -547,14 +598,16 @@ const Tab2: React.FC = () => {
         map.addLayer(layer);
       }
     });
-
+    // Refresh initial
     localSource.refresh();
+    drawPolygonesFromParcelles();
 
     return () => {
       map.setTarget(undefined);
       map.dispose();
       tileCache.current = {};
       alreadyChecked.current.clear();
+      if (refreshTimeout) clearTimeout(refreshTimeout);
     };
   }, [geoJsonLayers, getTileUrl, setCenterCoordsProjected]);
 

@@ -80,11 +80,9 @@ const Tab4 = () => {
         const current = JSON.parse(value);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.coderegion}-${
-          current.district.codedistrict
-        }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${
-          current.hameau.codehameau
-        }-${current.increment + 1}`;
+        const codeComplet = `${current.region.coderegion}-${current.district.codedistrict
+          }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${current.hameau.codehameau
+          }-${current.increment + 1}`;
         setCurrentParcelleCode(codeComplet);
       }
     } catch (error) {
@@ -347,19 +345,11 @@ const Tab4 = () => {
       if (!currentServerUrl) throw new Error("Configuration serveur manquante");
       setServerUrl(currentServerUrl);
 
-      const region = territoire.find((r) => r.idregion === selectedRegion);
-      const district = region?.districts.find(
-        (d) => d.iddistrict === selectedDistrict
-      );
-      const commune = district?.communes.find(
-        (c) => c.idcommune === selectedCommune
-      );
-      const fokontany = commune?.fokontany.find(
-        (f) => f.idfokontany === selectedFokontany
-      );
-      const hameau = fokontany?.hameaux.find(
-        (h) => h.idhameau === selectedHameau
-      );
+      const region = territoire.find(r => r.idregion === selectedRegion);
+      const district = region?.districts.find(d => d.iddistrict === selectedDistrict);
+      const commune = district?.communes.find(c => c.idcommune === selectedCommune);
+      const fokontany = commune?.fokontany.find(f => f.idfokontany === selectedFokontany);
+      const hameau = fokontany?.hameaux.find(h => h.idhameau === selectedHameau);
 
       const payload = {
         region: sanitizeName(region?.nomregion ?? "inconnu"),
@@ -380,9 +370,11 @@ const Tab4 = () => {
       const tiles: string[] = await listResponse.json();
       const total = tiles.length;
       let done = 0;
+      const cores = navigator.hardwareConcurrency || 4;
+      const MAX_CONCURRENCY = Math.min(cores, 12);
       let concurrency = 1;
-
       const tileQueue = [...tiles];
+      let lastUpdate = 0;
 
       const processTile = async (tilePath: string) => {
         try {
@@ -390,59 +382,54 @@ const Tab4 = () => {
           if (!response.ok) return;
 
           const blob = await response.blob();
-          const base64 = await blobToBase64(blob);
+          const arrayBuffer = await blob.arrayBuffer();
+          const base64 = btoa(
+            String.fromCharCode(...new Uint8Array(arrayBuffer))
+          );
+
           await Filesystem.writeFile({
             path: `tiles/fond/${tilePath}`,
             data: base64,
             directory: Directory.Data,
             recursive: true,
           });
+
         } catch {
-          // Silencieux
+          // silencieux
         } finally {
           done++;
-          if (done % 5 === 0 || done === total) {
+          const now = Date.now();
+          if ((done % 10 === 0 || done === total) && now - lastUpdate > 300) {
             setProgression(done / total);
+            lastUpdate = now;
           }
         }
       };
 
       const runWithConcurrency = async (level: number) => {
-        const start = performance.now();
-
         const batch: Promise<void>[] = [];
         for (let i = 0; i < level && tileQueue.length; i++) {
-          const tilePath = tileQueue.shift();
-          if (tilePath) {
-            batch.push(processTile(tilePath));
-          }
+          const tilePath = tileQueue.splice(0, 1)[0];
+          if (tilePath) batch.push(processTile(tilePath));
         }
-
         await Promise.all(batch);
-        return performance.now() - start;
+        await new Promise((r) => setTimeout(r, cores <= 4 ? 50 : cores <= 8 ? 25 : 10));
       };
 
       while (tileQueue.length) {
         const duration = await runWithConcurrency(concurrency);
-
-        // Auto-scaling : durée courte → monter ; durée longue → redescendre
-        if (duration < 500) {
-          concurrency += 1;
-        } else if (duration > 2000 && concurrency > 1) {
-          concurrency = Math.floor(concurrency / 2); // Réduction agressive si surcharge
-        }
-
-        // Sécurité anti-boucle infinie
+        if (duration < 500 && concurrency < MAX_CONCURRENCY) concurrency++;
+        else if (duration > 2000 && concurrency > 1) concurrency = Math.floor(concurrency / 2);
         if (concurrency < 1) concurrency = 1;
       }
 
       setProgression(1);
+
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       setError(`Échec de la synchronisation: ${message}`);
       console.error(err);
     } finally {
-      setIsLoading(false);
       setIsDownloadingTiles(false);
       setTimeout(() => setProgression(0), 1000);
     }
@@ -602,13 +589,10 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.coderegion}-${
-        nouveauParametre.district.codedistrict
-      }-${nouveauParametre.commune.codecommune}-${
-        nouveauParametre.fokontany.codefokontany
-      }-${nouveauParametre.hameau.codehameau}-${
-        nouveauParametre.increment + 1
-      }`;
+      const codeComplet = `${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
+        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany
+        }-${nouveauParametre.hameau.codehameau}-${nouveauParametre.increment + 1
+        }`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -625,11 +609,9 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.coderegion}-${
-        parametre.district.codedistrict
-      }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${
-        parametre.hameau.codehameau
-      }-${parametre.increment + 1}`;
+      const codeComplet = `${parametre.region.coderegion}-${parametre.district.codedistrict
+        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
+        }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);
