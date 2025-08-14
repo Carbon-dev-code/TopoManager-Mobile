@@ -394,6 +394,7 @@ const Tab4 = () => {
           district: selectedDistrictNom,
           commune: selectedCommuneNom,
           fokontany: selectedFokontanyNom,
+          hameau: selectedHameauNom
         }),
       });
 
