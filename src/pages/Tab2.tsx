@@ -10,8 +10,6 @@ import {
   IonButtons,
   IonMenuButton,
   IonLabel,
-  IonFab,
-  IonFabButton,
   useIonViewWillEnter,
   IonInput,
   IonToast,
@@ -27,7 +25,8 @@ import ScaleLine from "ol/control/ScaleLine";
 import { fromLonLat, transform } from "ol/proj";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
-import { OSM, XYZ } from "ol/source";
+import { XYZ } from "ol/source";
+import { debounce } from "lodash";
 import "ol/ol.css";
 import "./Tab2.css";
 import {
@@ -52,6 +51,7 @@ import { PointC } from "../model/vecteur/PointC";
 import CircleStyle from "ol/style/Circle";
 import { Polygone } from "../model/vecteur/Polygone";
 import { Parcelle } from "../model/parcelle/Parcelle";
+import { Coordinate } from "ol/coordinate";
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -68,10 +68,14 @@ const Tab2: React.FC = () => {
   const alreadyChecked = useRef(new Set<string>());
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
+    number[] | null
+  >(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-  const [geoJsonLayers, setGeoJsonLayers] = useState<VectorLayer<VectorSource>[]>([]);
+  const [geoJsonLayers, setGeoJsonLayers] = useState<
+    VectorLayer<VectorSource>[]
+  >([]);
   const [showCard, setShowCard] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const query = useQuery();
@@ -82,7 +86,6 @@ const Tab2: React.FC = () => {
   const STORAGE_KEY_GEOJSON = "plofData";
   const paramsRef = useRef<any>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
 
   const layerOrder = [
     "region",
@@ -179,7 +182,7 @@ const Tab2: React.FC = () => {
     } else {
       setShowSearch(true);
     }
-  }
+  };
 
   const createVectorLayerFromGeoJSON = (
     geojson: unknown
@@ -425,6 +428,12 @@ const Tab2: React.FC = () => {
   };
 
   // Charger parametreActuel une seule fois au montage
+  const updateCenterCoords = useCallback(
+    debounce((center: Coordinate) => {
+      setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
+    }, 100), // délai de 200ms
+    []
+  );
   useEffect(() => {
     Preferences.get({ key: "parametreActuel" }).then(({ value }) => {
       if (value) {
@@ -504,7 +513,7 @@ const Tab2: React.FC = () => {
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center) {
-        setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
+        updateCenterCoords(center);
       }
     });
 
@@ -540,7 +549,6 @@ const Tab2: React.FC = () => {
     });
 
     localSource.refresh();
-
 
     return () => {
       map.setTarget(undefined);
@@ -611,60 +619,64 @@ const Tab2: React.FC = () => {
     }, 5000);
   }, []);
 
+  const searchAndZoom = useCallback(
+    (searchTerm: string) => {
+      if (!mapRef.current) return;
 
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) return;
 
-  const searchAndZoom = useCallback((searchTerm: string) => {
-    if (!mapRef.current) return;
+      let foundFeature: Feature | null = null;
 
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return;
+      // 🔍 Parcourir toutes les couches GeoJSON
+      for (const layer of geoJsonLayers) {
+        const source = layer.getSource();
+        if (!source) continue;
 
-    let foundFeature: Feature | null = null;
-
-    // 🔍 Parcourir toutes les couches GeoJSON
-    for (const layer of geoJsonLayers) {
-      const source = layer.getSource();
-      if (!source) continue;
-
-      source.forEachFeature((feature) => {
-        const props = feature.getProperties();
-        for (const key in props) {
-          if (typeof props[key] === "string" && props[key].toLowerCase().includes(term)) {
-            foundFeature = feature;
-            return;
+        source.forEachFeature((feature) => {
+          const props = feature.getProperties();
+          for (const key in props) {
+            if (
+              typeof props[key] === "string" &&
+              props[key].toLowerCase().includes(term)
+            ) {
+              foundFeature = feature;
+              return;
+            }
           }
-        }
-      });
+        });
 
-      if (foundFeature) break;
-    }
-
-    // 🔍 Si non trouvé, essayer dans les parcelles
-    if (!foundFeature && parcelles.length > 0) {
-      parcelles.forEach((p) => {
-        if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
-          const points = p.polygone[0].points.map((pt) =>
-            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857")
-          );
-          const polygon = new Polygon([points]);
-          foundFeature = new Feature(polygon);
-        }
-      });
-    }
-
-    // 📌 Zoomer si trouvé
-    if (foundFeature) {
-      const extent = foundFeature.getGeometry()?.getExtent();
-      if (extent) {
-        mapRef.current.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
-        blinkFeature(foundFeature);
-
+        if (foundFeature) break;
       }
-    } else {
-      setToastMessage(`Aucun parcelle trouvé pour : ${searchTerm}`);
-    }
-  }, [geoJsonLayers, parcelles]);
 
+      // 🔍 Si non trouvé, essayer dans les parcelles
+      if (!foundFeature && parcelles.length > 0) {
+        parcelles.forEach((p) => {
+          if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
+            const points = p.polygone[0].points.map((pt) =>
+              transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857")
+            );
+            const polygon = new Polygon([points]);
+            foundFeature = new Feature(polygon);
+          }
+        });
+      }
+
+      // 📌 Zoomer si trouvé
+      if (foundFeature) {
+        const extent = foundFeature.getGeometry()?.getExtent();
+        if (extent) {
+          mapRef.current
+            .getView()
+            .fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
+          blinkFeature(foundFeature);
+        }
+      } else {
+        setToastMessage(`Aucun parcelle trouvé pour : ${searchTerm}`);
+      }
+    },
+    [geoJsonLayers, parcelles]
+  );
 
   return (
     <IonPage>
@@ -678,10 +690,7 @@ const Tab2: React.FC = () => {
               Croquis du parcelle {currentParcelle.code}
             </IonLabel>
           )}
-          <IonButtons
-            onClick={stateSearch}
-            className="glass-btn"
-            slot="end">
+          <IonButtons onClick={stateSearch} className="glass-btn" slot="end">
             <IonIcon icon={search} />
           </IonButtons>
         </IonToolbar>
@@ -777,7 +786,8 @@ const Tab2: React.FC = () => {
               <IonButton
                 className="glass-btn"
                 fill="clear"
-                onClick={addPolygone}>
+                onClick={addPolygone}
+              >
                 <IonIcon color="success" icon={checkmark} />
               </IonButton>
               <IonButton
@@ -818,7 +828,6 @@ const Tab2: React.FC = () => {
             <IonButton
               fill="clear"
               className="glass-btn"
-
               onClick={() => setFabOpen((prev) => !prev)}
             >
               <IonIcon color="danger" icon={pencilOutline}></IonIcon>
