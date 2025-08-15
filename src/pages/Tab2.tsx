@@ -50,7 +50,6 @@ import { PointC } from "../model/vecteur/PointC";
 import CircleStyle from "ol/style/Circle";
 import { Polygone } from "../model/vecteur/Polygone";
 import { Parcelle } from "../model/parcelle/Parcelle";
-import { Coordinate } from "ol/coordinate";
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -240,7 +239,6 @@ const Tab2: React.FC = () => {
 
       for (const datastore of structure.datastores) {
         for (const layer of datastore.layers) {
-          // Lire fichier local GeoJSON
           const file = await Filesystem.readFile({
             path: layer.path,
             directory: Directory.Data,
@@ -266,9 +264,7 @@ const Tab2: React.FC = () => {
 
     const vectorLayers = geojsons.map(createVectorLayerFromGeoJSON);
 
-    setGeoJsonLayers(vectorLayers);
-
-    drawPolygonesFromParcelles();
+    setGeoJsonLayers(vectorLayers);    
   };
 
   useIonViewWillEnter(() => {
@@ -305,11 +301,8 @@ const Tab2: React.FC = () => {
         if (points.length > 2) {
           const polygon = new Polygon([points]);
           const feature = new Feature(polygon);
-
           feature.set("code", parcelle.code);
-
           source.addFeature(feature);
-
         }
       });
     });
@@ -318,7 +311,6 @@ const Tab2: React.FC = () => {
       source,
       style: (feature) => {
         const code = feature.get("code");
-
         return new Style({
           stroke: new Stroke({ color: "rgba(5, 59, 255, 1)", width: 1.5 }),
           fill: new Fill({ color: "rgba(5, 59, 255, 0.3)" }),
@@ -336,10 +328,6 @@ const Tab2: React.FC = () => {
 
     mapRef.current.addLayer(vectorLayer);
   }, [parcelles]);
-
-  const sanitizeName = useCallback((name: string): string => {
-    return name.toLowerCase().replace(/[^a-z0-9]/gi, "_");
-  }, []);
 
   const updatePolygon = useCallback(() => {
     if (!mapRef.current) return;
@@ -479,14 +467,9 @@ const Tab2: React.FC = () => {
     async (z: number, x: number, y: number): Promise<string> => {
       const cacheKey = `${z}/${x}/${y}`;
 
-      // 1️⃣ Retour du cache si disponible
       if (tileCache.current[cacheKey] !== undefined) return tileCache.current[cacheKey];
 
-      // 2️⃣ Paramètres non chargés → tuile vide
-      if (!paramsRef.current) return "";
-
       try {
-        // Lecture du fichier local
         const file = await Filesystem.readFile({
           path: `tiles/fond/${z}/${x}/${y}.png`,
           directory: Directory.Data,
@@ -507,9 +490,7 @@ const Tab2: React.FC = () => {
         tileCache.current[cacheKey] = "";
         return "";
       }
-    },
-    [] // pas besoin de sanitizeName ici
-  );
+    }, []);
 
   useEffect(() => {
     if (!mapElement.current) return;
@@ -518,7 +499,6 @@ const Tab2: React.FC = () => {
     const cores = navigator.hardwareConcurrency || 4;
     const isLowEnd = cores <= 4;
     const isMedium = cores <= 8 && cores > 4;
-    const isHighEnd = cores > 8;
 
     // Throttle adaptatif pour refresh
     const refreshDelay = isLowEnd ? 200 : isMedium ? 100 : 50;
@@ -527,7 +507,7 @@ const Tab2: React.FC = () => {
       center: fromLonLat([46.383814, -25.041426]),
       zoom: 15,
       minZoom: 11,
-      maxZoom: 21,
+      maxZoom: 17,
     });
 
     const map = new Map({
@@ -562,9 +542,6 @@ const Tab2: React.FC = () => {
       }
     };
 
-    // Préchargement adaptatif autour de la vue
-    const preloadRange = isLowEnd ? 1 : isMedium ? 2 : 3; // nombre de tiles autour à précharger
-
     const localSource = new XYZ({
       tileUrlFunction: ([z, x, y]) => {
         const cacheKey = `${z}/${x}/${y}`;
@@ -579,21 +556,10 @@ const Tab2: React.FC = () => {
           alreadyChecked.current.add(cacheKey);
           getTileUrl(z, x, y).then((tileUrl) => {
             if (tileUrl) scheduleRefresh();
-
-            // Préchargement tiles voisines (medium/high)
-            if (!isLowEnd) {
-              for (let dx = -preloadRange; dx <= preloadRange; dx++) {
-                for (let dy = -preloadRange; dy <= preloadRange; dy++) {
-                  if (dx === 0 && dy === 0) continue;
-                  const neighborKey = `${z}/${x + dx}/${y + dy}`;
-                  if (!tileCache.current[neighborKey]) getTileUrl(z, x + dx, y + dy);
-                }
-              }
-            }
           });
         }
 
-        return "assets/logo/logo3.png"; // tuile par défaut
+        return "assets/logo/logo3.png";
       },
     });
 
@@ -601,11 +567,11 @@ const Tab2: React.FC = () => {
     map.addLayer(localLayer);
     localLayerRef.current = localLayer;
 
+    // Refresh initial
+    localSource.refresh();
     drawPolygonesFromParcelles(); // draw all
     geoJsonLayers.forEach((layer) => { if (!map.getLayers().getArray().includes(layer)) { map.addLayer(layer); } });
 
-    // Refresh initial
-    localSource.refresh();
 
     return () => {
       map.setTarget(undefined);
