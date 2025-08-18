@@ -1,6 +1,15 @@
 import {
-  IonContent, IonHeader, IonPage, IonToolbar, IonIcon,
-  IonButtons, IonMenuButton, IonButton
+  IonContent,
+  IonHeader,
+  IonPage,
+  IonToolbar,
+  IonIcon,
+  IonButtons,
+  IonMenuButton,
+  IonButton,
+  IonLabel,
+  IonInput,
+  IonToast,
 } from "@ionic/react";
 import "./Tab2.css";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,7 +23,18 @@ import TileLayer from "ol/layer/Tile";
 import { Directory, Filesystem, Encoding } from "@capacitor/filesystem";
 import ScaleLine from "ol/control/ScaleLine";
 import "ol/ol.css";
-import { eyeOffOutline, eyeOutline, search } from "ionicons/icons";
+import {
+  addOutline,
+  checkmark,
+  closeOutline,
+  eyeOffOutline,
+  eyeOutline,
+  information,
+  locateOutline,
+  pencilOutline,
+  removeOutline,
+  search,
+} from "ionicons/icons";
 import { Preferences } from "@capacitor/preferences";
 import { Parcelle } from "../model/parcelle/Parcelle";
 import VectorSource from "ol/source/Vector";
@@ -26,15 +46,40 @@ import Stroke from "ol/style/Stroke";
 import Fill from "ol/style/Fill";
 import Text from "ol/style/Text";
 import GeoJSON from "ol/format/GeoJSON";
+import { useLocation } from "react-router";
+import { Polygone } from "../model/vecteur/Polygone";
+import { PointC } from "../model/vecteur/PointC";
+import Point from "ol/geom/Point";
+import CircleStyle from "ol/style/Circle";
 
 // ---- CRS Madagascar ----
-proj4.defs("EPSG:29702", "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs");
+proj4.defs(
+  "EPSG:29702",
+  "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs"
+);
 register(proj4);
 
 // ---- Constantes ----
 const STORAGE_KEY = "parcelles_data";
 const STORAGE_KEY_GEOJSON = "plofData";
-const layerOrder = ["region", "district", "commune", "fokontany", "ipss", "demandecf", "requisition", "titre", "certificat", "cadastre", "demandefn"];
+
+const layerOrder = [
+  "region",
+  "district",
+  "commune",
+  "fokontany",
+  "ipss",
+  "demandecf",
+  "requisition",
+  "titre",
+  "certificat",
+  "cadastre",
+  "demandefn",
+];
+
+function useQuery() {
+  return new URLSearchParams(useLocation().search);
+}
 
 const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
@@ -47,69 +92,39 @@ const Tab2: React.FC = () => {
   const geoJsonLayersRef = useRef<Record<string, VectorLayer>>({});
   const tileCache = useRef<Record<string, string | null | undefined>>({});
   const styleCache = useRef<Record<string, Style>>({});
+  const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
+  const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
+    number[] | null
+  >(null);
+  const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
 
-  // ---- Style par type et zoom ----
-  const styleByType = useCallback((feature: Feature): Style => {
-    if (!mapRef.current) return new Style();
-    const zoom = mapRef.current.getView().getZoom() || 0;
-
-    const type = feature.get("name")?.toLowerCase();
-    let labelText = "";
-    switch (type) {
-      case "requisition": labelText = feature.get("num_requisition") || ""; break;
-      case "certificat": labelText = feature.get("numerocertificat") || ""; break;
-      case "ipss": labelText = feature.get("code_parcelle") || ""; break;
-      case "demandecf": labelText = feature.get("numdemande") || ""; break;
-      case "titre": labelText = feature.get("titres_req") || ""; break;
-      case "parcelle": labelText = feature.get("code") || ""; break; // Parcelles custom
-      default: labelText = feature.get("name") || "";
-    }
-
-    if (zoom < 15) labelText = "";
-
-    const cacheKey = `${type}_${labelText}_${zoom}`;
-    if (styleCache.current[cacheKey]) return styleCache.current[cacheKey];
-
-    const styleMap: Record<string, Style> = {
-      ipss: new Style({ stroke: new Stroke({ color: "rgba(5, 59, 255,1)", width: 1.5 }), fill: new Fill({ color: "rgba(5,59,255,0.3)" }) }),
-      certificat: new Style({ stroke: new Stroke({ color: "rgba(251,255,0,1)", width: 1.5 }), fill: new Fill({ color: "rgba(251,255,0,0.3)" }) }),
-      demandecf: new Style({ stroke: new Stroke({ color: "rgba(148,52,211,1)", width: 1.5 }), fill: new Fill({ color: "rgba(148,52,211,0.3)" }) }),
-      requisition: new Style({ stroke: new Stroke({ color: "rgba(148,52,211,1)", width: 1.5 }), fill: new Fill({ color: "rgba(148,52,211,0.3)" }) }),
-      titre: new Style({ stroke: new Stroke({ color: "rgba(255,0,0,1)", width: 1.5 }), fill: new Fill({ color: "rgba(255,0,0,0.3)" }) }),
-      region: new Style({ stroke: new Stroke({ color: "rgba(0, 100, 0, 1)", width: 2 }), fill: new Fill({ color: "rgba(0, 100, 0, 0.1)" }) }),
-      district: new Style({ stroke: new Stroke({ color: "rgba(0, 150, 0, 1)", width: 1.5 }), fill: new Fill({ color: "rgba(0, 150, 0, 0.1)" }) }),
-      commune: new Style({ stroke: new Stroke({ color: "rgba(0, 200, 0, 1)", width: 1 }), fill: new Fill({ color: "rgba(0, 200, 0, 0.1)" }) }),
-      fokontany: new Style({ stroke: new Stroke({ color: "rgba(0, 250, 0, 1)", width: 0.5 }), fill: new Fill({ color: "rgba(0, 250, 0, 0.1)" }) }),
-      cadastre: new Style({ stroke: new Stroke({ color: "rgba(200, 100, 0, 1)", width: 1 }), fill: new Fill({ color: "rgba(200, 100, 0, 0.2)" }) }),
-      demandefn: new Style({ stroke: new Stroke({ color: "rgba(100, 0, 200, 1)", width: 1.5 }), fill: new Fill({ color: "rgba(100, 0, 200,0.3)" }) }),
-      parcelle: new Style({ stroke: new Stroke({ color: "rgba(5,59,255,1)", width: 1 }), fill: new Fill({ color: "rgba(5,59,255,0.2)" }) }),
-    };
-
-    const baseStyle = styleMap[type]?.clone() || new Style({
-      stroke: new Stroke({ color: "#7f7f7f", width: 1 }),
-      fill: new Fill({ color: "rgba(127,127,127,0.2)" }),
-    });
-
-    if (labelText) {
-      baseStyle.setText(new Text({
-        text: labelText,
-        font: "12px Arial",
-        fill: new Fill({ color: "#000" }),
-        stroke: new Stroke({ color: "#fff", width: 1.5 }),
-        overflow: true,
-        placement: "point",
-      }));
-    }
-
-    styleCache.current[cacheKey] = baseStyle;
-    return baseStyle;
-  }, []);
+  //---Modal/Fab----------
+  const [showCard, setShowCard] = useState(true);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  //---Routeur--------
+  const query = useQuery();
+  const from = query.get("from");
+  const action = query.get("action");
+  const codeParcelle = query.get("code");
+  //Croquis polygone
+  const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
+  //message de retour var
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // ---- Load Parcelles & GeoJSON ----
-  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<
+    Parcelle[]
+  > => {
     const result = await Preferences.get({ key: STORAGE_KEY });
     if (!result.value) return [];
-    try { const parsed = JSON.parse(result.value); if (Array.isArray(parsed)) return parsed; } catch (e) { console.error(e); }
+    try {
+      const parsed = JSON.parse(result.value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      console.error(e);
+    }
     return [];
   }, []);
 
@@ -121,30 +136,290 @@ const Tab2: React.FC = () => {
       const all: any[] = [];
       for (const ds of structure.datastores) {
         for (const l of ds.layers) {
-          const file = await Filesystem.readFile({ path: l.path, directory: Directory.Data, encoding: Encoding.UTF8 });
+          const file = await Filesystem.readFile({
+            path: l.path,
+            directory: Directory.Data,
+            encoding: Encoding.UTF8,
+          });
           all.push(JSON.parse(file.data));
         }
       }
       return all;
-    } catch (e) { console.error(e); return []; }
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  }, []);
+
+  //--- routeur du tab2 -------------------
+  useEffect(() => {
+    const load = async () => {
+      const savedParcelles = await loadParcellesFromStorage();
+      setParcelles(savedParcelles);
+      if (from === "tab1" && action === "croquis" && codeParcelle) {
+        const found = savedParcelles.find((p) => p.code === codeParcelle);
+        setCurrentParcelle(found || null);
+      } else {
+        setCurrentParcelle(null);
+      }
+    };
+    load();
+  }, [from, action, codeParcelle, loadParcellesFromStorage]);
+  // ---- Style par type et zoom ----
+
+  const styleByType = useCallback((feature: Feature): Style => {
+    if (!mapRef.current) return new Style();
+    const zoom = mapRef.current.getView().getZoom() || 0;
+
+    const type = feature.get("name")?.toLowerCase();
+    let labelText = "";
+    switch (type) {
+      case "requisition":
+        labelText = feature.get("num_requisition") || "";
+        break;
+      case "certificat":
+        labelText = feature.get("numerocertificat") || "";
+        break;
+      case "ipss":
+        labelText = feature.get("code_parcelle") || "";
+        break;
+      case "demandecf":
+        labelText = feature.get("numdemande") || "";
+        break;
+      case "titre":
+        labelText = feature.get("titres_req") || "";
+        break;
+      case "parcelle":
+        labelText = feature.get("code") || "";
+        break; // Parcelles custom
+      default:
+        labelText = feature.get("name") || "";
+    }
+
+    if (zoom < 15) labelText = "";
+
+    const cacheKey = `${type}_${labelText}_${zoom}`;
+    if (styleCache.current[cacheKey]) return styleCache.current[cacheKey];
+
+    const styleMap: Record<string, Style> = {
+      ipss: new Style({
+        stroke: new Stroke({ color: "rgba(5, 59, 255,1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(5,59,255,0.3)" }),
+      }),
+      certificat: new Style({
+        stroke: new Stroke({ color: "rgba(251,255,0,1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(251,255,0,0.3)" }),
+      }),
+      demandecf: new Style({
+        stroke: new Stroke({ color: "rgba(148,52,211,1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(148,52,211,0.3)" }),
+      }),
+      requisition: new Style({
+        stroke: new Stroke({ color: "rgba(148,52,211,1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(148,52,211,0.3)" }),
+      }),
+      titre: new Style({
+        stroke: new Stroke({ color: "rgba(255,0,0,1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(255,0,0,0.3)" }),
+      }),
+      region: new Style({
+        stroke: new Stroke({ color: "rgba(0, 100, 0, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(0, 100, 0, 0.1)" }),
+      }),
+      district: new Style({
+        stroke: new Stroke({ color: "rgba(0, 150, 0, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(0, 150, 0, 0.1)" }),
+      }),
+      commune: new Style({
+        stroke: new Stroke({ color: "rgba(0, 200, 0, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(0, 200, 0, 0.1)" }),
+      }),
+      fokontany: new Style({
+        stroke: new Stroke({ color: "rgba(0, 250, 0, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(0, 250, 0, 0.1)" }),
+      }),
+      cadastre: new Style({
+        stroke: new Stroke({ color: "rgba(200, 100, 0, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(200, 100, 0, 0.2)" }),
+      }),
+      demandefn: new Style({
+        stroke: new Stroke({ color: "rgba(100, 0, 200, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(100, 0, 200,0.3)" }),
+      }),
+      parcelle: new Style({
+        stroke: new Stroke({ color: "rgba(5,59,255,1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(5,59,255,0.2)" }),
+      }),
+    };
+
+    const baseStyle =
+      styleMap[type]?.clone() ||
+      new Style({
+        stroke: new Stroke({ color: "#7f7f7f", width: 1 }),
+        fill: new Fill({ color: "rgba(127,127,127,0.2)" }),
+      });
+
+    if (labelText) {
+      baseStyle.setText(
+        new Text({
+          text: labelText,
+          font: "12px Arial",
+          fill: new Fill({ color: "#000" }),
+          stroke: new Stroke({ color: "#fff", width: 1.5 }),
+          overflow: true,
+          placement: "point",
+        })
+      );
+    }
+
+    styleCache.current[cacheKey] = baseStyle;
+    return baseStyle;
   }, []);
 
   // ---- Tile loader ----
-  const refreshLocalTiles = useCallback(() => { if (localLayerRef.current) localLayerRef.current.getSource()?.refresh(); }, []);
-  const getTileUrl = useCallback(async (z: number, x: number, y: number): Promise<string | null> => {
-    const key = `${z}/${x}/${y}`;
-    const cached = tileCache.current[key];
-    if (cached && cached !== null) return cached;
-    if (cached === null) return null;
-    tileCache.current[key] = null;
-    try {
-      const file = await Filesystem.readFile({ path: `tiles/fond/${key}.png`, directory: Directory.Data });
-      const url = `data:image/png;base64,${file.data}`;
-      tileCache.current[key] = url;
-      refreshLocalTiles();
-      return url;
-    } catch { tileCache.current[key] = ""; return ""; }
-  }, [refreshLocalTiles]);
+  const refreshLocalTiles = useCallback(() => {
+    if (localLayerRef.current) localLayerRef.current.getSource()?.refresh();
+  }, []);
+
+  const getTileUrl = useCallback(
+    async (z: number, x: number, y: number): Promise<string | null> => {
+      const key = `${z}/${x}/${y}`;
+      const cached = tileCache.current[key];
+      if (cached && cached !== null) return cached;
+      if (cached === null) return null;
+      tileCache.current[key] = null;
+      try {
+        const file = await Filesystem.readFile({
+          path: `tiles/fond/${key}.png`,
+          directory: Directory.Data,
+        });
+        const url = `data:image/png;base64,${file.data}`;
+        tileCache.current[key] = url;
+        refreshLocalTiles();
+        return url;
+      } catch {
+        tileCache.current[key] = "";
+        return "";
+      }
+    },
+    [refreshLocalTiles]
+  );
+
+  /****Dessin du polygone ********/
+  const addPolygone = useCallback(async () => {
+    if (!currentParcelle) {
+      console.warn("Aucune parcelle sélectionnée !");
+      return;
+    }
+
+    if (drawPoints.length < 3) {
+      console.table(drawPoints);
+
+      alert("Un polygone a besoin d'au moins 3 points.");
+      return;
+    }
+
+    const first = drawPoints[0];
+    const last = drawPoints[drawPoints.length - 1];
+    const isClosed = first[0] === last[0] && first[1] === last[1];
+
+    const closedPoints = isClosed ? drawPoints : [...drawPoints, first];
+
+    const points = closedPoints.map(([x, y]) => {
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
+        number,
+        number
+      ];
+      return new PointC(tx, ty);
+    });
+
+    const newPolygone = new Polygone(points);
+
+    const updatedParcelle: Parcelle = {
+      ...currentParcelle,
+      polygone: [newPolygone],
+    };
+
+    const updatedParcelles = parcelles.map((p) =>
+      p.code === updatedParcelle.code ? updatedParcelle : p
+    );
+
+    setCurrentParcelle(updatedParcelle);
+    setParcelles(updatedParcelles);
+    setDrawPoints([]);
+    setFabOpen(false);
+
+    await Preferences.set({
+      key: "parcelles_data",
+      value: JSON.stringify(updatedParcelles),
+    });
+
+    // 🔹 Ajouter seulement ce nouveau polygone au layer existant
+    const vectorLayer = vectorLayerRef.current;
+    if (vectorLayer) {
+      const source = vectorLayer.getSource();
+
+      // Transformer points EPSG:29702 -> EPSG:3857
+      const featurePoints = points.map((p) =>
+        transform([p.x, p.y], "EPSG:29702", "EPSG:3857")
+      );
+
+      const polygon = new Polygon([featurePoints]);
+      const feature = new Feature(polygon);
+
+      feature.set("name", "parcelle"); // Indispensable pour styleByType
+      feature.set("code", updatedParcelle.code);
+
+      feature.setStyle(styleByType);
+      feature.set("code", updatedParcelle.code);
+      source.addFeature(feature);
+    }
+    //eto tokn solona popup kely
+    console.log("✅ Polygone fermé et enregistré");
+  }, [currentParcelle, drawPoints, parcelles, styleByType]);
+
+  // dessiner le polwgone du addPolygone
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const source = new VectorSource();
+
+    if (drawPoints.length > 2) {
+      const polygon = new Polygon([[...drawPoints, drawPoints[0]]]);
+      source.addFeature(new Feature(polygon));
+    }
+
+    drawPoints.forEach((pt) => {
+      source.addFeature(new Feature({ geometry: new Point(pt) }));
+    });
+
+    if (vectorLayerRef.current)
+      mapRef.current.removeLayer(vectorLayerRef.current);
+
+    const vectorLayer = new VectorLayer({
+      source,
+      style: (feature) => {
+        const geometry = feature.getGeometry();
+        if (geometry instanceof Point) {
+          return new Style({
+            image: new CircleStyle({
+              radius: 3,
+              fill: new Fill({ color: "#ff0000" }),
+              stroke: new Stroke({ color: "#fff", width: 1 }),
+            }),
+          });
+        } else if (geometry instanceof Polygon) {
+          return new Style({
+            stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
+            fill: new Fill({ color: "rgba(0, 0, 255, 0.1)" }),
+          });
+        }
+        return undefined;
+      },
+    });
+
+    vectorLayerRef.current = vectorLayer;
+    mapRef.current.addLayer(vectorLayer);
+  }, [drawPoints]);
 
   // ---- Init Map ----
   useEffect(() => {
@@ -153,17 +428,22 @@ const Tab2: React.FC = () => {
     const tileSource = new XYZ({
       tileUrlFunction: ([z, x, y]) => {
         const key = `${z}/${x}/${y}`;
-        const c = tileCache.current[key]; 
-        if (c) return c; 
-        if (c === undefined) getTileUrl(z, x, y); 
+        const c = tileCache.current[key];
+        if (c) return c;
+        if (c === undefined) getTileUrl(z, x, y);
         return "";
-      }
+      },
     });
 
     const tileLayer = new TileLayer({ source: tileSource });
 
     const parcellesSource = new VectorSource();
-    const parcellesLayer = new VectorLayer({ source: parcellesSource, style: styleByType, updateWhileAnimating: false, updateWhileInteracting: false });
+    const parcellesLayer = new VectorLayer({
+      source: parcellesSource,
+      style: styleByType,
+      updateWhileAnimating: false,
+      updateWhileInteracting: false,
+    });
     parcellesLayer.setZIndex(layerOrder.length + 1);
     parcellesSourceRef.current = parcellesSource;
     parcellesLayerRef.current = parcellesLayer;
@@ -172,16 +452,45 @@ const Tab2: React.FC = () => {
 
     layerOrder.forEach((name, i) => {
       const src = new VectorSource();
-      const layer = new VectorLayer({ source: src, style: styleByType, zIndex: i + 1, updateWhileAnimating: false, updateWhileInteracting: false, visible: true });
+      const layer = new VectorLayer({
+        source: src,
+        style: styleByType,
+        zIndex: i + 1,
+        updateWhileAnimating: false,
+        updateWhileInteracting: false,
+        visible: true,
+      });
       geoJsonLayersRef.current[name] = layer;
       allLayers.push(layer);
     });
 
-    mapRef.current = new Map({
+    const map = new Map({
       target: mapElement.current,
       layers: allLayers,
-      view: new View({ center: fromLonLat([46.383814, -25.041426]), zoom: 15, minZoom: 11, maxZoom: 17 }),
-      controls: [new ScaleLine({ units: "metric", bar: true, steps: 1, text: true, minWidth: 135, maxWidth: 200 })]
+      view: new View({
+        center: fromLonLat([46.383814, -25.041426]),
+        zoom: 15,
+        minZoom: 11,
+        maxZoom: 17,
+      }),
+      controls: [
+        new ScaleLine({
+          units: "metric",
+          bar: true,
+          steps: 1,
+          text: true,
+          minWidth: 135,
+          maxWidth: 200,
+        }),
+      ],
+    });
+
+    mapRef.current = map;
+
+    map.on("moveend", () => {
+      const center = map.getView().getCenter();
+      if (center)
+        setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
     });
 
     localLayerRef.current = tileLayer;
@@ -194,12 +503,15 @@ const Tab2: React.FC = () => {
       setParcelles(await loadParcellesFromStorage());
       const geojsons = await loadGeoJsonFromStorage();
       const format = new GeoJSON();
-      Object.keys(geoJsonLayersRef.current).forEach(n => geoJsonLayersRef.current[n].getSource().clear());
-      geojsons.forEach(g => {
+      Object.keys(geoJsonLayersRef.current).forEach((n) =>
+        geoJsonLayersRef.current[n].getSource().clear()
+      );
+      geojsons.forEach((g) => {
         const fts = format.readFeatures(g, { featureProjection: "EPSG:3857" });
         if (fts.length > 0) {
           const type = fts[0].get("name")?.toLowerCase();
-          if (type && geoJsonLayersRef.current[type]) geoJsonLayersRef.current[type].getSource().addFeatures(fts);
+          if (type && geoJsonLayersRef.current[type])
+            geoJsonLayersRef.current[type].getSource().addFeatures(fts);
         }
       });
     };
@@ -211,38 +523,344 @@ const Tab2: React.FC = () => {
     if (!parcellesSourceRef.current) return;
     parcellesSourceRef.current.clear();
     const features: Feature[] = [];
-    parcelles.forEach(p => p.polygone?.forEach(pg => {
-      const pts = pg.points.map(pt => transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857") as [number, number]);
-      if (pts.length > 2) {
-        const f = new Feature(new Polygon([pts]));
-        f.set("code", p.code);
-        f.set("name", "parcelle");
-        features.push(f);
-      }
-    }));
+    parcelles.forEach((p) =>
+      p.polygone?.forEach((pg) => {
+        const pts = pg.points.map(
+          (pt) =>
+            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857") as [
+              number,
+              number
+            ]
+        );
+        if (pts.length > 2) {
+          const f = new Feature(new Polygon([pts]));
+          f.set("code", p.code);
+          f.set("name", "parcelle");
+          features.push(f);
+        }
+      })
+    );
     parcellesSourceRef.current.addFeatures(features);
   }, [parcelles]);
 
   // ---- Toggle local tiles ----
-  const toggleLocalTiles = useCallback(() => setShowLocalTiles(prev => !prev), []);
-  useEffect(() => { if (localLayerRef.current) localLayerRef.current.setVisible(showLocalTiles); }, [showLocalTiles]);
+  const toggleLocalTiles = useCallback(
+    () => setShowLocalTiles((prev) => !prev),
+    []
+  );
 
-  return <IonPage>
-    <IonHeader className="custom-header">
-      <IonToolbar className="custom-toolBar">
-        <IonButtons slot="start" className="glass-btn"><IonMenuButton /></IonButtons>
-        <IonButtons slot="end" className="glass-btn"><IonIcon icon={search} /></IonButtons>
-      </IonToolbar>
-    </IonHeader>
-    <IonContent fullscreen>
-      <div ref={mapElement} className="map-container"></div>
-      <div className="map-controls">
-        <IonButton fill="clear" className="glass-btn" onClick={toggleLocalTiles}>
-          <IonIcon color="dark" icon={showLocalTiles ? eyeOffOutline : eyeOutline} />
-        </IonButton>
-      </div>
-    </IonContent>
-  </IonPage>;
+  // recherche function, detail
+  const stateSearch = useCallback(() => {
+    if (showSearch) {
+      setShowSearch(false);
+    } else {
+      setShowSearch(true);
+    }
+  }, [showSearch]);
+
+  const blinkFeature = useCallback((feature: Feature) => {
+    if (!mapRef.current) return;
+
+    // Supprimer ancien highlight
+    if (highlightLayerRef.current) {
+      mapRef.current.removeLayer(highlightLayerRef.current);
+    }
+
+    const highlightSource = new VectorSource({
+      features: [feature],
+    });
+
+    let visible = true;
+    const highlightStyle = (visible: boolean) =>
+      new Style({
+        stroke: new Stroke({
+          color: visible ? "rgba(81, 255, 0, 0.63)" : "rgba(255, 255, 255, 0.63)",
+          width: 3,
+        }),
+        fill: new Fill({
+          color: visible ? "rgba(255, 255, 255, 1)" : "rgba(81, 255, 0, 0.63)",
+        }),
+      });
+
+    const vectorLayer = new VectorLayer({
+      source: highlightSource,
+      style: highlightStyle(true),
+      zIndex: 9999,
+    });
+
+    mapRef.current.addLayer(vectorLayer);
+    highlightLayerRef.current = vectorLayer;
+
+    // Intervalle clignotant
+    const blinkInterval = setInterval(() => {
+      visible = !visible;
+      vectorLayer.setStyle(highlightStyle(visible));
+    }, 500); // 500ms ON/OFF
+
+    // Stop après 5 secondes
+    setTimeout(() => {
+      clearInterval(blinkInterval);
+      if (mapRef.current && highlightLayerRef.current) {
+        mapRef.current.removeLayer(highlightLayerRef.current);
+        highlightLayerRef.current = null;
+      }
+    }, 5000);
+  }, []);
+
+  const searchAndZoom = useCallback(
+    (searchTerm: string) => {
+      if (!mapRef.current) return;
+
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) return;
+
+      // 🔍 Parcourir toutes les couches GeoJSON
+      const geoJsonLayers = Object.values(geoJsonLayersRef.current);
+      let foundFeature: Feature | null = null;
+
+      for (const layer of geoJsonLayers) {
+        const source = layer.getSource();
+        if (!source) continue;
+
+        const features = source.getFeatures();
+        for (const feature of features) {
+          const props = feature.getProperties();
+          for (const key in props) {
+            if (
+              typeof props[key] === "string" &&
+              props[key].toLowerCase().includes(term)
+            ) {
+              foundFeature = feature;
+              break;
+            }
+          }
+          if (foundFeature) break;
+        }
+
+        if (foundFeature) break;
+      }
+
+      // 🔍 Si non trouvé, essayer dans les parcelles
+      if (!foundFeature && parcelles.length > 0) {
+        parcelles.forEach((p) => {
+          if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
+            const points = p.polygone[0].points.map((pt) =>
+              transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857")
+            );
+            const polygon = new Polygon([points]);
+            foundFeature = new Feature(polygon);
+          }
+        });
+      }
+
+      // 📌 Zoomer si trouvé
+      if (foundFeature) {
+        const extent = foundFeature.getGeometry()?.getExtent();
+        if (extent) {
+          mapRef.current
+            .getView()
+            .fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
+          blinkFeature(foundFeature);
+        }
+      } else {
+        setToastMessage(`Aucun parcelle trouvé pour : ${searchTerm}`);
+      }
+    },
+    [blinkFeature, parcelles]
+  );
+
+  useEffect(() => {
+    if (localLayerRef.current) localLayerRef.current.setVisible(showLocalTiles);
+  }, [showLocalTiles]);
+
+  return (
+    <IonPage>
+      <IonHeader className="custom-header">
+        <IonToolbar className="custom-toolBar">
+          <IonButtons slot="start" className="glass-btn">
+            <IonMenuButton />
+          </IonButtons>
+          {currentParcelle != null && (
+            <IonLabel className="glass-label" slot="start">
+              Croquis du parcelle {currentParcelle.code}
+            </IonLabel>
+          )}
+          <IonButtons onClick={stateSearch} slot="end" className="glass-btn">
+            <IonIcon icon={search} />
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent fullscreen>
+        {fabOpen && (
+          <div className="map-crosshair">
+            <div className="cross-symbol"></div>
+            {centerCoordsProjected && (
+              <div className="coord-display">
+                <div>
+                  X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
+                  {centerCoordsProjected[1].toFixed(6)}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div ref={mapElement} className="map-container"></div>
+
+        {showSearch && (
+          <div className="map-search">
+            <div className="search-glass">
+              <IonInput
+                type="search"
+                placeholder="Recherche titre, karatany, ipss, ..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const target = e.target as HTMLInputElement;
+                    const val = target.value;
+                    if (val && val.trim()) {
+                      searchAndZoom(val.trim());
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+        <IonToast
+          isOpen={!!toastMessage}
+          message={toastMessage || ""}
+          duration={2000}
+          color="danger"
+          onDidDismiss={() => setToastMessage(null)}
+        />
+
+        {currentParcelle && showCard && (
+          <div className="glass-card-bottom">
+            <div className="glass-card-header">
+              <h4 style={{ margin: 0 }}>
+                <label className="fs-6">{currentParcelle.code}</label>
+              </h4>
+              <IonButton
+                fill="clear"
+                size="small"
+                color="danger"
+                onClick={() => setShowCard(false)}
+              >
+                <IonIcon icon={closeOutline} style={{ fontSize: "20px" }} />
+              </IonButton>
+            </div>
+
+            <div className="glass-card-content">
+              <p>
+                <label>Date de création :</label>{" "}
+                {currentParcelle.dateCreation || "N/A"}
+              </p>
+              <p>
+                <label>Consistance :</label>{" "}
+                {currentParcelle.consistance || "Aucune"}
+              </p>
+              <p>
+                <label>Opposition :</label>{" "}
+                {currentParcelle.oppossition ? "Oui" : "Non"}
+              </p>
+              <p>
+                <label>Revandication :</label>{" "}
+                {currentParcelle.revandication ? "Oui" : "Non"}
+              </p>
+              <p>
+                <label>Observation :</label>{" "}
+                {currentParcelle.observation || "Aucune"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="map-controls">
+          {fabOpen && (
+            <div className="fab">
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={addPolygone}
+              >
+                <IonIcon color="success" icon={checkmark} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => {
+                  const center = mapRef.current?.getView().getCenter();
+                  if (center)
+                    setDrawPoints((prev) => [
+                      ...prev,
+                      center as [number, number],
+                    ]);
+                }}
+              >
+                <IonIcon color="primary" icon={addOutline} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => setDrawPoints((prev) => prev.slice(0, -1))}
+              >
+                <IonIcon color="danger" icon={removeOutline} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => {
+                  console.log('GPS oooo');
+                }}
+              >
+                <IonIcon color="dark" icon={locateOutline} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => {
+                  setDrawPoints([]);
+                  setFabOpen(false);
+                }}
+              >
+                <IonIcon color="dark" icon={closeOutline} />
+              </IonButton>
+            </div>
+          )}
+
+          {currentParcelle && (
+            <IonButton
+              fill="clear"
+              className="glass-btn"
+              onClick={() => setFabOpen((prev) => !prev)}
+            >
+              <IonIcon color="danger" icon={pencilOutline}></IonIcon>
+            </IonButton>
+          )}
+
+          {currentParcelle && (
+            <IonButton
+              className="glass-btn"
+              fill="clear"
+              onClick={() => setShowCard(true)}
+            >
+              <IonIcon color="dark" icon={information} />
+            </IonButton>
+          )}
+          <IonButton
+            fill="clear"
+            className="glass-btn"
+            onClick={toggleLocalTiles}
+          >
+            <IonIcon
+              color="dark"
+              icon={showLocalTiles ? eyeOffOutline : eyeOutline}
+            />
+          </IonButton>
+        </div>
+      </IonContent>
+    </IonPage>
+  );
 };
 
 export default Tab2;
