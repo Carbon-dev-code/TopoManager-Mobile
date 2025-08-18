@@ -27,7 +27,7 @@ const App: React.FC = () => {
         await StatusBar.setOverlaysWebView({ overlay: false });
         await StatusBar.setBackgroundColor({ color: '#000000' });
       } catch (error) {
-        console.warn('StatusBar not available in browser', error);
+        //console.warn('StatusBar not available in browser', error);
       }
     };
     configureStatusBar();
