@@ -10,6 +10,7 @@ import {
   IonLabel,
   IonInput,
   IonToast,
+  IonTitle,
 } from "@ionic/react";
 import "./Tab2.css";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -51,7 +52,7 @@ import { Polygone } from "../model/vecteur/Polygone";
 import { PointC } from "../model/vecteur/PointC";
 import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
-import Rotate from 'ol/control/Rotate';
+import Rotate from "ol/control/Rotate";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -99,6 +100,7 @@ const Tab2: React.FC = () => {
     number[] | null
   >(null);
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const intervalDuration = 10000;
 
   //---Modal/Fab----------
   const [showCard, setShowCard] = useState(true);
@@ -491,7 +493,7 @@ const Tab2: React.FC = () => {
         }),
         new Rotate({
           autoHide: false,
-          className: 'ol-rotate ol-custom-bottom-left',
+          className: "ol-rotate ol-custom-bottom-left",
         }),
       ],
     });
@@ -565,6 +567,7 @@ const Tab2: React.FC = () => {
   const searchGPS = useCallback(() => {
     const x = parseFloat(longitude);
     const y = parseFloat(latitude);
+
     if (isNaN(x) || isNaN(y)) {
       setToastMessage("Coordonnées invalides");
       return;
@@ -573,15 +576,59 @@ const Tab2: React.FC = () => {
     const coords3857 = transform([x, y], "EPSG:29702", "EPSG:3857");
 
     const map = mapRef.current;
-    if (map) {
-      const view = map.getView();
-      view.animate({
-        center: coords3857,
-        zoom: 17,
-        duration: 1000,
+    if (!map) return;
+
+    // Centrer et zoomer
+    const view = map.getView();
+    view.animate({
+      center: coords3857,
+      zoom: 17,
+      duration: 1000,
+    });
+
+    // Création du point vert
+    const marker = new Feature({
+      geometry: new Point(coords3857),
+    });
+
+    if (!fabOpen) {
+      const markerStyle1 = new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: "red" }),
+          stroke: new Stroke({ color: "white", width: 2 }),
+        }),
       });
-    }
-  }, [latitude, longitude]);
+
+      const markerStyle2 = new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: "rgba(30, 255, 0, 1)" }),
+          stroke: new Stroke({ color: "white", width: 2 }),
+        }),
+      });
+
+      let visible = true;
+      marker.setStyle(markerStyle1); // Style initial
+
+      const interval = setInterval(() => {
+        visible = !visible;
+        marker.setStyle(visible ? markerStyle1 : markerStyle2);
+      }, 500); // Changement toutes les 500ms
+
+      // Stop scintillement après 1 minute (60000ms)
+      setTimeout(() => {clearInterval(interval);}, intervalDuration);}
+    // Source et couche temporaire
+    const vectorSource = new VectorSource({
+      features: [marker],
+    });
+    const markerLayer = new VectorLayer({
+      source: vectorSource,
+    });
+    map.addLayer(markerLayer);
+    // Supprimer après 30 secondes
+    setTimeout(() => {map.removeLayer(markerLayer);}, intervalDuration); // 30 s
+  }, [fabOpen, latitude, longitude]);
 
   // recherche function, detail
   const stateSearch = useCallback(() => {
@@ -716,11 +763,13 @@ const Tab2: React.FC = () => {
           <IonButtons slot="start" className="glass-btn">
             <IonMenuButton />
           </IonButtons>
+
           {currentParcelle != null && (
-            <IonLabel className="glass-label" slot="start">
+            <IonTitle className="glass-label">
               Croquis du parcelle {currentParcelle.code}
-            </IonLabel>
+            </IonTitle>
           )}
+
           <IonButtons onClick={stateSearch} slot="end" className="glass-btn">
             <IonIcon icon={search} />
           </IonButtons>
@@ -815,7 +864,7 @@ const Tab2: React.FC = () => {
           <div className="gps-container">
             <div className="gps-search">
               <div className="gps-header">
-                <label>Placer un point à</label>
+                <label>Aller à (X, Y)</label>
                 <IonButton
                   fill="clear"
                   size="small"
@@ -830,14 +879,14 @@ const Tab2: React.FC = () => {
                 <IonInput
                   className="border"
                   type="text"
-                  placeholder="Longitude (X)"
+                  placeholder="X"
                   value={longitude}
                   onIonChange={(e) => setLongitude(e.detail.value!)}
                 />
                 <IonInput
                   className="border"
                   type="text"
-                  placeholder="Latitude (Y)"
+                  placeholder="Y"
                   value={latitude}
                   onIonChange={(e) => setLatitude(e.detail.value!)}
                 />
@@ -880,9 +929,6 @@ const Tab2: React.FC = () => {
               >
                 <IonIcon color="danger" icon={removeOutline} />
               </IonButton>
-              <IonButton className="glass-btn" fill="clear" onClick={gpsCard}>
-                <IonIcon color="dark" icon={locateOutline} />
-              </IonButton>
               <IonButton
                 className="glass-btn"
                 fill="clear"
@@ -915,6 +961,9 @@ const Tab2: React.FC = () => {
               <IonIcon color="dark" icon={information} />
             </IonButton>
           )}
+          <IonButton className="glass-btn" fill="clear" onClick={gpsCard}>
+            <IonIcon color="dark" icon={locateOutline} />
+          </IonButton>
           <IonButton
             fill="clear"
             className="glass-btn"

@@ -3,7 +3,10 @@
 }
 
 .custom-toolBar {
-  --background: var(--ion-toolbar-background, var(--ion-background-color, #ffffff00)) !important;
+  --background: var(
+    --ion-toolbar-background,
+    var(--ion-background-color, #ffffff00)
+  ) !important;
 }
 
 .map-container {
@@ -24,6 +27,7 @@
 }
 
 .map-search {
+  margin-top: 10px;
   position: relative;
   height: 40px;
   width: 100%;
@@ -32,8 +36,8 @@
   justify-content: center;
 }
 
-.search-glass{
-  padding: 0px 20px 0px 20px ;
+.search-glass {
+  padding: 0px 20px 0px 20px;
   justify-content: center;
   display: flex;
   align-items: center;
@@ -41,8 +45,7 @@
   backdrop-filter: blur(12px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 20px;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.1),
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
   width: 80%;
   height: 100%;
@@ -65,8 +68,7 @@
   backdrop-filter: blur(12px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 50%;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.1),
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
   width: 38px;
   height: 38px;
@@ -123,7 +125,7 @@
 }
 
 .cross-symbol::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 2px;
   height: 15px;
@@ -132,7 +134,7 @@
 }
 
 .cross-symbol::after {
-  content: '';
+  content: "";
   position: absolute;
   width: 2px;
   height: 15px;
@@ -157,8 +159,7 @@
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.1),
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
 }
 
@@ -172,8 +173,7 @@
   backdrop-filter: blur(10px) saturate(50%);
   border: 1px solid rgba(255, 255, 255, 0.761);
   border-radius: 50%;
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
   width: 42px;
   height: 42px;
@@ -182,24 +182,38 @@
   transition: background 0.3s ease, transform 0.3s ease;
 }
 
-.glass-label{
-  align-items: center;
-  padding: 5px 10px 5px 10px;
-  margin-left: 10px;
-  color: black;
-  justify-content: center;
+.glass-label {
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  margin: 0px 10px 0px 10px;
+  color: black;
   background: rgba(255, 255, 255, 0.548);
   backdrop-filter: blur(5px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  box-shadow:
-    0 4px 12px rgba(255, 255, 255, 0.1),
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
-  position: relative;
   overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-size: 1rem;
   transition: background 0.3s ease, transform 0.3s ease;
+}
+
+/* Responsive pour les petits écrans (ex: portrait mobile) */
+@media (max-width: 480px) {
+  .glass-label {
+    font-size: 0.85rem;
+    max-width: 60%;
+    margin-left: auto;
+    margin-right: auto;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 
 /* dans Tab2.css */
@@ -223,10 +237,21 @@
   font-size: 14px;
 }
 
+/* Grand écran : desktop */
 @media (min-width: 768px) {
   .glass-card-bottom {
     max-width: 30%;
     max-height: 40vh;
+  }
+}
+
+/* Petits écrans en mode paysage */
+@media (max-height: 500px) and (orientation: landscape) {
+  .glass-card-bottom {
+    top: 70px;
+    width: 50vw;
+    max-height: 50vh;
+    font-size: 12px;
   }
 }
 
@@ -253,53 +278,75 @@
   color: black;
 }
 
-.sc-ion-input-md-h{
+.sc-ion-input-md-h {
   --highlight-color-focused: none !important;
 }
 
 .fab {
   position: fixed;
   top: 50%;
+  right: 2px;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
+  z-index: 999;
 }
 
-.gps-glass-card {
-  color: #000;
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-  transition: background 0.3s ease, transform 0.3s ease;
+@media (orientation: landscape) {
+  .fab {
+    top: auto;
+    bottom: 20px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    flex-direction: row; /* Optionnel : aligner horizontalement en paysage */
+  }
 }
 
 .gps-container {
   display: flex;
-  justify-content: center; /* centre horizontalement */
-  height: fit-content;           /* prend toute la hauteur de la fenêtre */
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  width: 100%;
 }
 
 .gps-search {
-  padding: 5px;
+  width: 90vw; /* largeurs plus flexibles */
+  max-width: 500px;
+  padding: 10px;
   color: #000;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(6px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
-              inset 0 1px 3px rgba(255, 255, 255, 0.2);
-  width: 60vh;
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
   transition: background 0.3s ease, transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.gps-glass-card .border{
-  flex: 1;
+.gps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gps-glass-card {
+  display: flex;
+  gap: 10px;
+}
+
+.gps-glass-card .border {
   padding: 0px 10px !important;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.2);
   background: rgba(255, 255, 255, 0.8);
   transition: border 0.3s ease, box-shadow 0.3s ease;
   font-size: 1rem;
+  width: 100%;
 }
 
 .gps-glass-card .border:focus-within {
@@ -307,10 +354,27 @@
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
 }
 
-.gps-header{
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
+/* ✅ Responsive pour petits écrans en mode paysage */
+@media (max-height: 500px) and (orientation: landscape) {
+  .gps-container {
+    padding: 5px;
+  }
+
+  .gps-search {
+    width: 95vw;
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+
+  .gps-glass-card {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .gps-glass-card .border {
+    flex: 1 1 45%;
+    min-width: 120px;
+  }
 }
 
 .ol-custom-bottom-left {
