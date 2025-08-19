@@ -208,7 +208,7 @@
   top: 70px;
   left: 50%;
   transform: translateX(-50%);
-  width: 40vh;
+  width: 30vh;
   max-width: 600px;
   max-height: 50vh;
   background: rgba(255, 255, 255, 0.15);
@@ -225,7 +225,7 @@
 
 @media (min-width: 768px) {
   .glass-card-bottom {
-    max-width: 40%;
+    max-width: 30%;
     max-height: 40vh;
   }
 }
@@ -263,4 +263,52 @@
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
+}
+
+.gps-glass-card {
+  color: #000;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.gps-container {
+  display: flex;
+  justify-content: center; /* centre horizontalement */
+  height: fit-content;           /* prend toute la hauteur de la fenêtre */
+}
+
+.gps-search {
+  padding: 5px;
+  color: #000;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(6px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
+              inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  width: 60vh;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.gps-glass-card .border{
+  flex: 1;
+  padding: 0px 10px !important;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+  font-size: 1rem;
+}
+
+.gps-glass-card .border:focus-within {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.gps-header{
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
 }

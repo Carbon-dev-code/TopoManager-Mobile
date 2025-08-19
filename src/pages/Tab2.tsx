@@ -103,6 +103,8 @@ const Tab2: React.FC = () => {
   const [showCard, setShowCard] = useState(true);
   const [fabOpen, setFabOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showGPS, setShowGPS] = useState(false);
+
   //---Routeur--------
   const query = useQuery();
   const from = query.get("from");
@@ -548,6 +550,7 @@ const Tab2: React.FC = () => {
     () => setShowLocalTiles((prev) => !prev),
     []
   );
+  const gpsCard = useCallback(() => setShowGPS((prev) => !prev), []);
 
   // recherche function, detail
   const stateSearch = useCallback(() => {
@@ -574,7 +577,9 @@ const Tab2: React.FC = () => {
     const highlightStyle = (visible: boolean) =>
       new Style({
         stroke: new Stroke({
-          color: visible ? "rgba(81, 255, 0, 0.63)" : "rgba(255, 255, 255, 0.63)",
+          color: visible
+            ? "rgba(81, 255, 0, 0.63)"
+            : "rgba(255, 255, 255, 0.63)",
           width: 3,
         }),
         fill: new Fill({
@@ -775,6 +780,36 @@ const Tab2: React.FC = () => {
           </div>
         )}
 
+        {showGPS && (
+          <div className="gps-container">
+            <div className="gps-search">
+              <div className="gps-header">
+                <label>Placer un point à</label>
+                <IonButton
+                  fill="clear"
+                  size="small"
+                  color="danger"
+                  onClick={() => setShowGPS(false)}
+                >
+                  <IonIcon icon={closeOutline} style={{ fontSize: "20px" }} />
+                </IonButton>
+              </div>
+              <div className="gps-glass-card">
+                <IonInput
+                  className="border"
+                  type="text"
+                  placeholder="Latitude (X)"
+                />
+                <IonInput
+                  className="border"
+                  type="text"
+                  placeholder="Longitude (Y)"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="map-controls">
           {fabOpen && (
             <div className="fab">
@@ -806,13 +841,7 @@ const Tab2: React.FC = () => {
               >
                 <IonIcon color="danger" icon={removeOutline} />
               </IonButton>
-              <IonButton
-                className="glass-btn"
-                fill="clear"
-                onClick={() => {
-                  console.log('GPS oooo');
-                }}
-              >
+              <IonButton className="glass-btn" fill="clear" onClick={gpsCard}>
                 <IonIcon color="dark" icon={locateOutline} />
               </IonButton>
               <IonButton
