@@ -19,7 +19,7 @@
 .map-controls {
   position: absolute;
   bottom: 18px;
-  right: 10px;
+  right: 2px;
   z-index: 1000;
 }
 
@@ -311,4 +311,12 @@
   align-items: center;
   display: flex;
   justify-content: space-between;
+}
+
+.ol-custom-bottom-left {
+  bottom: 3.5em;
+  left: 0.5em;
+  top: auto !important;
+  right: auto !important;
+  position: absolute;
 }

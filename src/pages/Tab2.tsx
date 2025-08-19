@@ -51,6 +51,7 @@ import { Polygone } from "../model/vecteur/Polygone";
 import { PointC } from "../model/vecteur/PointC";
 import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
+import Rotate from 'ol/control/Rotate';
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -104,6 +105,10 @@ const Tab2: React.FC = () => {
   const [fabOpen, setFabOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showGPS, setShowGPS] = useState(false);
+
+  //---------Variable----------/
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
 
   //---Routeur--------
   const query = useQuery();
@@ -473,7 +478,7 @@ const Tab2: React.FC = () => {
         center: fromLonLat([46.383814, -25.041426]),
         zoom: 15,
         minZoom: 11,
-        maxZoom: 17,
+        maxZoom: 21,
       }),
       controls: [
         new ScaleLine({
@@ -483,6 +488,10 @@ const Tab2: React.FC = () => {
           text: true,
           minWidth: 135,
           maxWidth: 200,
+        }),
+        new Rotate({
+          autoHide: false,
+          className: 'ol-rotate ol-custom-bottom-left',
         }),
       ],
     });
@@ -550,7 +559,29 @@ const Tab2: React.FC = () => {
     () => setShowLocalTiles((prev) => !prev),
     []
   );
+  // --- seach zoom Coords
   const gpsCard = useCallback(() => setShowGPS((prev) => !prev), []);
+
+  const searchGPS = useCallback(() => {
+    const x = parseFloat(longitude);
+    const y = parseFloat(latitude);
+    if (isNaN(x) || isNaN(y)) {
+      setToastMessage("Coordonnées invalides");
+      return;
+    }
+
+    const coords3857 = transform([x, y], "EPSG:29702", "EPSG:3857");
+
+    const map = mapRef.current;
+    if (map) {
+      const view = map.getView();
+      view.animate({
+        center: coords3857,
+        zoom: 17,
+        duration: 1000,
+      });
+    }
+  }, [latitude, longitude]);
 
   // recherche function, detail
   const stateSearch = useCallback(() => {
@@ -580,7 +611,7 @@ const Tab2: React.FC = () => {
           color: visible
             ? "rgba(81, 255, 0, 0.63)"
             : "rgba(255, 255, 255, 0.63)",
-          width: 3,
+          width: 1.5,
         }),
         fill: new Fill({
           color: visible ? "rgba(255, 255, 255, 1)" : "rgba(81, 255, 0, 0.63)",
@@ -794,17 +825,25 @@ const Tab2: React.FC = () => {
                   <IonIcon icon={closeOutline} style={{ fontSize: "20px" }} />
                 </IonButton>
               </div>
+
               <div className="gps-glass-card">
                 <IonInput
                   className="border"
                   type="text"
-                  placeholder="Latitude (X)"
+                  placeholder="Longitude (X)"
+                  value={longitude}
+                  onIonChange={(e) => setLongitude(e.detail.value!)}
                 />
                 <IonInput
                   className="border"
                   type="text"
-                  placeholder="Longitude (Y)"
+                  placeholder="Latitude (Y)"
+                  value={latitude}
+                  onIonChange={(e) => setLatitude(e.detail.value!)}
                 />
+                <IonButton expand="block" onClick={searchGPS}>
+                  Valider
+                </IonButton>
               </div>
             </div>
           </div>
