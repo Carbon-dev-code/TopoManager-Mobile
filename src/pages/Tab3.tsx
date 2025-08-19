@@ -83,9 +83,9 @@ const Tab3: React.FC = () => {
   }, []);
 
   const loadParcelles = async () => {
-    setSyncingAll(false)
+    setSyncingAll(false);
     setLoading(true);
-  
+
     try {
       const result = await Preferences.get({ key: STORAGE_KEY });
       if (result.value) {
@@ -98,7 +98,7 @@ const Tab3: React.FC = () => {
       console.error("Erreur de lecture:", e);
       showError("Erreur lors du chargement des données locales");
     } finally {
-      setSyncingAll(false)
+      setSyncingAll(false);
       setLoading(false);
     }
   };
@@ -248,7 +248,9 @@ const Tab3: React.FC = () => {
       return;
     }
 
-    const nonSyncParcelles = parcelles.filter((p) => p.synchronise == 0 ||  p.synchronise == 2);
+    const nonSyncParcelles = parcelles.filter(
+      (p) => p.synchronise == 0 || p.synchronise == 2
+    );
     if (nonSyncParcelles.length == 0) {
       showSuccess("Toutes les parcelles sont déjà synchronisées.");
       return;
@@ -257,7 +259,7 @@ const Tab3: React.FC = () => {
     setSyncingAll(true);
     let updatedParcelles = [...parcelles];
 
-    let erreur = 0
+    let erreur = 0;
 
     for (const parcelle of nonSyncParcelles) {
       // ✅ Marquer la parcelle comme en cours de sync
@@ -303,10 +305,12 @@ const Tab3: React.FC = () => {
     await saveParcelles(updatedParcelles);
     if (erreur == 0) {
       showSuccess(`${nonSyncParcelles.length} parcelle(s) synchronisée(s)`);
-    }else{
-      showError(`${erreur} parcelle(s) non synchronisée(s) à cause d'une erreur`);
+    } else {
+      showError(
+        `${erreur} parcelle(s) non synchronisée(s) à cause d'une erreur`
+      );
     }
-    
+
     setSyncingAll(false);
   };
 
@@ -390,19 +394,13 @@ const Tab3: React.FC = () => {
         <IonProgressBar type="indeterminate" className="my-progress-bar" />
       )}
 
-      <IonLoading
-        isOpen={loading}
-        message={"Chargement..."}
-      />
+      <IonLoading isOpen={loading} message={"Chargement..."} />
 
-      <IonLoading
-        isOpen={syncingAll}
-        message={"Synchronisation en cours..."}
-      />
+      <IonLoading isOpen={syncingAll} message={"Synchronisation en cours..."} />
 
       <IonContent className="ion-padding">
-        <div className="row align-items-center">
-          <div className="col">
+        <div className="row align-items-center g-2">
+          <div className="col-12 col-md">
             <IonItem lines="none">
               <IonLabel>Adresse serveur :</IonLabel>
               <IonText color="primary" className="ms-2">
@@ -410,7 +408,8 @@ const Tab3: React.FC = () => {
               </IonText>
             </IonItem>
           </div>
-          <div className="col-auto">
+
+          <div className="col-12 col-md">
             <IonButton
               size="default"
               expand="block"
@@ -438,10 +437,7 @@ const Tab3: React.FC = () => {
 
         {/* Filtre ajouté ici */}
         <div className="mb-3 mt-3">
-          <div
-            className="d-flex justify-content-center overflow-auto"
-            style={{ gap: "0.5rem" }}
-          >
+          <div className="filtre-parcelle-container">
             <div className="col-auto">
               <input
                 type="radio"
@@ -518,14 +514,19 @@ const Tab3: React.FC = () => {
             .filter((p) => {
               if (filtreParcelle === "tous") return true;
               if (filtreParcelle === "sync") return p.synchronise == 1;
-              if (filtreParcelle === "nosync") return p.synchronise == 0 || p.synchronise == 2;
+              if (filtreParcelle === "nosync")
+                return p.synchronise == 0 || p.synchronise == 2;
               if (filtreParcelle === "erreur") return p.synchronise == 2;
               return true;
             })
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
-                  className={`position-badge-custom-tab1 ion-color ${ parcelle.synchronise == 1 ? "ion-color-success" : "ion-color-danger" }  ${parcelle.synchronise ? "disabled" : ""}`}
+                  className={`position-badge-custom-tab1 ion-color ${
+                    parcelle.synchronise == 1
+                      ? "ion-color-success"
+                      : "ion-color-danger"
+                  }  ${parcelle.synchronise ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
                     if (parcelle.synchronise != 1 && !parcelle.syncing) {
@@ -535,13 +536,20 @@ const Tab3: React.FC = () => {
                   role="button"
                 >
                   {parcelle.syncing ? (
-                    <IonSpinner name="crescent" color="light"  style={{ width: "18px", height: "18px" }}
+                    <IonSpinner
+                      name="crescent"
+                      color="light"
+                      style={{ width: "18px", height: "18px" }}
                     />
                   ) : (
-                    <IonIcon icon={parcelle.synchronise == 1 ?  checkmark : sync} />
+                    <IonIcon
+                      icon={parcelle.synchronise == 1 ? checkmark : sync}
+                    />
                   )}
                   <span className="visually-hidden">
-                    {parcelle.synchronise ? "Parcelle synchronisée" : "Parcelle à synchroniser"}{" "}
+                    {parcelle.synchronise
+                      ? "Parcelle synchronisée"
+                      : "Parcelle à synchroniser"}{" "}
                   </span>
                 </span>
 
