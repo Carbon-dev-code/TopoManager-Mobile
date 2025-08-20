@@ -7,7 +7,6 @@ import {
   IonButtons,
   IonMenuButton,
   IonButton,
-  IonLabel,
   IonInput,
   IonToast,
   IonTitle,
@@ -170,6 +169,7 @@ const Tab2: React.FC = () => {
         setCurrentParcelle(found || null);
       } else {
         setCurrentParcelle(null);
+        setFabOpen(false)
       }
     };
     load();

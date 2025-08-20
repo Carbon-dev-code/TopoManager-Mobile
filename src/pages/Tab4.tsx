@@ -777,7 +777,7 @@ const Tab4 = () => {
                   <div className="col">
                     <IonItem lines="none" className="param-item">
                       <IonLabel>
-                        <IonText color="medium">Date de sélection</IonText>
+                        <IonText color="medium">Création</IonText>
                         <p>
                           <b>
                             {new Date(
