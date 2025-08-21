@@ -108,9 +108,17 @@
   overflow-x: auto;
 }
 
-/* En mode paysage ou écran large, on centre */
+/* Paysage */
 @media (orientation: landscape) {
   .filtre-parcelle-container {
     justify-content: center;
   }
 }
+
+/* Portrait + certaines dimensions */
+@media (orientation: portrait) and (min-width: 400px) {
+  .filtre-parcelle-container {
+    justify-content: center;
+  }
+}
+
