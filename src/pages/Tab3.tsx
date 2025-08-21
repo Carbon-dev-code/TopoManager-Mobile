@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   IonButtons,
   IonContent,
@@ -25,6 +25,7 @@ import {
   IonCardSubtitle,
   IonChip,
   IonCardTitle,
+  useIonViewWillEnter,
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import {
@@ -70,9 +71,7 @@ const Tab3: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
   const SERVER_URL_KEY = "server_url";
 
-  const buildServerUrl = (ipPort: string) => {
-    return `http://${ipPort}${API_BASE_PATH}`;
-  };
+  const [hasUnsynced, setHasUnsynced] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -81,6 +80,19 @@ const Tab3: React.FC = () => {
     };
     init();
   }, []);
+
+  useIonViewWillEnter(() => {
+    setHasUnsynced(
+      parcelles.some((p) => p.synchronise != 0 && p.synchronise != 2)
+    );
+    console.log(hasUnsynced);
+    console.log(parcelles);
+    
+  });
+
+  const buildServerUrl = (ipPort: string) => {
+    return `http://${ipPort}${API_BASE_PATH}`;
+  };
 
   const loadParcelles = async () => {
     setSyncingAll(false);
@@ -369,7 +381,11 @@ const Tab3: React.FC = () => {
     }
   };
 
-  const hasUnsynced = parcelles.some((p) => p.synchronise != 0);
+  useEffect(() => {
+    setHasUnsynced(
+      parcelles.some((p) => p.synchronise != 0 && p.synchronise != 2)
+    );
+  }, [parcelles]);
 
   return (
     <IonPage>
