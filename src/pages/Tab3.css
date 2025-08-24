@@ -1,11 +1,11 @@
 .cards-grid {
-    display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
 }
 
 .font-size {
-    font-size: 10px !important;    
+  font-size: 10px !important;
 }
 
 .parcelle-card {
@@ -53,13 +53,17 @@
 
 .demandeur-label {
   font-size: 0.9rem;
-  margin-top: 0 !important; /* Force la suppression */
-  margin-bottom: 0 !important; /* Force la suppression */
+  margin-top: 0 !important;
+  /* Force la suppression */
+  margin-bottom: 0 !important;
+  /* Force la suppression */
 }
 
 .ion-list {
-   padding-top: 0 !important; /* Force la suppression */
-   padding-bottom: 0 !important; /* Force la suppression */
+  padding-top: 0 !important;
+  /* Force la suppression */
+  padding-bottom: 0 !important;
+  /* Force la suppression */
 }
 
 .sync-button {
@@ -69,28 +73,61 @@
   z-index: 10;
 }
 
-/* Couleurs d’arrière-plan + dents */
-.bg-success.position-badge-custom-tab1 {
-  background-color: green;
+.position-badge-custom-tab2 {
+  position: absolute;
+  top: 0;
+  right: 0.5rem;
+  z-index: 1;
+  background: var(--ion-color-base);
   color: white;
-}
-.bg-success.position-badge-custom-tab1::before,
-.bg-success.position-badge-custom-tab1::after {
-  border-top-color: green;
+  padding: 4px;
+  border-radius: 0%;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
 }
 
-.bg-danger.position-badge-custom-tab1 {
-  background-color: red;
-  color: white;
+.position-badge-custom-tab2 ion-icon {
+  font-size: 18px;
 }
-.bg-danger.position-badge-custom-tab1::before,
-.bg-danger.position-badge-custom-tab1::after {
-  border-top-color: red;
+
+/* Dent gauche */
+.position-badge-custom-tab2::before {
+  content: "";
+  position: absolute !important;
+  bottom: -11px !important;
+  left: 0px !important;
+  border-left: 0 solid transparent !important;
+  border-right: 12px solid transparent !important;
+  border-top: 12px solid var(--ion-color-base) !important;
+}
+
+/* Dent droite */
+.position-badge-custom-tab2::after {
+  content: "";
+  position: absolute !important;
+  bottom: -11px !important;
+  right: 0px !important;
+  border-left: 12px solid transparent !important;
+  border-right: 0 solid transparent !important;
+  border-top: 12px solid var(--ion-color-base) !important;
+}
+
+/* Responsive pour petits écrans */
+@media (max-width: 576px) {
+  .position-badge-custom-tab2 {
+    font-size: 0.85rem;
+    right: 0.3rem;
+  }
 }
 
 /* Adaptations pour écrans petits */
 @media (max-width: 576px) {
-  .position-badge-custom-tab1 {
+  .position-badge-custom-tab2 {
     right: 0.3rem;
   }
 }
@@ -123,8 +160,15 @@
 }
 
 .cardContent {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 16px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+ion-title {
+  margin: 0 auto;
+  text-align: center;
+  left: 0 !important;
+  right: 0 !important;
 }

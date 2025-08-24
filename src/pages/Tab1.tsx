@@ -254,7 +254,6 @@ const Tab1: React.FC = () => {
           <IonButtons slot="end">
             <IonButton onClick={() => setShowCreateModal(true)}>
               <IonIcon icon={create} slot="start" />
-              Ajouter
             </IonButton>
           </IonButtons>
         </IonToolbar>
@@ -294,7 +293,7 @@ const Tab1: React.FC = () => {
                 <IonCardHeader className="custom-header-card">
                   <IonCardTitle><strong>{parcelle.code}</strong></IonCardTitle>
                   <IonCardSubtitle>
-                    <IonChip color="danger">
+                    <IonChip color={parcelle.synchronise === 1 ? 'success' : 'danger'}>
                       <IonIcon icon={sync} color={parcelle.synchronise === 1 ? 'success' : 'danger'}></IonIcon>
                       <IonLabel>{parcelle.synchronise === 1 ? 'Parcelle sync' : 'Parcelle non sync'}</IonLabel>
                     </IonChip>
@@ -386,7 +385,6 @@ const Tab1: React.FC = () => {
                   <IonCol size="12" size-md="12">
                     <IonSelect
                       label="Status :"
-                      value={parcelle.status}
                       onIonChange={(e) =>
                         setParcelle({
                           ...parcelle,
@@ -409,7 +407,6 @@ const Tab1: React.FC = () => {
                     <IonInput
                       label="Année d'occupation :"
                       type="number"
-                      value={parcelle.anneeOccup}
                       onIonChange={(e) =>
                         setParcelle({
                           ...parcelle,
@@ -428,7 +425,6 @@ const Tab1: React.FC = () => {
                   <IonCol size="12" size-md="12">
                     <IonSelect
                       label="Catégorie :"
-                      value={parcelle.categorie}
                       onIonChange={(e) =>
                         setParcelle({
                           ...parcelle,
@@ -451,7 +447,6 @@ const Tab1: React.FC = () => {
                     <IonInput
                       label="Consistance :"
                       type="text"
-                      value={parcelle.consistance}
                       onIonChange={(e) =>
                         setParcelle({
                           ...parcelle,
@@ -470,7 +465,6 @@ const Tab1: React.FC = () => {
                   <IonCol size="12" size-md="12">
                     <IonCheckbox
                       labelPlacement="start"
-                      checked={parcelle.oppossition}
                       onIonChange={(e) =>
                         setParcelle({
                           ...parcelle,
@@ -484,7 +478,6 @@ const Tab1: React.FC = () => {
                   <IonCol size="12" size-md="12">
                     <IonCheckbox
                       labelPlacement="start"
-                      checked={parcelle.revandication}
                       onIonChange={(e) =>
                         setParcelle({
                           ...parcelle,
@@ -644,7 +637,6 @@ const Tab1: React.FC = () => {
                   <IonCol size="12" size-md="12">
                     <IonTextarea
                       label="Observation"
-                      value={parcelle.observation}
                       onIonChange={(e) =>
                         setParcelle({
                           ...parcelle,
@@ -704,7 +696,6 @@ const Tab1: React.FC = () => {
                   <IonCol size="12">
                     <IonSelect
                       label="Repère :"
-                      value={newRiverin.repere}
                       onIonChange={(e) =>
                         setNewRiverin({
                           ...newRiverin,

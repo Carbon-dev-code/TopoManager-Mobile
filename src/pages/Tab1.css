@@ -119,5 +119,5 @@
   display: flex;
   justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 1px;
 }

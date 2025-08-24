@@ -31,7 +31,6 @@ import {
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import {
-  refresh,
   person,
   business,
   sync,
@@ -530,10 +529,7 @@ const Tab3: React.FC = () => {
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
-                  className={`position-badge-custom-tab1 ion-color ${parcelle.synchronise === 1
-                    ? "ion-color-success"
-                    : "ion-color-danger"
-                    }  ${parcelle.synchronise ? "disabled" : ""}`}
+                  className={`position-badge-custom-tab2 ion-color ${parcelle.synchronise === 1 ? "ion-color-success" : "ion-color-danger" } ${parcelle.synchronise === 1 ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
                     if (parcelle.synchronise !== 1 && !parcelle.syncing) {
@@ -564,7 +560,7 @@ const Tab3: React.FC = () => {
                   </IonCardTitle>
                   <IonCardSubtitle>
                     {parcelle.lastSync && (
-                      <IonChip color="danger">
+                      <IonChip color="success">
                         <IonIcon icon={sync} color="primary"></IonIcon>
                         <IonLabel>
                           {" "}
@@ -575,7 +571,7 @@ const Tab3: React.FC = () => {
 
                     {parcelle.syncError && (
                       <IonChip color="danger">
-                        <IonIcon icon={sync} color="warning"></IonIcon>
+                        <IonIcon icon={sync} color="danger"></IonIcon>
                         <IonLabel> ⚠️ {parcelle.syncError}</IonLabel>
                       </IonChip>
                     )}
