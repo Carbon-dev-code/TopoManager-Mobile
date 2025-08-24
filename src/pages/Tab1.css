@@ -121,3 +121,51 @@
   flex-wrap: wrap;
   gap: 1px;
 }
+
+/* Scoped components require higher specificity to customize */
+ion-searchbar.md.custom-search {
+  --cancel-button-color: #000000;
+}
+
+/* Toolbar transparente style glass */
+.transparent-toolbar {
+  --background: white !important;
+  --ion-background-color: white !important;
+  border: none !important;
+}
+
+
+
+/* Anim apparition search */
+.custom-search {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Boutons icônes */
+
+/* Icônes seules bien centrées */
+ion-button ion-icon {
+  font-size: 22px !important;
+}
+
+ion-searchbar.custom-search {
+  --background: #ffffff;
+  --color: #000000;
+  --placeholder-color: #000000;
+  --icon-color: #000000;
+  --clear-button-color: #000000;
+  --border-radius: 25px;
+  padding: 4px 8px;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Preferences } from "@capacitor/preferences";
 import {
   IonContent,
@@ -34,6 +34,7 @@ import {
   IonCardTitle,
   IonChip,
   useIonViewWillEnter,
+  IonSearchbar,
 } from "@ionic/react";
 import {
   trash,
@@ -46,6 +47,7 @@ import {
   businessOutline,
   sync,
   map,
+  searchSharp,
 } from "ionicons/icons";
 import { useHistory } from 'react-router-dom';
 import "../assets/dist/css/bootstrap.min.css";
@@ -77,8 +79,9 @@ const Tab1: React.FC = () => {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
   const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur");
-
   const history = useHistory();
+  const [seacrh, setSearch] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState(""); // texte de recherche
 
   const handleCardClick = (codeParcelle: string) => {
     history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
@@ -243,6 +246,27 @@ const Tab1: React.FC = () => {
 
   };
 
+  // ⚡ On utilise useMemo pour retourner directement le tableau filtré
+  const filteredParcelles = useMemo(() => {
+    if (!searchQuery) return parcelles;
+    const q = searchQuery.toLowerCase();
+    return parcelles.filter((p) => {
+      // Cherche dans le code de la parcelle
+      if (p.code?.toLowerCase().includes(q)) return true;
+      // Cherche dans les demandeurs
+      if (
+        p.demandeurs.some(
+          (d) =>
+            d.nom?.toLowerCase().includes(q) ||
+            d.prenom?.toLowerCase().includes(q)
+        )
+      )
+        return true;
+      return false;
+    });
+  }, [searchQuery, parcelles]);
+
+
   return (
     <IonPage>
       <IonHeader>
@@ -252,12 +276,38 @@ const Tab1: React.FC = () => {
           </IonButtons>
           <IonTitle>Gestion Parcelles</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={() => setShowCreateModal(true)}>
-              <IonIcon icon={create} slot="start" />
+            <IonButton aria-label="Rechercher" onClick={() => setSearch(true)}>
+              <IonIcon icon={searchSharp} slot="icon-only" />
+            </IonButton>
+            <IonButton aria-label="Créer une nouvelle parcelle" onClick={() => setShowCreateModal(true)}>
+              <IonIcon icon={create} slot="icon-only" />
             </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
+
+      {seacrh && (
+        <IonToolbar className="transparent-toolbar">
+          <IonSearchbar
+            autoFocus
+            showCancelButton="focus"
+            className="custom-search"
+            placeholder="Recherche numéro ou demandeur"
+            value={searchQuery}
+            onIonInput={(e) => setSearchQuery(e.detail.value!)}
+          />
+          <IonButtons slot="end">
+            <IonButton
+              onClick={() => {
+                setSearch(false);
+                setSearchQuery(""); // réinitialise la recherche
+              }}
+            >
+              Annuler
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      )}
 
       <IonContent className="ion-padding">
         {parcelles.length === 0 ? (
@@ -274,7 +324,7 @@ const Tab1: React.FC = () => {
           </div>
         ) : (
           <div className="cardContent">
-            {parcelles.map((parcelle) => (
+            {(searchQuery ? filteredParcelles : parcelles).map((parcelle) => (
               <IonCard
                 key={parcelle.code}
                 className="custom-card"
@@ -285,7 +335,10 @@ const Tab1: React.FC = () => {
                   className="position-badge-custom-tab1"
                   role="button"
                   color="danger"
-                  onClick={() => removeParcelle(parcelle.code!)}
+                  onClick={(e) => {
+                    e.stopPropagation(); // pour ne pas déclencher le click sur la carte
+                    removeParcelle(parcelle.code!);
+                  }}
                 >
                   <IonIcon icon={trash} />
                 </span>
@@ -294,13 +347,12 @@ const Tab1: React.FC = () => {
                   <IonCardTitle><strong>{parcelle.code}</strong></IonCardTitle>
                   <IonCardSubtitle>
                     <IonChip color={parcelle.synchronise === 1 ? 'success' : 'danger'}>
-                      <IonIcon icon={sync} color={parcelle.synchronise === 1 ? 'success' : 'danger'}></IonIcon>
+                      <IonIcon icon={sync} color={parcelle.synchronise === 1 ? 'success' : 'danger'} />
                       <IonLabel>{parcelle.synchronise === 1 ? 'Parcelle sync' : 'Parcelle non sync'}</IonLabel>
                     </IonChip>
                     <IonChip color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'}>
-                      <IonIcon icon={map} color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'}></IonIcon>
-                      <IonLabel>{(!parcelle.polygone || parcelle.polygone.length === 0) ? 'Pas de croquis' : 'Avec croquis'}
-                      </IonLabel>
+                      <IonIcon icon={map} color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'} />
+                      <IonLabel>{(!parcelle.polygone || parcelle.polygone.length === 0) ? 'Pas de croquis' : 'Avec croquis'}</IonLabel>
                     </IonChip>
                   </IonCardSubtitle>
                 </IonCardHeader>
@@ -308,7 +360,7 @@ const Tab1: React.FC = () => {
                 <IonCardContent>
                   <IonList className="scrollable-list">
                     {parcelle.demandeurs.map((demandeur) => (
-                      <IonItem key={`dem` + demandeur.id} lines="none">
+                      <IonItem key={`dem${demandeur.id}`} lines="none">
                         <IonIcon
                           slot="start"
                           icon={demandeur.type === 0 ? person : business}
@@ -327,6 +379,7 @@ const Tab1: React.FC = () => {
           </div>
         )}
       </IonContent>
+
 
       {/*Modal creation de parcelle*/}
       <IonModal

@@ -208,11 +208,9 @@
   .glass-label {
     font-size: 0.85rem;
     max-width: 60%;
-    margin-left: auto;
-    margin-right: auto;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    margin: 0 auto; /* centre l'élément horizontalement */
+    transform: none; /* retire le translateX */
+    text-align: center; /* au cas où */
   }
 }
 

@@ -46,7 +46,7 @@ const MainRouter: React.FC = () => {
       <IonMenu contentId="main-content" type="overlay">
         <IonHeader>
           <IonToolbar>
-            <IonTitle >
+            <IonTitle className='d-flex'>
               <img src={topomanager} alt="Logo TopoManager" style={{width: "80px", marginRight: "15px"}}/>
               <IonLabel style={{fontSize:"20px"}}>TOPOMANAGER</IonLabel> 
             </IonTitle>
