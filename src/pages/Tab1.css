@@ -129,12 +129,11 @@ ion-searchbar.md.custom-search {
 
 /* Toolbar transparente style glass */
 .transparent-toolbar {
-  --background: white !important;
+  --background: rgb(0 84 233) !important;
   --ion-background-color: white !important;
   border: none !important;
+  animation: fadeIn 0.3s ease-in-out;
 }
-
-
 
 /* Anim apparition search */
 .custom-search {
@@ -161,7 +160,7 @@ ion-button ion-icon {
 }
 
 ion-searchbar.custom-search {
-  --background: #ffffff;
+  --background: white;
   --color: #000000;
   --placeholder-color: #000000;
   --icon-color: #000000;

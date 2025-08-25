@@ -15,7 +15,7 @@ import {
   IonRouterOutlet,
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
-import { documentOutline, mapOutline, cloudUploadOutline, settings} from 'ionicons/icons';
+import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline} from 'ionicons/icons';
 import topomanager from "./assets/image/BackGround/TM.jpeg";
 
 import Tab1 from './pages/Tab1';
@@ -58,6 +58,12 @@ const MainRouter: React.FC = () => {
               <IonItem routerLink="/tab1" routerDirection="none">
                 <IonIcon icon={documentOutline} slot="start" />
                 <IonLabel>Formulaire</IonLabel>
+              </IonItem>
+            </IonMenuToggle>
+            <IonMenuToggle autoHide={false}>
+              <IonItem routerLink="" routerDirection="none">
+                <IonIcon icon={personOutline} slot="start" />
+                <IonLabel>Demandeur</IonLabel>
               </IonItem>
             </IonMenuToggle>
             <IonMenuToggle autoHide={false}>

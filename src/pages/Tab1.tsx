@@ -49,7 +49,7 @@ import {
   map,
   searchSharp,
 } from "ionicons/icons";
-import { useHistory } from 'react-router-dom';
+import { useHistory } from "react-router-dom";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
 import { ParametreTerritoire } from "../model/ParametreTerritoire";
@@ -68,7 +68,8 @@ const Tab1: React.FC = () => {
   const [showRiverin, setShowRiverin] = useState<boolean>(false);
   const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
   const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
+  const [parametreTerritoire, setParametreTerritoire] =
+    useState<ParametreTerritoire | null>(null);
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
   const [repereL, setRepere] = useState<Repere[]>([]);
@@ -78,7 +79,9 @@ const Tab1: React.FC = () => {
   const [isPhysique, setIsPhysique] = useState(0);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur");
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
+    "demandeur"
+  );
   const history = useHistory();
   const [seacrh, setSearch] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState(""); // texte de recherche
@@ -118,9 +121,11 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
-          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
-          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
+          parametreActuel.district.codedistrict
+        }-${parametreActuel.commune.codecommune}-${
+          parametreActuel.fokontany.codefokontany
+        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
@@ -207,7 +212,6 @@ const Tab1: React.FC = () => {
       if (!parametrePref.value) throw new Error("Paramètres non configurés");
       const parametreActuel = JSON.parse(parametrePref.value);
 
-
       console.log(parcelle); // visualisation
 
       parcelles.push(parcelle);
@@ -243,7 +247,6 @@ const Tab1: React.FC = () => {
         alert("Erreur inconnue lors de la création");
       }
     }
-
   };
 
   // ⚡ On utilise useMemo pour retourner directement le tableau filtré
@@ -266,7 +269,6 @@ const Tab1: React.FC = () => {
     });
   }, [searchQuery, parcelles]);
 
-
   return (
     <IonPage>
       <IonHeader>
@@ -279,7 +281,10 @@ const Tab1: React.FC = () => {
             <IonButton aria-label="Rechercher" onClick={() => setSearch(true)}>
               <IonIcon icon={searchSharp} slot="icon-only" />
             </IonButton>
-            <IonButton aria-label="Créer une nouvelle parcelle" onClick={() => setShowCreateModal(true)}>
+            <IonButton
+              aria-label="Créer une nouvelle parcelle"
+              onClick={() => setShowCreateModal(true)}
+            >
               <IonIcon icon={create} slot="icon-only" />
             </IonButton>
           </IonButtons>
@@ -298,12 +303,14 @@ const Tab1: React.FC = () => {
           />
           <IonButtons slot="end">
             <IonButton
+              fill="clear"
+              color="danger"
               onClick={() => {
                 setSearch(false);
                 setSearchQuery(""); // réinitialise la recherche
               }}
             >
-              Annuler
+              <IonIcon icon={close} slot="icon-only" />
             </IonButton>
           </IonButtons>
         </IonToolbar>
@@ -344,15 +351,45 @@ const Tab1: React.FC = () => {
                 </span>
 
                 <IonCardHeader className="custom-header-card">
-                  <IonCardTitle><strong>{parcelle.code}</strong></IonCardTitle>
+                  <IonCardTitle>
+                    <strong>{parcelle.code}</strong>
+                  </IonCardTitle>
                   <IonCardSubtitle>
-                    <IonChip color={parcelle.synchronise === 1 ? 'success' : 'danger'}>
-                      <IonIcon icon={sync} color={parcelle.synchronise === 1 ? 'success' : 'danger'} />
-                      <IonLabel>{parcelle.synchronise === 1 ? 'Parcelle sync' : 'Parcelle non sync'}</IonLabel>
+                    <IonChip
+                      color={parcelle.synchronise === 1 ? "success" : "danger"}
+                    >
+                      <IonIcon
+                        icon={sync}
+                        color={
+                          parcelle.synchronise === 1 ? "success" : "danger"
+                        }
+                      />
+                      <IonLabel>
+                        {parcelle.synchronise === 1
+                          ? "Parcelle sync"
+                          : "Parcelle non sync"}
+                      </IonLabel>
                     </IonChip>
-                    <IonChip color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'}>
-                      <IonIcon icon={map} color={(!parcelle.polygone || parcelle.polygone.length === 0) ? 'danger' : 'success'} />
-                      <IonLabel>{(!parcelle.polygone || parcelle.polygone.length === 0) ? 'Pas de croquis' : 'Avec croquis'}</IonLabel>
+                    <IonChip
+                      color={
+                        !parcelle.polygone || parcelle.polygone.length === 0
+                          ? "danger"
+                          : "success"
+                      }
+                    >
+                      <IonIcon
+                        icon={map}
+                        color={
+                          !parcelle.polygone || parcelle.polygone.length === 0
+                            ? "danger"
+                            : "success"
+                        }
+                      />
+                      <IonLabel>
+                        {!parcelle.polygone || parcelle.polygone.length === 0
+                          ? "Pas de croquis"
+                          : "Avec croquis"}
+                      </IonLabel>
                     </IonChip>
                   </IonCardSubtitle>
                 </IonCardHeader>
@@ -379,7 +416,6 @@ const Tab1: React.FC = () => {
           </div>
         )}
       </IonContent>
-
 
       {/*Modal creation de parcelle*/}
       <IonModal
@@ -603,7 +639,9 @@ const Tab1: React.FC = () => {
                         />
                         <IonLabel>
                           <h3 style={{ marginBottom: 4 }}>
-                            {d.type === 0 ? `${d.nom} ${d.prenom}` : d.denomination}
+                            {d.type === 0
+                              ? `${d.nom} ${d.prenom}`
+                              : d.denomination}
                           </h3>
                         </IonLabel>
                       </IonItem>
@@ -938,8 +976,8 @@ const Tab1: React.FC = () => {
                             value={
                               demandeur.dateNaissance
                                 ? demandeur.dateNaissance
-                                  .toISOString()
-                                  .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                 : ""
                             }
                             onIonChange={(e) =>
@@ -1038,19 +1076,19 @@ const Tab1: React.FC = () => {
                 <div style={{ marginLeft: "16px" }}>
                   {(demandeur.situation === "1" ||
                     demandeur.situation === "2") && (
-                      <IonInput
-                        className="border-bottom"
-                        label="Nom du conjoint"
-                        placeholder="Enter le nom de la mère du demandeur"
-                        value={demandeur.nomConjoint}
-                        onIonChange={(e) =>
-                          setDemandeur({
-                            ...demandeur,
-                            nomConjoint: String(e.detail.value),
-                          })
-                        }
-                      />
-                    )}
+                    <IonInput
+                      className="border-bottom"
+                      label="Nom du conjoint"
+                      placeholder="Enter le nom de la mère du demandeur"
+                      value={demandeur.nomConjoint}
+                      onIonChange={(e) =>
+                        setDemandeur({
+                          ...demandeur,
+                          nomConjoint: String(e.detail.value),
+                        })
+                      }
+                    />
+                  )}
                 </div>
                 <div className="border-bottom" style={{ marginLeft: "15px" }}>
                   <h5 className="mt-4">Filiation</h5>
@@ -1165,8 +1203,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.cin?.date
                                   ? demandeur.cin.date
-                                    .toISOString()
-                                    .substring(0, 10)
+                                      .toISOString()
+                                      .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
@@ -1256,8 +1294,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.acte?.date
                                   ? demandeur.acte.date
-                                    .toISOString()
-                                    .substring(0, 10)
+                                      .toISOString()
+                                      .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
