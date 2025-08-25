@@ -669,7 +669,7 @@ const Tab1: React.FC = () => {
             <IonItem>
               <IonGrid className="ion-margin-bottom">
                 <IonRow className="ion-wrap ion-gap">
-                  <IonCol size="6" size-md="4" size-lg="2">
+                  <IonCol size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Région</small>
                       <div>
@@ -678,7 +678,7 @@ const Tab1: React.FC = () => {
                     </div>
                   </IonCol>
 
-                  <IonCol size="6" size-md="4" size-lg="2">
+                  <IonCol size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">District</small>
                       <div>
@@ -689,7 +689,7 @@ const Tab1: React.FC = () => {
                     </div>
                   </IonCol>
 
-                  <IonCol size="6" size-md="4" size-lg="2">
+                  <IonCol size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Commune</small>
                       <div>
@@ -700,7 +700,7 @@ const Tab1: React.FC = () => {
                     </div>
                   </IonCol>
 
-                  <IonCol size="6" size-md="4" size-lg="2">
+                  <IonCol size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Fokontany</small>
                       <div>
@@ -711,7 +711,7 @@ const Tab1: React.FC = () => {
                     </div>
                   </IonCol>
 
-                  <IonCol size="6" size-md="4" size-lg="2">
+                  <IonCol size-md="4" size-lg="2">
                     <div className="ion-text-wrap">
                       <small className="ion-text-muted">Hameau</small>
                       <div>
@@ -1136,6 +1136,11 @@ const Tab1: React.FC = () => {
                   >
                     <div className="radio-options">
                       <IonItem lines="none">
+                        <IonRadio justify="end" value={2}>
+                          Rien
+                        </IonRadio>
+                      </IonItem>
+                      <IonItem lines="none">
                         <IonRadio justify="end" value={0}>
                           CIN
                         </IonRadio>
@@ -1145,11 +1150,7 @@ const Tab1: React.FC = () => {
                           Acte de naissance
                         </IonRadio>
                       </IonItem>
-                      <IonItem lines="none">
-                        <IonRadio justify="end" value={2}>
-                          Rien
-                        </IonRadio>
-                      </IonItem>
+                      
                     </div>
                   </IonRadioGroup>
                 </IonItem>
