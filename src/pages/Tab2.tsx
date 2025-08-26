@@ -100,22 +100,17 @@ const Tab2: React.FC = () => {
   const styleCache = useRef<Record<string, Style>>({});
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
-    number[] | null
-  >(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const intervalDuration = 10000;
-
   //---Modal/Fab----------
   const [showCard, setShowCard] = useState(true);
   const [fabOpen, setFabOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showGPS, setShowGPS] = useState(false);
-
   //---------Variable----------/
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
-
   //---Routeur--------
   const query = useQuery();
   const from = query.get("from");
