@@ -57,6 +57,7 @@ import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { OSM } from "ol/source";
+import { Capacitor } from "@capacitor/core";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -122,8 +123,9 @@ const Tab2: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   // GPS
   const [tracking, setTracking] = useState(false); // état actif / inactif
-  const watchId = useRef<string | null>(null);
+  const watchId = useRef<string | number | null>(null);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<number>(0); // 0=arrêt,1=en cours,2=ok,3=erreur
 
   // ---- Load Parcelles & GeoJSON ----
   const loadParcellesFromStorage = useCallback(async (): Promise<
@@ -321,14 +323,13 @@ const Tab2: React.FC = () => {
   /****Dessin du polygone ********/
   const addPolygone = useCallback(async () => {
     if (!currentParcelle) {
-      console.warn("Aucune parcelle sélectionnée !");
+      setToastMessage("Aucune parcelle sélectionnée !")
       return;
     }
 
     if (drawPoints.length < 3) {
       console.table(drawPoints);
-
-      alert("Un polygone a besoin d'au moins 3 points.");
+      setToastMessage("Un polygone a besoin d'au moins 3 points.")
       return;
     }
 
@@ -387,8 +388,6 @@ const Tab2: React.FC = () => {
       feature.set("code", updatedParcelle.code);
       source.addFeature(feature);
     }
-    //eto tokn solona popup kely
-    console.log("✅ Polygone fermé et enregistré");
   }, [currentParcelle, drawPoints, parcelles, styleByType]);
 
   // dessiner le polwgone du addPolygone
@@ -477,7 +476,7 @@ const Tab2: React.FC = () => {
       allLayers.push(layer);
     });
 
-    //FAFANA AVEO
+    //FAFANA AVEO MAPRAM TELEPHONE FOTSNNN
     const osmLayer = new TileLayer({
       source: new OSM(),
     });
@@ -487,7 +486,7 @@ const Tab2: React.FC = () => {
       //layers: allLayers,
       layers: [osmLayer, ...allLayers],
       view: new View({
-        center: fromLonLat([46.383814, -25.041426]),
+        center: fromLonLat([46.383814, -25.041426]), //mila avadika GPS Coordonner actuelle fona
         zoom: 15,
         minZoom: 11,
         maxZoom: 21,
@@ -771,63 +770,127 @@ const Tab2: React.FC = () => {
   const toggleTracking = async () => {
     if (!tracking) {
       try {
-        // Demande de permission si nécessaire
-        const perm = await Geolocation.checkPermissions();
-        if (perm.location !== 'granted') {
-          const request = await Geolocation.requestPermissions();
-          if (request.location !== 'granted') {
-            console.error('Permission GPS refusée');
-            return;
-          }
-        }
+        setGpsStatus(1); // acquisition en cours
 
-        // Démarre le suivi
-        watchId.current = await Geolocation.watchPosition(
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,    // obligatoire > 0 (10s)
-            maximumAge: 0,     // pas de cache
-          },
-          (pos, err) => {
-            if (err) {
-              console.error('Erreur GPS:', err);
-              return;
-            }
-
-            if (pos && mapRef.current) {
+        if (Capacitor.getPlatform() === 'web') {
+          // --- Web ---
+          watchId.current = navigator.geolocation.watchPosition(
+            (pos) => {
               const lon = pos.coords.longitude;
               const lat = pos.coords.latitude;
-              setGpsAccuracy(pos.coords.accuracy); // met à jour la précision
-              mapRef.current.getView().animate({
-                center: fromLonLat([lon, lat]),
-                zoom: 21,
-                duration: 1000,
-              });
+
+              setGpsAccuracy(pos.coords.accuracy);
+              setGpsStatus(2); // acquis ✅
+
+              if (mapRef.current) {
+                mapRef.current.getView().animate({
+                  center: fromLonLat([lon, lat]),
+                  zoom: 21,
+                  duration: 1000,
+                });
+              }
+            },
+            (err) => {
+              console.error("Erreur GPS Web:", err);
+
+              if (err.code === 2) {
+                // POSITION_UNAVAILABLE → garder en acquisition
+                setGpsStatus(1);
+              } else {
+                // permission refusée ou autre
+                setGpsStatus(3);
+                setToastMessage("Erreur GPS : " + err.message);
+              }
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000, // 10s max
+              maximumAge: 0,
+            }
+          );
+        } else {
+          // --- Mobile natif Capacitor ---
+          const perm = await Geolocation.checkPermissions();
+          if (perm.location !== "granted") {
+            const request = await Geolocation.requestPermissions();
+            if (request.location !== "granted") {
+              setToastMessage("Permission GPS refusée");
+              setGpsStatus(3);
+              return;
             }
           }
-        );
+
+          watchId.current = await Geolocation.watchPosition(
+            {
+              enableHighAccuracy: true,
+              timeout: 10000, // 10s max
+              maximumAge: 0,
+            },
+            (pos, err) => {
+              if (err) {
+                console.error("Erreur GPS mobile:", err);
+
+                // POSITION_UNAVAILABLE → rester en acquisition
+                if (err.code === 2) {
+                  setGpsStatus(1);
+                } else {
+                  setGpsStatus(3);
+                  setToastMessage("Erreur GPS : " + JSON.stringify(err));
+                }
+                return;
+              }
+
+              if (pos && mapRef.current) {
+                const lon = pos.coords.longitude;
+                const lat = pos.coords.latitude;
+
+                setGpsAccuracy(pos.coords.accuracy);
+                setGpsStatus(2); // acquis ✅
+
+                mapRef.current.getView().animate({
+                  center: fromLonLat([lon, lat]),
+                  zoom: 21,
+                  duration: 1000,
+                });
+              }
+            }
+          );
+        }
 
         setTracking(true);
       } catch (e) {
-        console.error('Erreur lors du démarrage du tracking:', e);
+        console.error("Erreur lors du démarrage du tracking:", e);
+        setToastMessage("Erreur lors du démarrage du tracking: " + e);
+        setGpsStatus(3);
       }
     } else {
-      // Stop le suivi si actif
+      // --- Stop tracking ---
       if (watchId.current) {
-        await Geolocation.clearWatch({ id: watchId.current });
+        if (Capacitor.getPlatform() === "web") {
+          navigator.geolocation.clearWatch(watchId.current as number);
+        } else {
+          await Geolocation.clearWatch({ id: watchId.current as string });
+        }
         watchId.current = null;
-        setGpsAccuracy(null);
-        console.log('Tracking arrêté');
       }
+
+      // reset states
+      setGpsAccuracy(null);
+      setGpsStatus(0);
       setTracking(false);
     }
   };
 
-  // Cleanup auto si le composant est démonté
+
+  // --- Cleanup auto si le composant est démonté ---
   useEffect(() => {
     return () => {
       if (watchId.current) {
-        Geolocation.clearWatch({ id: watchId.current });
+        if (Capacitor.getPlatform() === 'web') {
+          navigator.geolocation.clearWatch(watchId.current as number);
+        } else {
+          Geolocation.clearWatch({ id: watchId.current as string });
+        }
       }
     };
   }, []);
@@ -854,25 +917,46 @@ const Tab2: React.FC = () => {
       <IonContent fullscreen>
         {fabOpen && (
           <div className="map-crosshair">
-            <div
-              className="cross-symbol"
-            ></div>
+            <div className="cross-symbol"></div>
+
             {centerCoordsProjected && (
               <div className="coord-display">
+                {/* Coordonnées */}
                 <div>
                   X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
                   {centerCoordsProjected[1].toFixed(6)}
                 </div>
-                {gpsAccuracy !== null && (
-                  <div
-                    style={{
-                      fontSize: "0.8rem",
-                      color: gpsAccuracy < 10 ? "green" : gpsAccuracy < 50 ? "orange" : "red",
-                      textAlign: "center", marginTop: "4px", width: "100%",
-                    }}
-                  > Précision GPS: {gpsAccuracy.toFixed(1)} m</div>
-                )}
 
+                {/* Affichage en fonction du gpsStatus */}
+                <div className="gps-status">
+                  {gpsStatus === 1 && (
+                    <div className="gps-loader">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  )}
+
+                  {gpsStatus === 2 && gpsAccuracy !== null && (
+                    <div
+                      className="gps-accuracy"
+                      style={{
+                        color:
+                          gpsAccuracy < 10
+                            ? "green"
+                            : gpsAccuracy < 50
+                              ? "orange"
+                              : "red",
+                      }}
+                    >
+                      Précision GPS: {gpsAccuracy.toFixed(1)} m
+                    </div>
+                  )}
+
+                  {gpsStatus === 3 && (
+                    <div className="gps-error">Erreur GPS</div>
+                  )}
+                </div>
               </div>
             )}
           </div>
