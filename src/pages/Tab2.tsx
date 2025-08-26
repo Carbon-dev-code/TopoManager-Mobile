@@ -31,9 +31,12 @@ import {
   eyeOutline,
   information,
   locateOutline,
+  navigateOutline,
+  navigateSharp,
   pencilOutline,
   removeOutline,
   search,
+  stopSharp,
 } from "ionicons/icons";
 import { Preferences } from "@capacitor/preferences";
 import { Parcelle } from "../model/parcelle/Parcelle";
@@ -47,11 +50,13 @@ import Fill from "ol/style/Fill";
 import Text from "ol/style/Text";
 import GeoJSON from "ol/format/GeoJSON";
 import { useLocation } from "react-router";
+import { Geolocation, Position } from '@capacitor/geolocation';
 import { Polygone } from "../model/vecteur/Polygone";
 import { PointC } from "../model/vecteur/PointC";
 import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
+import { OSM } from "ol/source";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -120,6 +125,10 @@ const Tab2: React.FC = () => {
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   //message de retour var
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // GPS
+  const [tracking, setTracking] = useState(false); // état actif / inactif
+  const watchId = useRef<string | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
 
   // ---- Load Parcelles & GeoJSON ----
   const loadParcellesFromStorage = useCallback(async (): Promise<
@@ -473,14 +482,20 @@ const Tab2: React.FC = () => {
       allLayers.push(layer);
     });
 
+    //FAFANA AVEO
+    const osmLayer = new TileLayer({
+      source: new OSM(),
+    });
+
     const map = new Map({
       target: mapElement.current,
-      layers: allLayers,
+      //layers: allLayers,
+      layers: [osmLayer, ...allLayers],
       view: new View({
         center: fromLonLat([46.383814, -25.041426]),
         zoom: 15,
         minZoom: 11,
-        maxZoom: 17,
+        maxZoom: 21,
       }),
       controls: [
         new ScaleLine({
@@ -617,7 +632,8 @@ const Tab2: React.FC = () => {
       }, 500); // Changement toutes les 500ms
 
       // Stop scintillement après 1 minute (60000ms)
-      setTimeout(() => {clearInterval(interval);}, intervalDuration);}
+      setTimeout(() => { clearInterval(interval); }, intervalDuration);
+    }
     // Source et couche temporaire
     const vectorSource = new VectorSource({
       features: [marker],
@@ -627,7 +643,7 @@ const Tab2: React.FC = () => {
     });
     map.addLayer(markerLayer);
     // Supprimer après 30 secondes
-    setTimeout(() => {map.removeLayer(markerLayer);}, intervalDuration); // 30 s
+    setTimeout(() => { map.removeLayer(markerLayer); }, intervalDuration); // 30 s
   }, [fabOpen, latitude, longitude]);
 
   // recherche function, detail
@@ -756,6 +772,53 @@ const Tab2: React.FC = () => {
     if (localLayerRef.current) localLayerRef.current.setVisible(showLocalTiles);
   }, [showLocalTiles]);
 
+  // --- Toggle GPS Tracking ---
+  const toggleTracking = async () => {
+    if (!tracking) {
+      watchId.current = await Geolocation.watchPosition(
+        {
+          enableHighAccuracy: true,
+          timeout: 0,        // pas de limite
+          maximumAge: 0,     // pas de cache
+        },
+        (pos: Position | null, err) => {
+          if (err) {
+            console.error("Erreur GPS:", err);
+            return;
+          }
+          if (pos && mapRef.current) {
+            const lon = pos.coords.longitude;
+            const lat = pos.coords.latitude;
+            setGpsAccuracy(pos.coords.accuracy); // <-- ici
+            mapRef.current.getView().animate({
+              center: fromLonLat([lon, lat]),
+              zoom: 21,
+              duration: 1000,
+            });
+          }
+        }
+      );
+      setTracking(true);
+    } else {
+      if (watchId.current !== null) {
+        await Geolocation.clearWatch({ id: watchId.current });
+        watchId.current = null;
+        setGpsAccuracy(null);
+      }
+      console.log("Tracking arrêté");
+      setTracking(false);
+    }
+  };
+
+  // Cleanup auto si le composant est démonté
+  useEffect(() => {
+    return () => {
+      if (watchId.current) {
+        Geolocation.clearWatch({ id: watchId.current });
+      }
+    };
+  }, []);
+
   return (
     <IonPage>
       <IonHeader className="custom-header">
@@ -778,13 +841,24 @@ const Tab2: React.FC = () => {
       <IonContent fullscreen>
         {fabOpen && (
           <div className="map-crosshair">
-            <div className="cross-symbol"></div>
+            <div
+              className="cross-symbol"
+            ></div>
             {centerCoordsProjected && (
               <div className="coord-display">
                 <div>
                   X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
                   {centerCoordsProjected[1].toFixed(6)}
                 </div>
+                {gpsAccuracy !== null && (
+                  <div
+                    style={{ fontSize: "0.8rem",
+                      color: gpsAccuracy < 10 ? "green" : gpsAccuracy < 50 ? "orange" : "red",
+                      textAlign: "center",marginTop: "4px",width: "100%",
+                    }}
+                  > Précision GPS: {gpsAccuracy.toFixed(1)} m</div>
+                )}
+
               </div>
             )}
           </div>
@@ -938,6 +1012,14 @@ const Tab2: React.FC = () => {
                 }}
               >
                 <IonIcon color="dark" icon={closeOutline} />
+              </IonButton>
+              <IonButton
+                className="glass-btn"
+                fill={tracking ? "solid" : "clear"}
+                color={tracking ? "danger" : "primary"}
+                onClick={toggleTracking}
+              >
+                <IonIcon icon={tracking ? stopSharp : navigateSharp} />
               </IonButton>
             </div>
           )}
