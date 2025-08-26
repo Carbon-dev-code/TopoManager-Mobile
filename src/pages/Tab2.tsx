@@ -770,37 +770,55 @@ const Tab2: React.FC = () => {
   // --- Toggle GPS Tracking ---
   const toggleTracking = async () => {
     if (!tracking) {
-      watchId.current = await Geolocation.watchPosition(
-        {
-          enableHighAccuracy: true,
-          timeout: 0,        // pas de limite
-          maximumAge: 0,     // pas de cache
-        },
-        (pos: Position | null, err) => {
-          if (err) {
-            console.error("Erreur GPS:", err);
+      try {
+        // Demande de permission si nécessaire
+        const perm = await Geolocation.checkPermissions();
+        if (perm.location !== 'granted') {
+          const request = await Geolocation.requestPermissions();
+          if (request.location !== 'granted') {
+            console.error('Permission GPS refusée');
             return;
           }
-          if (pos && mapRef.current) {
-            const lon = pos.coords.longitude;
-            const lat = pos.coords.latitude;
-            setGpsAccuracy(pos.coords.accuracy); // <-- ici
-            mapRef.current.getView().animate({
-              center: fromLonLat([lon, lat]),
-              zoom: 21,
-              duration: 1000,
-            });
-          }
         }
-      );
-      setTracking(true);
+
+        // Démarre le suivi
+        watchId.current = await Geolocation.watchPosition(
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,    // obligatoire > 0 (10s)
+            maximumAge: 0,     // pas de cache
+          },
+          (pos, err) => {
+            if (err) {
+              console.error('Erreur GPS:', err);
+              return;
+            }
+
+            if (pos && mapRef.current) {
+              const lon = pos.coords.longitude;
+              const lat = pos.coords.latitude;
+              setGpsAccuracy(pos.coords.accuracy); // met à jour la précision
+              mapRef.current.getView().animate({
+                center: fromLonLat([lon, lat]),
+                zoom: 21,
+                duration: 1000,
+              });
+            }
+          }
+        );
+
+        setTracking(true);
+      } catch (e) {
+        console.error('Erreur lors du démarrage du tracking:', e);
+      }
     } else {
-      if (watchId.current !== null) {
+      // Stop le suivi si actif
+      if (watchId.current) {
         await Geolocation.clearWatch({ id: watchId.current });
         watchId.current = null;
         setGpsAccuracy(null);
+        console.log('Tracking arrêté');
       }
-      console.log("Tracking arrêté");
       setTracking(false);
     }
   };
@@ -847,9 +865,10 @@ const Tab2: React.FC = () => {
                 </div>
                 {gpsAccuracy !== null && (
                   <div
-                    style={{ fontSize: "0.8rem",
+                    style={{
+                      fontSize: "0.8rem",
                       color: gpsAccuracy < 10 ? "green" : gpsAccuracy < 50 ? "orange" : "red",
-                      textAlign: "center",marginTop: "4px",width: "100%",
+                      textAlign: "center", marginTop: "4px", width: "100%",
                     }}
                   > Précision GPS: {gpsAccuracy.toFixed(1)} m</div>
                 )}

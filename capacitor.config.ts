@@ -5,8 +5,13 @@ const config: CapacitorConfig = {
   appName: 'TopoManager',
   webDir: 'dist',
   server: {
-    cleartext: true,  // ← important
+    cleartext: true,
     androidScheme: "http"
+  },
+  plugins: {
+    Geolocation: {
+      permissions: ['android.permission.ACCESS_FINE_LOCATION']
+    }
   }
 };
 
