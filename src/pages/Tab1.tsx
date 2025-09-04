@@ -121,11 +121,9 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
-          parametreActuel.district.codedistrict
-        }-${parametreActuel.commune.codecommune}-${
-          parametreActuel.fokontany.codefokontany
-        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
+          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
+          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
@@ -192,7 +190,7 @@ const Tab1: React.FC = () => {
 
   const addRiverin = () => {
     if (newRiverin.repere == null || newRiverin.observation.trim() === "") {
-      setRiverinMess("😡 Vérifiez votre insertion");
+      setRiverinMess("‼️Vérifiez votre insertion");
       return; // stop ici
     }
     parcelle.riverin.push(newRiverin);
@@ -444,17 +442,7 @@ const Tab1: React.FC = () => {
             <IonItem>
               <IonGrid>
                 <IonRow>
-                  <IonCol size="12" size-md="6">
-                    <IonInput
-                      labelPlacement="floating"
-                      type="text"
-                      readonly={true}
-                      value={parcelle.code}
-                    >
-                      <div slot="label">Code parcelle</div>
-                    </IonInput>
-                  </IonCol>
-                  <IonCol size="12" size-md="6">
+                  <IonCol size="12">
                     <IonInput
                       labelPlacement="floating"
                       type="date"
@@ -462,6 +450,16 @@ const Tab1: React.FC = () => {
                       readonly={true}
                     >
                       <div slot="label">En date du</div>
+                    </IonInput>
+                  </IonCol>
+                  <IonCol size="12">
+                    <IonInput
+                      labelPlacement="floating"
+                      type="text"
+                      readonly={true}
+                      value={parcelle.code}
+                    >
+                      <div slot="label">Code parcelle</div>
                     </IonInput>
                   </IonCol>
                 </IonRow>
@@ -494,7 +492,7 @@ const Tab1: React.FC = () => {
                   </IonCol>
                   <IonCol size="12" size-md="12">
                     <IonInput
-                      label="Année d'occupation :"
+                      label="Durée d'occupation :"
                       type="number"
                       onIonChange={(e) =>
                         setParcelle({
@@ -601,7 +599,7 @@ const Tab1: React.FC = () => {
                       expand="full"
                       onClick={() => setShowRiverin(true)}
                     >
-                      Ajout riverin
+                      Ajout riverain
                     </IonButton>
                   </IonCol>
                 </IonRow>
@@ -620,7 +618,7 @@ const Tab1: React.FC = () => {
                     <IonLabel>Demandeurs</IonLabel>
                   </IonSegmentButton>
                   <IonSegmentButton value="riverin">
-                    <IonLabel>Riverins</IonLabel>
+                    <IonLabel>Riverains</IonLabel>
                   </IonSegmentButton>
                 </IonSegment>
               </div>
@@ -766,7 +764,7 @@ const Tab1: React.FC = () => {
                 <IonIcon icon={close} />
               </IonButton>
             </IonButtons>
-            <IonTitle>Ajout de nouveau riverin au parcelle</IonTitle>
+            <IonTitle>Ajout de nouveau riverain au parcelle</IonTitle>
             <IonButtons slot="end">
               <IonButton onClick={addRiverin} id="open-loading">
                 Ajouter
@@ -976,8 +974,8 @@ const Tab1: React.FC = () => {
                             value={
                               demandeur.dateNaissance
                                 ? demandeur.dateNaissance
-                                    .toISOString()
-                                    .substring(0, 10)
+                                  .toISOString()
+                                  .substring(0, 10)
                                 : ""
                             }
                             onIonChange={(e) =>
@@ -1076,19 +1074,19 @@ const Tab1: React.FC = () => {
                 <div style={{ marginLeft: "16px" }}>
                   {(demandeur.situation === "1" ||
                     demandeur.situation === "2") && (
-                    <IonInput
-                      className="border-bottom"
-                      label="Nom du conjoint"
-                      placeholder="Enter le nom de la mère du demandeur"
-                      value={demandeur.nomConjoint}
-                      onIonChange={(e) =>
-                        setDemandeur({
-                          ...demandeur,
-                          nomConjoint: String(e.detail.value),
-                        })
-                      }
-                    />
-                  )}
+                      <IonInput
+                        className="border-bottom"
+                        label="Nom du conjoint"
+                        placeholder="Enter le nom de la mère du demandeur"
+                        value={demandeur.nomConjoint}
+                        onIonChange={(e) =>
+                          setDemandeur({
+                            ...demandeur,
+                            nomConjoint: String(e.detail.value),
+                          })
+                        }
+                      />
+                    )}
                 </div>
                 <div className="border-bottom" style={{ marginLeft: "15px" }}>
                   <h5 className="mt-4">Filiation</h5>
@@ -1137,7 +1135,7 @@ const Tab1: React.FC = () => {
                     <div className="radio-options">
                       <IonItem lines="none">
                         <IonRadio justify="end" value={2}>
-                          Rien
+                          Neant
                         </IonRadio>
                       </IonItem>
                       <IonItem lines="none">
@@ -1150,7 +1148,7 @@ const Tab1: React.FC = () => {
                           Acte de naissance
                         </IonRadio>
                       </IonItem>
-                      
+
                     </div>
                   </IonRadioGroup>
                 </IonItem>
@@ -1204,8 +1202,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.cin?.date
                                   ? demandeur.cin.date
-                                      .toISOString()
-                                      .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
@@ -1295,8 +1293,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.acte?.date
                                   ? demandeur.acte.date
-                                      .toISOString()
-                                      .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>

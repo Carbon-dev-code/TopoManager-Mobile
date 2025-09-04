@@ -1,49 +1,103 @@
-.login-page {
-    --background: url('../../assets/image/BackGround/bg.jpg') no-repeat center center / cover;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
 .img-topomanager {
-  max-width: 350px;
+  width: 350px;
   height: auto;
 }
+.login-background::before,
+.login-background::after,
+.login-background .circle {
+  content: "";
+  position: absolute;
+  background: #015f4d;
+  /* bleu bootstrap */
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  z-index: 0;
+}
 
-.block-login {
-  background-color: #dbdbdbd8;
-  border-radius: 30px 30px 0 0;
-  max-width: 450px;
+/* Cercle 1 = haut droite */
+.login-background::before {
+  top: -50px;
+  right: -50px;
+}
+
+/* Cercle 2 = bas gauche */
+.login-background::after {
+  bottom: -50px;
+  left: -50px;
+}
+
+/* Cercle 3 = haut gauche */
+.login-background .circle {
+  top: -60px;
+  /* ajuste comme tu veux */
+  right: -50px;
+  /* place-le en haut à droite */
+}
+
+/* Wrapper */
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  z-index: 1;
+  position: relative;
+  padding: 20px;
+}
+
+/* Formulaire */
+.login-form {
   width: 100%;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  max-width: 350px;
+  text-align: center;
 }
 
-.stylish-title {
+/* Titre */
+.login-title {
+  font-size: 28px;
   font-weight: 700;
-  font-size: 1.8rem;
-  color: #333;
+  color: #015f4d;
+  text-transform: uppercase;
+  margin: 0px 0px 10px 0px !important;
 }
 
-.stylish-btn {
-  background: linear-gradient(135deg, #4e54c8, #8f94fb);
-  border: none;
-  transition: transform 0.2s ease;
+.login-title-M {
+  font-size: 58px;
+  font-weight: 700;
+  color: #015f4d;
+  text-transform: uppercase;
+  margin-bottom: 0px !important;
 }
 
-.stylish-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(78, 84, 200, 0.5);
+/* Inputs */
+.login-input {
+  background: #f6f6f6;
+  margin-bottom: 1rem;
+  border-radius: 35px;
 }
 
-.social-btn {
-  width: 45px;
-  height: 45px;
-  font-size: 1.2rem;
+/* Bouton */
+.login-button {
+  --background: #015f4d;
+  --border-radius: 35px;
+  height: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 1.5rem;
 }
 
-a {
-  color: #4e54c8;
+.login-form ion-item::part(native) {
+  background: #f6f6f6 !important;
+  border-radius: 35px !important;
+  padding: 5px 0px 5px 15px;
+}
+
+.link-custom {
+  display: block;
+  margin-top: 15px;
+  color: black;
+  font-weight: 500;
   text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
 }
