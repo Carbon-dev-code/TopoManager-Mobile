@@ -15,7 +15,7 @@ import {
   IonRouterOutlet,
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
-import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline} from 'ionicons/icons';
+import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline, logOutOutline } from 'ionicons/icons';
 
 import Tab1 from './pages/Tab1';
 import Tab2 from './pages/Tab2';
@@ -23,6 +23,8 @@ import Tab3 from './pages/Tab3';
 import Tab4 from './pages/Tab4';
 import Accueil from './pages/accueil/Accueil';
 import Login from './pages/login/Login';
+import Demandeur from './pages/demandeur/Demandeur';
+import { Preferences } from '@capacitor/preferences';
 
 const MainRouter: React.FC = () => {
   const location = useLocation();
@@ -45,21 +47,21 @@ const MainRouter: React.FC = () => {
       <IonMenu contentId="main-content" type="overlay">
         <IonHeader>
           <IonToolbar>
-            <IonTitle>
-              <IonLabel style={{fontSize:"20px"}}>T.M MOBILE</IonLabel> 
+            <IonTitle className='text-start'>
+              <IonLabel style={{ fontSize: "20px" }}>T.M MOBILE</IonLabel>
             </IonTitle>
           </IonToolbar>
         </IonHeader>
-        <IonContent className="ion-padding">
+        <IonContent>
           <IonList>
             <IonMenuToggle autoHide={false}>
               <IonItem routerLink="/tab1" routerDirection="none">
                 <IonIcon icon={documentOutline} slot="start" />
-                <IonLabel>Formulaire</IonLabel>
+                <IonLabel>Collecte de données</IonLabel>
               </IonItem>
             </IonMenuToggle>
             <IonMenuToggle autoHide={false}>
-              <IonItem routerLink="" routerDirection="none">
+              <IonItem routerLink="/demandeur" routerDirection="none">
                 <IonIcon icon={personOutline} slot="start" />
                 <IonLabel>Demandeur</IonLabel>
               </IonItem>
@@ -83,6 +85,19 @@ const MainRouter: React.FC = () => {
               </IonItem>
             </IonMenuToggle>
           </IonList>
+          {/* Déconnexion en bas */}
+          <div style={{ position: 'absolute', bottom: 0, width: '100%' }}>
+            <IonMenuToggle autoHide={false}>
+              <IonItem button onClick={async () => {
+                await Preferences.remove({ key: "is_logged_in" });
+                await Preferences.remove({ key: "id_session" });
+                window.location.href = "/accueil";
+              }}>
+                <IonIcon icon={logOutOutline} slot="start" color='danger' />
+                <IonLabel color={'danger'}>Déconnexion</IonLabel>
+              </IonItem>
+            </IonMenuToggle>
+          </div>
         </IonContent>
       </IonMenu>
 
@@ -99,6 +114,7 @@ const MainRouter: React.FC = () => {
             <Route exact path="/tab2" component={Tab2} />
             <Route exact path="/tab3" component={Tab3} />
             <Route exact path="/tab4" component={Tab4} />
+            <Route exact path="/demandeur" component={Demandeur} />
             <Route exact path="/">
               <Redirect to="/accueil" />
             </Route>

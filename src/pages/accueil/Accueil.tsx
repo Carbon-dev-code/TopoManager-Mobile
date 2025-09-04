@@ -10,28 +10,6 @@ import logon1 from "../../assets/image/logo/logon1.png";
 import logo3 from "../../assets/image/logo/logo3.png";
 
 const Accueil: React.FC = () => {
-  const router = useIonRouter();
-  useEffect(() => {
-    const checkSession = async () => {
-      const session = await Preferences.get({ key: "session_user" });
-
-      if (session.value) {
-        const data = JSON.parse(session.value);
-        const now = new Date();
-        const sessionDate = new Date(data.timestamp);
-        const diffDays =
-          (now.getTime() - sessionDate.getTime()) / (1000 * 3600 * 24);
-
-        if (diffDays > 7) {
-          await Preferences.remove({ key: "session_user" });
-        } else if (data.remember) {
-          router.push("/tab1", "root");
-        }
-      }
-    };
-    checkSession();
-  });
-
   return (
     <IonPage>
       <IonContent fullscreen>

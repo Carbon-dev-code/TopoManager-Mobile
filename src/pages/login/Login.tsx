@@ -6,20 +6,18 @@ import {
   IonIcon,
   IonItem,
   IonInput,
-  IonLabel,
   IonRouterLink,
 } from "@ionic/react";
 import { useEffect, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";
-import Accueil from '../accueil/Accueil';
 
 import "../../assets/dist/css/bootstrap.min.css";
 import "./Login.css";
 import logoTopoManager from "../../assets/image/BackGround/topomanager.png";
 
-const PASSWORD = "topo123";
-const USERNAME = "admin";
+const PASSWORD_ADMIN = "topo123";
+const USERNAME_ADMIN = "admin";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -30,15 +28,11 @@ const Login: React.FC = () => {
   useEffect(() => {
     const checkSession = async () => {
       const session = await Preferences.get({ key: "is_logged_in" });
-      const savedEmail = await Preferences.get({ key: "saved_email" });
 
       if (session.value === "true") {
         window.location.href = "/tab1";
       }
 
-      if (savedEmail.value) {
-        setEmail(savedEmail.value);
-      }
     };
     checkSession();
   }, []);
@@ -46,10 +40,10 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password === PASSWORD && email === USERNAME) {
+    if (password === PASSWORD_ADMIN && email === USERNAME_ADMIN) {
       // Sauvegarde session
       await Preferences.set({ key: "is_logged_in", value: "true" });
-
+      await Preferences.set({ key: "id_session", value: "0" });
       window.location.href = "/tab1";
     } else {
       setShowPasswordAlert(true);
