@@ -23,7 +23,7 @@ import Tab3 from './pages/Tab3';
 import Tab4 from './pages/Tab4';
 import Accueil from './pages/accueil/Accueil';
 import Login from './pages/login/Login';
-import Demandeur from './pages/demandeur/Demandeur';
+import Demandeur from './pages/Tab5';
 import { Preferences } from '@capacitor/preferences';
 
 const MainRouter: React.FC = () => {

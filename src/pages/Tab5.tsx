@@ -1,6 +1,5 @@
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonMenuButton, IonPage, IonSearchbar, IonTitle, IonToolbar } from "@ionic/react";
-import "../../assets/dist/css/bootstrap.min.css";
-import "./Demandeur.css";
+import "./Tab5.css";
 import { searchSharp, create, close } from "ionicons/icons";
 import { useState } from "react";
 

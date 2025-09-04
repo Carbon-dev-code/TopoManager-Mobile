@@ -274,7 +274,7 @@ const Tab1: React.FC = () => {
           <IonButtons slot="start">
             <IonMenuButton />
           </IonButtons>
-          <IonTitle>Collecte de données</IonTitle>
+          <IonTitle>Collecte des données</IonTitle>
           <IonButtons slot="end">
             <IonButton aria-label="Rechercher" onClick={() => setSearch(true)}>
               <IonIcon icon={searchSharp} slot="icon-only" />
