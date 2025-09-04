@@ -488,7 +488,7 @@ const Tab2: React.FC = () => {
       view: new View({
         center: fromLonLat([46.383814, -25.041426]), //mila avadika GPS Coordonner actuelle fona
         zoom: 15,
-        maxZoom: 21,
+        maxZoom: 17,
       }),
       controls: [
         new ScaleLine({
