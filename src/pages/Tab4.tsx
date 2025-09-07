@@ -709,7 +709,6 @@ const Tab4 = () => {
             <div
               className="ion-text-center ion-margin-bottom"
               style={{
-                display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -721,13 +720,6 @@ const Tab4 = () => {
                   justifyContent: "center",
                 }}
               >
-                <IonIcon
-                  icon={settingsOutline}
-                  color="primary"
-                  size="large"
-                  className="param-icon"
-                  style={{ marginRight: "8px" }}
-                />
                 <IonLabel style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
                   Paramétrage Actuel
                 </IonLabel>
