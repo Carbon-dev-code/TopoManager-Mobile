@@ -52,66 +52,66 @@ const Login: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent fullscreen className="login-background">
-        <span className="circle"></span>
-        <span className="circle-2"></span>
-        <div className="login-wrapper">
-          <form className="login-form" onSubmit={handleLogin}>
-            {/* Titre */}
-            <div className="text-center mb-4">
-              <img
-                src={logoTopoManager}
-                alt="Logo TopoManager"
-                className="img-topomanager"
-              />
-            </div>
-            <h1 className="login-title">Mobile</h1>
-
-            {/* Email */}
-            <IonItem lines="none" className="login-input">
-              <IonInput
-                type="text"
-                placeholder="Identifiant"
-                value={email}
-                onIonChange={(e) => setEmail(e.detail.value!)}
-                required
-              />
-            </IonItem>
-
-            {/* Mot de passe */}
-            <IonItem lines="none" className="login-input">
-              <IonInput
-                type={showPassword ? "text" : "password"}
-                value={password}
-                placeholder="Mot de passe"
-                onIonChange={(e) => setPassword(e.detail.value!)}
-                required
-              />
-              <IonButton
-                fill="clear"
-                slot="end"
-                onClick={() => setShowPassword(!showPassword)}
-                size="small"
-                color="medium"
-              >
-                <IonIcon
-                  slot="icon-only"
-                  icon={showPassword ? eyeOffOutline : eyeOutline}
+      <IonContent fullscreen>
+        <div className="login-bg">
+          <div className="login-wrapper">
+            <form className="login-form" onSubmit={handleLogin}>
+              {/* Titre */}
+              <div className="text-center mb-4">
+                <img
+                  src={logoTopoManager}
+                  alt="Logo TopoManager"
+                  className="img-topomanager"
                 />
-              </IonButton>
-            </IonItem>
+              </div>
+              <h1 className="login-title">Mobile</h1>
 
-            {/* Bouton */}
-            <IonButton expand="block" className="login-button" type="submit">
-              Connexion
-            </IonButton>
-            <IonRouterLink
-              routerLink="/accueil"
-              className="link-custom"
-            >
-              Retour à la page <span className="text-primary">d'accueil</span>
-            </IonRouterLink>
-          </form>
+              {/* Email */}
+              <IonItem lines="none" className="login-input">
+                <IonInput
+                  type="text"
+                  placeholder="Identifiant"
+                  value={email}
+                  onIonChange={(e) => setEmail(e.detail.value!)}
+                  required
+                />
+              </IonItem>
+
+              {/* Mot de passe */}
+              <IonItem lines="none" className="login-input">
+                <IonInput
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  placeholder="Mot de passe"
+                  onIonChange={(e) => setPassword(e.detail.value!)}
+                  required
+                />
+                <IonButton
+                  fill="clear"
+                  slot="end"
+                  onClick={() => setShowPassword(!showPassword)}
+                  size="small"
+                  color="medium"
+                >
+                  <IonIcon
+                    slot="icon-only"
+                    icon={showPassword ? eyeOffOutline : eyeOutline}
+                  />
+                </IonButton>
+              </IonItem>
+
+              {/* Bouton */}
+              <IonButton expand="block" className="login-button" type="submit">
+                Connexion
+              </IonButton>
+              <IonRouterLink
+                routerLink="/accueil"
+                className="link-custom"
+              >
+                Retour à la page <span className="text-primary">d'accueil</span>
+              </IonRouterLink>
+            </form>
+          </div>
         </div>
         {/* Alert mot de passe */}
         <IonAlert

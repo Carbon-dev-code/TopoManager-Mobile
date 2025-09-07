@@ -3,37 +3,42 @@
   height: auto;
 }
 
-.login-background .circle-2,
-.login-background .circle {
+.login-bg {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.login-bg::before,
+.login-bg::after {
   content: "";
   position: absolute;
   background: #015f4d;
   width: 150px;
   height: 150px;
   border-radius: 50%;
+  pointer-events: none;
   z-index: 0;
 }
 
-/* Cercle 2 = bas gauche */
-.login-background .circle-2 {
+.login-bg::before {
+  top: -50px;
+  right: -50px;
+}
+
+.login-bg::after {
   bottom: -50px;
   left: -50px;
 }
 
-/* Cercle 3 = haut droit */
-.login-background .circle {
-  top: -60px;
-  right: -50px;
-}
-
-/* Wrapper */
 .login-wrapper {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
+  justify-content: center; /* centre vertical */
   align-items: center;
-  min-height: 100vh;
-  z-index: 1;
-  position: relative;
   padding: 20px;
 }
 
