@@ -54,6 +54,7 @@ const Login: React.FC = () => {
     <IonPage>
       <IonContent fullscreen className="login-background">
         <span className="circle"></span>
+        <span className="circle-2"></span>
         <div className="login-wrapper">
           <form className="login-form" onSubmit={handleLogin}>
             {/* Titre */}

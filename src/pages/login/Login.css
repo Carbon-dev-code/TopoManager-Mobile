@@ -2,37 +2,28 @@
   width: 350px;
   height: auto;
 }
-.login-background::before,
-.login-background::after,
+
+.login-background .circle-2,
 .login-background .circle {
   content: "";
   position: absolute;
   background: #015f4d;
-  /* bleu bootstrap */
   width: 150px;
   height: 150px;
   border-radius: 50%;
   z-index: 0;
 }
 
-/* Cercle 1 = haut droite */
-.login-background::before {
-  top: -50px;
-  right: -50px;
-}
-
 /* Cercle 2 = bas gauche */
-.login-background::after {
+.login-background .circle-2 {
   bottom: -50px;
   left: -50px;
 }
 
-/* Cercle 3 = haut gauche */
+/* Cercle 3 = haut droit */
 .login-background .circle {
   top: -60px;
-  /* ajuste comme tu veux */
   right: -50px;
-  /* place-le en haut à droite */
 }
 
 /* Wrapper */
