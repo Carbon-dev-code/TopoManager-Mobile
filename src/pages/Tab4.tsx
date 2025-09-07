@@ -706,28 +706,25 @@ const Tab4 = () => {
         {/* Carte du paramètre actuel */}
         <IonCard color="white" className="current-param-card">
           <IonCardContent>
-            <div
-              className="ion-text-center ion-margin-bottom"
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <IonLabel style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
-                  Paramétrage Actuel
-                </IonLabel>
+            <div className="ion-text-center ion-margin-bottom" style={{ alignItems: "center", justifyContent: "center", }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", }}>
+                <div className="mx-1" style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", }}>
+                  <IonIcon icon={settingsOutline} style={{ fontSize: "2.5rem", color: "#3880ff", } }/>
+                </div>
+                <div className="mx-1">
+                  <div>
+                    <IonLabel style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+                      Paramétrage Actuel
+                    </IonLabel>
+                  </div>
+                  <div>
+                    <IonText color="medium" className="mx-2">
+                      Serveur: {getServerAddress()}
+                    </IonText>
+                  </div>
+                </div>
               </div>
 
-              <IonText color="medium" className="mx-2">
-                Serveur: {getServerAddress()}
-              </IonText>
             </div>
 
             {parametreActuel ? (

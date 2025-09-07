@@ -27,14 +27,13 @@ const Accueil: React.FC = () => {
             <img src={logo3} alt="Observatoire Logo" className="header-logo" />
           </div>
           <h3 className="nav-item text-center p-2">
-            Dématérialisation des procédures et documents topographiques
-            fonciers
+            Dématérialisation des procédures et documents topographiques fonciers
           </h3>
         </div>
         <section className="hero">
-          <h2>Bienvenue sur TopoManager</h2>
+          <h2>Bienvenue sur TopoManager Mobile</h2>
           <p>
-            Gérez efficacement les documents topographiques fonciers avec un
+            Gérez efficacement les collectes des données topographiques fonciers avec un
             outils innovants.
           </p>
           <IonRouterLink className="btn_connexion" routerLink="/login">
@@ -46,17 +45,8 @@ const Accueil: React.FC = () => {
           <div className="row g-4">
             <div className="col-md-4">
               <div className="feature-card">
-                <h4>Suivi en temps réel</h4>
-                <p>Consultez la situation de vos dossiers à tout moment.</p>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="feature-card">
-                <h4>Archive Numérique</h4>
-                <p>
-                  Solution moderne et efficace pour gérer et conserver les
-                  documents topographiques fonciers.
-                </p>
+                <h4>Collecte des données</h4>
+                <p>Collecter les données topographiques en un temps records.</p>
               </div>
             </div>
             <div className="col-md-4">
@@ -72,13 +62,6 @@ const Accueil: React.FC = () => {
             <div className="col-md-6">
               <h5>Contactez-nous</h5>
               <p>Adresse : Anosy, Antananarivo, Madagascar</p>
-              <p>Téléphone : +261 32 00 000 00</p>
-              <p>
-                Email :{" "}
-                <a href="mailto:contact@suivitopographique.com">
-                  contact@suivitopographique.com
-                </a>
-              </p>
             </div>
             <div className="col-md-6 text-end">
               <h5>Suivez-nous</h5>
