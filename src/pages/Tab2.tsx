@@ -485,10 +485,11 @@ const Tab2: React.FC = () => {
       target: mapElement.current,
       //layers: allLayers,
       layers: [osmLayer, ...allLayers],
+      
       view: new View({
-        center: fromLonLat([46.383814, -25.041426]), //mila avadika GPS Coordonner actuelle fona
+        center: fromLonLat([47.517953463861645, -18.91634331159131]), //mila avadika GPS Coordonner actuelle fona
         zoom: 15,
-        maxZoom: 17,
+        maxZoom: 21,
       }),
       controls: [
         new ScaleLine({

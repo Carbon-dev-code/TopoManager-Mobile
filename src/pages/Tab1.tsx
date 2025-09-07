@@ -302,6 +302,7 @@ const Tab1: React.FC = () => {
           <IonButtons slot="end">
             <IonButton
               fill="clear"
+              size="large"
               color="danger"
               onClick={() => {
                 setSearch(false);
@@ -791,7 +792,7 @@ const Tab1: React.FC = () => {
                           repere: Number(e.detail.value),
                         })
                       }
-                      placeholder="Riverin du parcelle"
+                      placeholder="Riverain du parcelle"
                     >
                       {repereL.map((rep, index) => (
                         <IonSelectOption
@@ -856,7 +857,7 @@ const Tab1: React.FC = () => {
         <IonContent className="ion-padding">
           <IonList>
             <IonItem>
-              <IonLabel className="me-3">Type de Personne :</IonLabel>
+              <IonLabel className="me-3">Type :</IonLabel>
               <IonRadioGroup
                 value={isPhysique.toString()}
                 onIonChange={(e) => {
