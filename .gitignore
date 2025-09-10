@@ -1,8 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 #file
-./npx cap add android.txt
-./public/mbtiles
-./Run.bat
+.npx cap add android.txt
+.public/mbtiles
+.Run.bat
 
 # dependencies
 /node_modules
