@@ -349,6 +349,18 @@ const Tab4 = () => {
     }
   };
 
+  const deleteFile = async (path: string) => {
+    try {
+      await Filesystem.deleteFile({
+        directory: Directory.Documents, // ou Directory.Data selon où le fichier est
+        path: path, // ex: "mbtiles/amb.mbtiles"
+      });
+      console.log("✅ Fichier supprimé !");
+    } catch (err) {
+      console.error("❌ Erreur suppression fichier:", err);
+    }
+  };
+
   const fetchCarte = async () => {
     setShowModalCarte(false);
     setIsDownloadingTiles(true);
@@ -382,8 +394,9 @@ const Tab4 = () => {
         });
 
         if (!overwrite) {
-          console.log("📂 Téléchargement annulé par l’utilisateur");
           return;
+        } else {
+          await deleteFile("mbtiles/amb.mbtiles");
         }
       } catch {
         // Fichier n'existe pas → on continue
@@ -403,7 +416,6 @@ const Tab4 = () => {
         path: fileUri.uri,
         method: "GET",
         progress: true,
-        ...(overwrite ? { useUnsafeWrite: true } : {}),
       });
 
       setProgression(1);
@@ -1287,7 +1299,7 @@ const Tab4 = () => {
         </IonContent>
       </IonModal>
 
-       {/* Confirmation si il existe deja au lieu d'ecraser */}
+      {/* Confirmation si il existe deja au lieu d'ecraser */}
       <IonAlert
         isOpen={!!showModalConfirmation}
         header="Confirmation"
