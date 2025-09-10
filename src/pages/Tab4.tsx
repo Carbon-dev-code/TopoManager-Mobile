@@ -29,6 +29,7 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { useState, useEffect } from "react";
 import { ConfigService } from "../model/ConfigService";
 import { Buffer } from "buffer";
+import { FileTransfer } from '@capacitor/file-transfer';
 import {
   close,
   settingsOutline,
@@ -44,10 +45,12 @@ import { District } from "../model/limite/District";
 import { Commune } from "../model/limite/Commune";
 import { Fokontany } from "../model/limite/Fokontany";
 import { Hameau } from "../model/limite/Hameau";
+import { useDb } from "./base/DbContextType";
 
 const Tab4 = () => {
   const [territoire, setTerritoire] = useState<Territoire[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { loadMBTiles } = useDb();
   const [allLoader, setAllLoader] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -320,137 +323,87 @@ const Tab4 = () => {
     }
   };
 
-  const blobToBase64 = (blob: Blob): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result?.toString().split(",")[1];
-        resolve(base64 ?? "");
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
   const sanitizeName = (name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]/gi, "_"); // remplace caractères spéciaux
   };
 
-  const fetchCarte = async () => {
-    setIsDownloadingTiles(true);
-    setError(null);
-    setProgression(0);
-
+  const ensureMbtilesDir = async () => {
     try {
-      const currentServerUrl = await ConfigService.getServerBaseUrl();
-      if (!currentServerUrl) throw new Error("Configuration serveur manquante");
-      setServerUrl(currentServerUrl);
-
-      const region = territoire.find((r) => r.idregion === selectedRegion);
-      const district = region?.districts.find((d) => d.iddistrict === selectedDistrict);
-      const commune = district?.communes.find((c) => c.idcommune === selectedCommune);
-      const fokontany = commune?.fokontany.find((f) => f.idfokontany === selectedFokontany);
-      const hameau = fokontany?.hameaux.find((h) => h.idhameau === selectedHameau);
-
-      const payload = {
-        region: sanitizeName(region?.nomregion ?? "inconnu"),
-        district: sanitizeName(district?.nomdistrict ?? "inconnu"),
-        commune: sanitizeName(commune?.nomcommune ?? "inconnu"),
-        fokontany: sanitizeName(fokontany?.nomfokontany ?? "inconnu"),
-        hameau: sanitizeName(hameau?.nomhameau ?? "inconnu"),
-      };
-
-      const listResponse = await fetch(`${currentServerUrl}/getCarte`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      // 🔍 Vérifier si le dossier existe
+      await Filesystem.stat({
+        directory: Directory.Documents,
+        path: "mbtiles",
       });
-
-      if (!listResponse.ok) throw new Error("Impossible de lister les tuiles");
-
-      const tiles: string[] = await listResponse.json();
-      const total = tiles.length;
-      let done = 0;
-
-      // --- Détection device pour adaptatif ---
-      const cores = navigator.hardwareConcurrency || 4;
-      const MAX_CONCURRENCY = Math.min(cores, 12); // limite max
-      let concurrency = 1; // démarrage safe
-      let lastUpdate = 0;
-      const tileQueue = [...tiles];
-
-      const processTile = async (tilePath: string) => {
-        try {
-          const response = await fetch(`${currentServerUrl}/fonds/${tilePath}`);
-          if (!response.ok) return;
-
-          let blob = await response.blob();
-          let base64 = await blobToBase64(blob);
-
-          await Filesystem.writeFile({
-            path: `tiles/fond/${tilePath}`,
-            data: base64,
-            directory: Directory.Data,
-            recursive: true,
-          });
-
-          blob = null as any;
-          base64 = null as any;
-
-        } catch {
-          // silencieux
-        } finally {
-          done++;
-          const now = Date.now();
-          if ((done % 10 === 0 || done === total) && now - lastUpdate > 300) {
-            setProgression(done / total);
-            lastUpdate = now;
-          }
-        }
-      };
-
-      const runWithConcurrency = async (level: number) => {
-        const start = performance.now();
-        const batch: Promise<void>[] = [];
-
-        for (let i = 0; i < level && tileQueue.length; i++) {
-          const tilePath = tileQueue.splice(0, 1)[0];
-          if (tilePath) batch.push(processTile(tilePath));
-        }
-
-        await Promise.all(batch);
-
-        // --- Pause adaptative selon cores ---
-        const pause = cores <= 4 ? 50 : cores <= 8 ? 25 : 10;
-        await new Promise((r) => setTimeout(r, pause));
-
-        return performance.now() - start;
-      };
-
-      while (tileQueue.length) {
-        const duration = await runWithConcurrency(concurrency);
-
-        // --- Ajustement dynamique de la concurrence ---
-        if (duration < 500 && concurrency < MAX_CONCURRENCY) {
-          concurrency++;
-        } else if (duration > 2000 && concurrency > 1) {
-          concurrency = Math.floor(concurrency / 2);
-        }
-
-        if (concurrency < 1) concurrency = 1;
-      }
-
-      setProgression(1);
-
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erreur inconnue";
-      setError(`Échec de la synchronisation: ${message}`);
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-      setIsDownloadingTiles(false);
-      setTimeout(() => setProgression(0), 1000);
+      console.log("📂 Le dossier mbtiles existe déjà");
+    } catch (err) {
+      // Si erreur → le dossier n’existe pas → on le crée
+      console.log("📂 Le dossier mbtiles n’existe pas, création...");
+      await Filesystem.mkdir({
+        directory: Directory.Documents,
+        path: "mbtiles",
+        recursive: true,
+      });
     }
   };
+
+  const fetchCarte = async () => {
+    setIsDownloadingTiles(true);
+    setProgression(0);
+    setError(null);
+
+    try {
+      const serverUrl = await ConfigService.getServerBaseUrl();
+      if (!serverUrl) throw new Error('Configuration serveur manquante');
+
+      // --- Préparer le chemin local ---
+      const filePath = 'mbtiles/amb.mbtiles';
+
+      // 1️⃣ Vérifier/créer le dossier uniquement si besoin
+      await ensureMbtilesDir();
+
+      const fileUri = await Filesystem.getUri({
+        directory: Directory.Documents,
+        path: filePath,
+      });
+
+      // --- Écouter la progression ---
+      FileTransfer.addListener('progress', (p) => {
+        console.log(`Downloaded ${p.bytes} of ${p.contentLength}`);
+        setProgression(p.bytes / p.contentLength);
+      });
+
+      // --- Télécharger le MBTiles via FileTransfer ---
+      await FileTransfer.downloadFile({
+        url: `${serverUrl}/getCarte`,
+        path: fileUri.uri,
+        method: 'GET',
+        progress: true
+      });
+
+      // --- Charger la base partagée dans ton contexte ---
+      await loadMBTiles();
+      setProgression(1);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur inconnue';
+      setError(message);
+      console.error('fetchCarte error:', err);
+    } finally {
+      setIsDownloadingTiles(false);
+      setTimeout(() => setProgression(0), 500);
+    }
+  };
+
+
+  // 🔹 Utilitaire pour convertir Uint8Array en base64
+  function bufferToBase64(buffer: Uint8Array) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < buffer.length; i += chunkSize) {
+      const chunk = buffer.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, chunk as any);
+    }
+    return btoa(binary);
+  }
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -709,7 +662,7 @@ const Tab4 = () => {
             <div className="ion-text-center ion-margin-bottom" style={{ alignItems: "center", justifyContent: "center", }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", }}>
                 <div className="mx-1" style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", }}>
-                  <IonIcon icon={settingsOutline} style={{ fontSize: "2.5rem", color: "#3880ff", } }/>
+                  <IonIcon icon={settingsOutline} style={{ fontSize: "2.5rem", color: "#3880ff", }} />
                 </div>
                 <div className="mx-1">
                   <div>
