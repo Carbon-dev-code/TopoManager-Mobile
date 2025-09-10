@@ -1286,6 +1286,8 @@ const Tab4 = () => {
           )}
         </IonContent>
       </IonModal>
+
+       {/* Confirmation si il existe deja au lieu d'ecraser */}
       <IonAlert
         isOpen={!!showModalConfirmation}
         header="Confirmation"
