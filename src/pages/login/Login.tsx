@@ -39,9 +39,10 @@ const Login: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
 
-    if (password === PASSWORD_ADMIN && email === USERNAME_ADMIN) {
-      // Sauvegarde session
+    if (trimmedPassword === PASSWORD_ADMIN && trimmedEmail === USERNAME_ADMIN) {
       await Preferences.set({ key: "is_logged_in", value: "true" });
       await Preferences.set({ key: "id_session", value: "0" });
       window.location.href = "/tab1";
