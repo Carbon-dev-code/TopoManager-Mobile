@@ -506,8 +506,11 @@ const Tab2: React.FC = () => {
 
   // --- 4. Hook principal ---
   useEffect(() => {
-    if (!mapElement.current || !db || mapRef.current) return;
+    // Si le container de la carte n'existe pas OU si db n'est pas encore chargé, on ne fait rien
+    if (!mapElement.current || db !== null || mapRef.current) return;
+
     setLoadingMap(true); // show loader
+
     const bounds = readBounds(db);
     const vectorLayers = createVectorLayers();
     const mbTilesSource = createMbTilesSource(db);
