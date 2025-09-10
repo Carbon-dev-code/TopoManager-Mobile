@@ -22,7 +22,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const loadMBTiles = async () => {
     try {
-      const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
+      const SQL = await initSqlJs({ locateFile: (f: any) => `/sql-wasm/${f}` });
       if (Capacitor.isNativePlatform()) {
         const filePath = File.externalRootDirectory + "Documents/TopoManager/mbtiles/amb.mbtiles";
         // console.log("📍 Fichier:", filePath);
