@@ -132,7 +132,7 @@ const Tab2: React.FC = () => {
   // -- load mbtiles ---
   useEffect(() => {
     if (!db) {
-      loadMBTiles(); // charge la base si pas encore chargé
+      loadMBTiles();
     }
   }, [db, loadMBTiles]);
 
@@ -507,7 +507,7 @@ const Tab2: React.FC = () => {
   // --- 4. Hook principal ---
   useEffect(() => {
     // Si le container de la carte n'existe pas OU si db n'est pas encore chargé, on ne fait rien
-    if (!mapElement.current || db !== null || mapRef.current) return;
+    if (!mapElement.current || db === null || mapRef.current) return;
 
     setLoadingMap(true); // show loader
 
