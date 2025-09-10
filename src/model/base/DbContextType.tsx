@@ -22,12 +22,10 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const loadMBTiles = async () => {
     try {
-      console.log("⏳ Chargement de sql.js...");
       const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
-
       if (Capacitor.isNativePlatform()) {
         const filePath = File.externalRootDirectory + "Documents/mbtiles/amb.mbtiles";
-        console.log("📍 Fichier:", filePath);
+        // console.log("📍 Fichier:", filePath);
         const fileEntry = (await File.resolveLocalFilesystemUrl(filePath)) as any;
         fileEntry.file((file: any) => {
           const reader = new FileReader();
@@ -35,17 +33,16 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             const buffer = event.target?.result as ArrayBuffer;
             const db = new SQL.Database(new Uint8Array(buffer));
             setDb(db);
-            console.log("✅ MBTiles chargé depuis Documents !");
+            // console.log("✅ MBTiles chargé depuis Documents !");
           };
           reader.readAsArrayBuffer(file);
         });
-      } else {
-        // 🌍 Mode web → lecture depuis public/mbtiles
+      } else {     // 🌍 Mode web → lecture depuis public/mbtiles
         const response = await fetch("/mbtiles/amb.mbtiles");
         const buffer = await response.arrayBuffer();
         const db = new SQL.Database(new Uint8Array(buffer));
         setDb(db);
-        console.log("✅ MBTiles chargé depuis public/mbtiles !");
+        // console.log("✅ MBTiles chargé depuis public/mbtiles !");
       }
     } catch (err) {
       console.error("❌ Erreur MBTiles:", err);

@@ -10,6 +10,7 @@ import {
   IonInput,
   IonToast,
   IonTitle,
+  IonLoading,
 } from "@ionic/react";
 import "./Tab2.css";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -93,6 +94,7 @@ const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
   const mapElement = useRef<HTMLDivElement>(null);
   const { db, loadMBTiles } = useDb();
+  const [loadingMap, setLoadingMap] = useState(true); // état pour loader
   const [showLocalTiles, setShowLocalTiles] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const localLayerRef = useRef<TileLayer | null>(null);
@@ -104,6 +106,7 @@ const Tab2: React.FC = () => {
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const [geojsons, setGeojsons] = useState<any[]>([]);
   const intervalDuration = 10000;
   //---Modal/Fab----------
   const [showCard, setShowCard] = useState(true);
@@ -136,9 +139,7 @@ const Tab2: React.FC = () => {
   }, [db, loadMBTiles]);
 
   // ---- Load Parcelles & GeoJSON ----
-  const loadParcellesFromStorage = useCallback(async (): Promise<
-    Parcelle[]
-  > => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     const result = await Preferences.get({ key: STORAGE_KEY });
     if (!result.value) return [];
     try {
@@ -412,6 +413,15 @@ const Tab2: React.FC = () => {
     mapRef.current.addLayer(vectorLayer);
   }, [drawPoints]);
 
+  // ---- Load data depuis storage ----
+  useEffect(() => {
+    const loadData = async () => {
+      setParcelles(await loadParcellesFromStorage());
+      setGeojsons(await loadGeoJsonFromStorage()); // 👉 stocke seulement
+    };
+    loadData();
+  }, [loadParcellesFromStorage, loadGeoJsonFromStorage]);
+
   // ---- Init Map ----
   // --- 1. Lire bounds depuis metadata ---
   const readBounds = useCallback((db: any): number[] => {
@@ -434,36 +444,35 @@ const Tab2: React.FC = () => {
   }, []);
 
   // --- 2. Création source MBTiles avec cache --- 
-  const createMbTilesSource = useCallback(
-    (db: any) =>
-      new XYZ({
-        tileSize: 256,
-        minZoom: 0,
-        maxZoom: 18,
-        tileUrlFunction: (tileCoord) => `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`, // fake URL
-        tileLoadFunction: (imageTile, src) => {
-          const tileCoord = imageTile.getTileCoord();
-          if (!tileCoord) return;
-          const z = tileCoord[0];
-          const x = tileCoord[1];
-          const y_ol = tileCoord[2];
-          const y = (1 << z) - 1 - y_ol;
-          const image = imageTile.getImage() as HTMLImageElement;
-          const stmt = db.prepare(
-            "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?"
-          );
-          stmt.bind([z, x, y]);
-          if (stmt.step()) {
-            const row = stmt.getAsObject();
-            const blob = new Blob([row.tile_data], { type: "image/png" });
-            const url = URL.createObjectURL(blob);
-            image.src = url;
-          } else {
-            image.src = "";
-          }
-          stmt.free();
-        },
-      }),
+  const createMbTilesSource = useCallback((db: any) =>
+    new XYZ({
+      tileSize: 256,
+      minZoom: 0,
+      maxZoom: 18,
+      tileUrlFunction: (tileCoord) => `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`, // fake URL
+      tileLoadFunction: (imageTile, src) => {
+        const tileCoord = imageTile.getTileCoord();
+        if (!tileCoord) return;
+        const z = tileCoord[0];
+        const x = tileCoord[1];
+        const y_ol = tileCoord[2];
+        const y = (1 << z) - 1 - y_ol;
+        const image = imageTile.getImage() as HTMLImageElement;
+        const stmt = db.prepare(
+          "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?"
+        );
+        stmt.bind([z, x, y]);
+        if (stmt.step()) {
+          const row = stmt.getAsObject();
+          const blob = new Blob([row.tile_data], { type: "image/png" });
+          const url = URL.createObjectURL(blob);
+          image.src = url;
+        } else {
+          image.src = "";
+        }
+        stmt.free();
+      },
+    }),
     []
   );
 
@@ -494,27 +503,22 @@ const Tab2: React.FC = () => {
       geoJsonLayersRef.current[name] = layer;
       layers.push(layer);
     });
-
     return layers;
   }, [styleByType, layerOrder]);
 
   // --- 4. Hook principal ---
   useEffect(() => {
     if (!mapElement.current || !db || mapRef.current) return;
-
+    setLoadingMap(true); // show loader
     const bounds = readBounds(db);
     const vectorLayers = createVectorLayers();
     const mbTilesSource = createMbTilesSource(db);
     const mbTilesLayer = new TileLayer({ source: mbTilesSource });
-    
     const map = new Map({
       target: mapElement.current,
-      layers: [new TileLayer({ source: new OSM() }), mbTilesLayer, ...vectorLayers],
+      layers: [mbTilesLayer, ...vectorLayers],
       view: new View({
-        center: fromLonLat([
-          (bounds[0] + bounds[2]) / 2,
-          (bounds[1] + bounds[3]) / 2,
-        ]),
+        center: fromLonLat([(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]),
         zoom: 11,
         maxZoom: 21,
       }),
@@ -526,9 +530,7 @@ const Tab2: React.FC = () => {
         }),
       ],
     });
-
     mapRef.current = map;
-
     // --- Gestion moveend ---
     map.on("moveend", () => {
       const center = map.getView().getCenter();
@@ -539,29 +541,30 @@ const Tab2: React.FC = () => {
     localLayerRef.current = mbTilesLayer;
     mbTilesSource.refresh();
 
-    console.log("✅ Carte initialisée avec cache MBTiles + vecteurs");
+    console.log("✅ Carte initialisée avec cache MBTiles");
+    setLoadingMap(false); // show loader
   }, [db, readBounds, createMbTilesSource, createVectorLayers]);
 
-  // ---- Load data ----
+  // ---- Injecter les GeoJSON dans les layers quand map prête ----
   useEffect(() => {
-    const loadData = async () => {
-      setParcelles(await loadParcellesFromStorage());
-      const geojsons = await loadGeoJsonFromStorage();
-      const format = new GeoJSON();
-      Object.keys(geoJsonLayersRef.current).forEach((n) =>
-        geoJsonLayersRef.current[n].getSource().clear()
-      );
-      geojsons.forEach((g) => {
-        const fts = format.readFeatures(g, { featureProjection: "EPSG:3857" });
-        if (fts.length > 0) {
-          const type = fts[0].get("name")?.toLowerCase();
-          if (type && geoJsonLayersRef.current[type])
-            geoJsonLayersRef.current[type].getSource().addFeatures(fts);
+    if (!mapRef.current || geojsons.length === 0) return;
+    const format = new GeoJSON();
+    // Nettoyage des anciennes features
+    Object.keys(geoJsonLayersRef.current).forEach((n) =>
+      geoJsonLayersRef.current[n].getSource().clear()
+    );
+    // Ajout des nouvelles features
+    geojsons.forEach((g) => {
+      const fts = format.readFeatures(g, { featureProjection: "EPSG:3857" });
+      if (fts.length > 0) {
+        const type = fts[0].get("name")?.toLowerCase();
+        if (type && geoJsonLayersRef.current[type]) {
+          geoJsonLayersRef.current[type].getSource().addFeatures(fts);
         }
-      });
-    };
-    loadData();
-  }, [loadParcellesFromStorage, loadGeoJsonFromStorage]);
+      }
+    });
+    console.log("✅ GeoJSON injecté dans les couches");
+  }, [geojsons, mapRef.current]);
 
   // ---- Draw Parcelles ----
   useEffect(() => {
@@ -589,10 +592,7 @@ const Tab2: React.FC = () => {
   }, [parcelles]);
 
   // ---- Toggle local tiles ----
-  const toggleLocalTiles = useCallback(
-    () => setShowLocalTiles((prev) => !prev),
-    []
-  );
+  const toggleLocalTiles = useCallback(() => setShowLocalTiles((prev) => !prev), []);
   // --- seach zoom Coords
   const gpsCard = useCallback(() => setShowGPS((prev) => !prev), []);
 
@@ -904,7 +904,6 @@ const Tab2: React.FC = () => {
     }
   };
 
-
   // --- Cleanup auto si le composant est démonté ---
   useEffect(() => {
     return () => {
@@ -938,6 +937,11 @@ const Tab2: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
+        <IonLoading
+          isOpen={loadingMap}
+          message={"Initialisation de la carte..."}
+          spinner="circles"
+        />
         {fabOpen && (
           <div className="map-crosshair">
             <div className="cross-symbol"></div>
