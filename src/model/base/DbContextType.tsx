@@ -24,7 +24,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     try {
       const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
       if (Capacitor.isNativePlatform()) {
-        const filePath = File.externalRootDirectory + "Documents/mbtiles/amb.mbtiles";
+        const filePath = File.externalRootDirectory + "Documents/TopoManager/mbtiles/amb.mbtiles";
         // console.log("📍 Fichier:", filePath);
         const fileEntry = (await File.resolveLocalFilesystemUrl(filePath)) as any;
         fileEntry.file((file: any) => {

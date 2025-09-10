@@ -14,7 +14,6 @@ import {
 } from "@ionic/react";
 import "./Tab2.css";
 import { useCallback, useEffect, useRef, useState } from "react";
-import initSqlJs from "sql.js";
 import Map from "ol/Map";
 import View from "ol/View";
 import { fromLonLat, transform } from "ol/proj";
@@ -57,7 +56,6 @@ import { PointC } from "../model/vecteur/PointC";
 import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
-import { OSM } from "ol/source";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
 

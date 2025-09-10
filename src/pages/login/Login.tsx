@@ -57,7 +57,6 @@ const Login: React.FC = () => {
         <div className="login-bg">
           <div className="login-wrapper">
             <form className="login-form" onSubmit={handleLogin}>
-              {/* Titre */}
               <div className="text-center mb-4">
                 <img
                   src={logoTopoManager}
@@ -67,7 +66,6 @@ const Login: React.FC = () => {
               </div>
               <h1 className="login-title">Mobile</h1>
 
-              {/* Email */}
               <IonItem lines="none" className="login-input">
                 <IonInput
                   type="text"
@@ -77,7 +75,6 @@ const Login: React.FC = () => {
                 />
               </IonItem>
 
-              {/* Mot de passe */}
               <IonItem lines="none" className="login-input">
                 <IonInput
                   type={showPassword ? "text" : "password"}
@@ -99,7 +96,6 @@ const Login: React.FC = () => {
                 </IonButton>
               </IonItem>
 
-              {/* Bouton */}
               <IonButton expand="block" className="login-button" type="submit">
                 Connexion
               </IonButton>

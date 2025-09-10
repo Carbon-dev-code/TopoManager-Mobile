@@ -88,11 +88,9 @@ const Tab4 = () => {
         const current = JSON.parse(value);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.coderegion}-${
-          current.district.codedistrict
-        }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${
-          current.hameau.codehameau
-        }-${current.increment + 1}`;
+        const codeComplet = `${current.region.coderegion}-${current.district.codedistrict
+          }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${current.hameau.codehameau
+          }-${current.increment + 1}`;
         setCurrentParcelleCode(codeComplet);
       }
     } catch (error) {
@@ -332,20 +330,21 @@ const Tab4 = () => {
 
   const ensureMbtilesDir = async () => {
     try {
-      // 🔍 Vérifier si le dossier existe
+      // Vérifie si le dossier TopoManager/mbtiles existe
       await Filesystem.stat({
         directory: Directory.Documents,
-        path: "mbtiles",
+        path: "TopoManager/mbtiles",
       });
-      console.log("📂 Le dossier mbtiles existe déjà");
+      console.log("📂 Le dossier TopoManager/mbtiles existe déjà");
     } catch (err) {
       // Si erreur → le dossier n’existe pas → on le crée
-      console.log("📂 Le dossier mbtiles n’existe pas, création...");
+      console.log("📂 Le dossier TopoManager/mbtiles n’existe pas, création...");
       await Filesystem.mkdir({
         directory: Directory.Documents,
-        path: "mbtiles",
-        recursive: true,
+        path: "TopoManager/mbtiles",
+        recursive: true, // très important pour créer tous les sous-dossiers
       });
+      console.log("✅ Dossier TopoManager/mbtiles créé !");
     }
   };
 
@@ -371,7 +370,7 @@ const Tab4 = () => {
       const serverUrl = await ConfigService.getServerBaseUrl();
       if (!serverUrl) throw new Error("Configuration serveur manquante");
 
-      const filePath = "mbtiles/amb.mbtiles";
+      const filePath = "TopoManager/mbtiles/amb.mbtiles";
 
       await ensureMbtilesDir();
 
@@ -588,13 +587,10 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.coderegion}-${
-        nouveauParametre.district.codedistrict
-      }-${nouveauParametre.commune.codecommune}-${
-        nouveauParametre.fokontany.codefokontany
-      }-${nouveauParametre.hameau.codehameau}-${
-        nouveauParametre.increment + 1
-      }`;
+      const codeComplet = `${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
+        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany
+        }-${nouveauParametre.hameau.codehameau}-${nouveauParametre.increment + 1
+        }`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -611,11 +607,9 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.coderegion}-${
-        parametre.district.codedistrict
-      }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${
-        parametre.hameau.codehameau
-      }-${parametre.increment + 1}`;
+      const codeComplet = `${parametre.region.coderegion}-${parametre.district.codedistrict
+        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
+        }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);
