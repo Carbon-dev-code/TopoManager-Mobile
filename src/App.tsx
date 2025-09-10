@@ -16,7 +16,7 @@ import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 import './theme/variables.css';
-import { DbProvider } from './pages/base/DbContextType';
+import { DbProvider } from './model/base/DbContextType';
 
 setupIonicReact();
 

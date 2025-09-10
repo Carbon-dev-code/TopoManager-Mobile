@@ -45,7 +45,7 @@ import { District } from "../model/limite/District";
 import { Commune } from "../model/limite/Commune";
 import { Fokontany } from "../model/limite/Fokontany";
 import { Hameau } from "../model/limite/Hameau";
-import { useDb } from "./base/DbContextType";
+import { useDb } from "../model/base/DbContextType";
 
 const Tab4 = () => {
   const [territoire, setTerritoire] = useState<Territoire[]>([]);

@@ -37,3 +37,4 @@ npx cap add android.txt
 .vscode/extensions.json
 /.vscode
 *.bat
+package-lock.json

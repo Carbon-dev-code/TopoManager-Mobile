@@ -58,7 +58,7 @@ import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { OSM } from "ol/source";
 import { Capacitor } from "@capacitor/core";
-import { useDb } from "./base/DbContextType";
+import { useDb } from "../model/base/DbContextType";
 
 // ---- CRS Madagascar ----
 proj4.defs(
