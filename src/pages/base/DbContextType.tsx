@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import initSqlJs, { Database } from "sql.js";
-import { Filesystem, Directory } from "@capacitor/filesystem";
 import { File } from "@awesome-cordova-plugins/file";
+import { Capacitor } from "@capacitor/core";
 
 interface DbContextProps {
   db: Database | null;
@@ -23,27 +23,30 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const loadMBTiles = async () => {
     try {
       console.log("⏳ Chargement de sql.js...");
+      const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
 
-      const SQL = await initSqlJs({
-        locateFile: (f) => `/sql-wasm/${f}`,
-      });
-
-      // 📂 Chemin complet vers ton fichier
-      const filePath = File.externalRootDirectory + "Documents/mbtiles/amb.mbtiles";
-      console.log("📍 Fichier:", filePath);
-      const fileEntry = (await File.resolveLocalFilesystemUrl(filePath)) as any;
-      fileEntry.file((file: any) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const buffer = event.target?.result as ArrayBuffer;
-          const db = new SQL.Database(new Uint8Array(buffer));
-          setDb(db);
-          console.log("✅ MBTiles chargé depuis Documents !");
-        };
-
-        // 🔹 Lecture en ArrayBuffer (pas en Base64)
-        reader.readAsArrayBuffer(file);
-      });
+      if (Capacitor.isNativePlatform()) {
+        const filePath = File.externalRootDirectory + "Documents/mbtiles/amb.mbtiles";
+        console.log("📍 Fichier:", filePath);
+        const fileEntry = (await File.resolveLocalFilesystemUrl(filePath)) as any;
+        fileEntry.file((file: any) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const buffer = event.target?.result as ArrayBuffer;
+            const db = new SQL.Database(new Uint8Array(buffer));
+            setDb(db);
+            console.log("✅ MBTiles chargé depuis Documents !");
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      } else {
+        // 🌍 Mode web → lecture depuis public/mbtiles
+        const response = await fetch("/mbtiles/amb.mbtiles");
+        const buffer = await response.arrayBuffer();
+        const db = new SQL.Database(new Uint8Array(buffer));
+        setDb(db);
+        console.log("✅ MBTiles chargé depuis public/mbtiles !");
+      }
     } catch (err) {
       console.error("❌ Erreur MBTiles:", err);
     }
