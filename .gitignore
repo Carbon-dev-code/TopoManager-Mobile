@@ -33,3 +33,4 @@ yarn-error.log*
 #fichier important
 /AndroidManifest.xml
 public/mbtiles/amb.mbtiles
+Run.bat
