@@ -10,7 +10,6 @@
 # production
 /dist
 /android
-/Run.bat
 
 # misc
 .DS_Store
