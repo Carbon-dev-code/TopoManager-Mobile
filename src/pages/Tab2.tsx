@@ -459,8 +459,7 @@ const Tab2: React.FC = () => {
             const url = URL.createObjectURL(blob);
             image.src = url;
           } else {
-            image.src =
-              "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAEklEQVR42mP8/5+hHgAHggJ/oK/mnQAAAABJRU5ErkJggg==";
+            image.src = "";
           }
           stmt.free();
         },
@@ -504,9 +503,10 @@ const Tab2: React.FC = () => {
     if (!mapElement.current || !db || mapRef.current) return;
 
     const bounds = readBounds(db);
+    const vectorLayers = createVectorLayers();
     const mbTilesSource = createMbTilesSource(db);
     const mbTilesLayer = new TileLayer({ source: mbTilesSource });
-    const vectorLayers = createVectorLayers();
+    
     const map = new Map({
       target: mapElement.current,
       layers: [new TileLayer({ source: new OSM() }), mbTilesLayer, ...vectorLayers],

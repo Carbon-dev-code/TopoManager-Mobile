@@ -29,7 +29,7 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { useState, useEffect } from "react";
 import { ConfigService } from "../model/ConfigService";
 import { Buffer } from "buffer";
-import { FileTransfer } from '@capacitor/file-transfer';
+import { FileTransfer } from "@capacitor/file-transfer";
 import {
   close,
   settingsOutline,
@@ -71,6 +71,11 @@ const Tab4 = () => {
   const [progression, setProgression] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState(false); // Pour fetchData
   const [isDownloadingTiles, setIsDownloadingTiles] = useState(false); // Pour fetchCarte
+  const [showModalConfirmation, setShowModalConfirmation] = useState<{
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null>(null);
 
   useIonViewWillEnter(() => {
     loadConfig().then(() => refreshCurrentParams());
@@ -83,9 +88,11 @@ const Tab4 = () => {
         const current = JSON.parse(value);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.coderegion}-${current.district.codedistrict
-          }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${current.hameau.codehameau
-          }-${current.increment + 1}`;
+        const codeComplet = `${current.region.coderegion}-${
+          current.district.codedistrict
+        }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${
+          current.hameau.codehameau
+        }-${current.increment + 1}`;
         setCurrentParcelleCode(codeComplet);
       }
     } catch (error) {
@@ -323,10 +330,6 @@ const Tab4 = () => {
     }
   };
 
-  const sanitizeName = (name: string): string => {
-    return name.toLowerCase().replace(/[^a-z0-9]/gi, "_"); // remplace caractères spéciaux
-  };
-
   const ensureMbtilesDir = async () => {
     try {
       // 🔍 Vérifier si le dossier existe
@@ -347,63 +350,72 @@ const Tab4 = () => {
   };
 
   const fetchCarte = async () => {
+    setShowModalCarte(false);
     setIsDownloadingTiles(true);
     setProgression(0);
     setError(null);
 
     try {
       const serverUrl = await ConfigService.getServerBaseUrl();
-      if (!serverUrl) throw new Error('Configuration serveur manquante');
+      if (!serverUrl) throw new Error("Configuration serveur manquante");
 
-      // --- Préparer le chemin local ---
-      const filePath = 'mbtiles/amb.mbtiles';
+      const filePath = "mbtiles/amb.mbtiles";
 
-      // 1️⃣ Vérifier/créer le dossier uniquement si besoin
       await ensureMbtilesDir();
+
+      let overwrite = true; // par défaut on écrase si pas de modal
+
+      try {
+        // Vérifier si le fichier existe
+        await Filesystem.stat({
+          directory: Directory.Documents,
+          path: filePath,
+        });
+
+        // Si on arrive ici, le fichier existe → demander confirmation
+        overwrite = await new Promise<boolean>((resolve) => {
+          setShowModalConfirmation({
+            message: "Le fichier existe déjà. Voulez-vous l’écraser ?",
+            onConfirm: () => resolve(true),
+            onCancel: () => resolve(false),
+          });
+        });
+
+        if (!overwrite) {
+          console.log("📂 Téléchargement annulé par l’utilisateur");
+          return;
+        }
+      } catch {
+        // Fichier n'existe pas → on continue
+      }
 
       const fileUri = await Filesystem.getUri({
         directory: Directory.Documents,
         path: filePath,
       });
 
-      // --- Écouter la progression ---
-      FileTransfer.addListener('progress', (p) => {
-        console.log(`Downloaded ${p.bytes} of ${p.contentLength}`);
-        setProgression(p.bytes / p.contentLength);
+      FileTransfer.addListener("progress", (p) => {
+        if (p.contentLength > 0) setProgression(p.bytes / p.contentLength);
       });
 
-      // --- Télécharger le MBTiles via FileTransfer ---
       await FileTransfer.downloadFile({
         url: `${serverUrl}/getCarte`,
         path: fileUri.uri,
-        method: 'GET',
-        progress: true
+        method: "GET",
+        progress: true,
+        ...(overwrite ? { useUnsafeWrite: true } : {}),
       });
 
-      // --- Charger la base partagée dans ton contexte ---
-      await loadMBTiles();
       setProgression(1);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erreur inconnue';
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
       setError(message);
-      console.error('fetchCarte error:', err);
+      console.error("fetchCarte error:", err);
     } finally {
       setIsDownloadingTiles(false);
       setTimeout(() => setProgression(0), 500);
     }
   };
-
-
-  // 🔹 Utilitaire pour convertir Uint8Array en base64
-  function bufferToBase64(buffer: Uint8Array) {
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < buffer.length; i += chunkSize) {
-      const chunk = buffer.subarray(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, chunk as any);
-    }
-    return btoa(binary);
-  }
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -559,10 +571,13 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
-        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany
-        }-${nouveauParametre.hameau.codehameau}-${nouveauParametre.increment + 1
-        }`;
+      const codeComplet = `${nouveauParametre.region.coderegion}-${
+        nouveauParametre.district.codedistrict
+      }-${nouveauParametre.commune.codecommune}-${
+        nouveauParametre.fokontany.codefokontany
+      }-${nouveauParametre.hameau.codehameau}-${
+        nouveauParametre.increment + 1
+      }`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -579,9 +594,11 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.coderegion}-${parametre.district.codedistrict
-        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
-        }-${parametre.increment + 1}`;
+      const codeComplet = `${parametre.region.coderegion}-${
+        parametre.district.codedistrict
+      }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${
+        parametre.hameau.codehameau
+      }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);
@@ -659,14 +676,35 @@ const Tab4 = () => {
         {/* Carte du paramètre actuel */}
         <IonCard color="white" className="current-param-card">
           <IonCardContent>
-            <div className="ion-text-center ion-margin-bottom" style={{ alignItems: "center", justifyContent: "center", }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", }}>
-                <div className="mx-1" style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", }}>
-                  <IonIcon icon={settingsOutline} style={{ fontSize: "2.5rem", color: "#3880ff", }} />
+            <div
+              className="ion-text-center ion-margin-bottom"
+              style={{ alignItems: "center", justifyContent: "center" }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <div
+                  className="mx-1"
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "center",
+                  }}
+                >
+                  <IonIcon
+                    icon={settingsOutline}
+                    style={{ fontSize: "2.5rem", color: "#3880ff" }}
+                  />
                 </div>
                 <div className="mx-1">
                   <div>
-                    <IonLabel style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+                    <IonLabel
+                      style={{ fontSize: "1.2rem", fontWeight: "bold" }}
+                    >
                       Paramétrage Actuel
                     </IonLabel>
                   </div>
@@ -677,7 +715,6 @@ const Tab4 = () => {
                   </div>
                 </div>
               </div>
-
             </div>
 
             {parametreActuel ? (
@@ -1249,6 +1286,28 @@ const Tab4 = () => {
           )}
         </IonContent>
       </IonModal>
+      <IonAlert
+        isOpen={!!showModalConfirmation}
+        header="Confirmation"
+        message={showModalConfirmation?.message}
+        buttons={[
+          {
+            text: "Annuler",
+            role: "cancel",
+            handler: () => {
+              showModalConfirmation?.onCancel();
+              setShowModalConfirmation(null);
+            },
+          },
+          {
+            text: "Écraser",
+            handler: () => {
+              showModalConfirmation?.onConfirm();
+              setShowModalConfirmation(null);
+            },
+          },
+        ]}
+      />
     </IonPage>
   );
 };
