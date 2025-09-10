@@ -1,9 +1,5 @@
 /* GLOBAL */
-html,
-body,
-#root,
-ion-app,
-ion-content {
+html, body, #root, ion-app, ion-content {
     height: 100%;
     margin: 0;
 }
@@ -37,7 +33,7 @@ ion-content {
 }
 
 .header-logo {
-    max-height: 65px;
+    max-height: 63px;
     width: auto;
     object-fit: contain;
 }
