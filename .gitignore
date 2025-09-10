@@ -2,7 +2,6 @@
 #file
 .npx cap add android.txt
 .public/mbtiles
-.Run.bat
 
 # dependencies
 /node_modules
