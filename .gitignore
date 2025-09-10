@@ -34,4 +34,6 @@ yarn-error.log*
 /AndroidManifest.xml
 public/mbtiles/amb.mbtiles
 Run.bat
-Run.bat
+npx cap add android.txt
+.vscode/extensions.json
+/.vscode
