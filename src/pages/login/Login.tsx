@@ -71,7 +71,6 @@ const Login: React.FC = () => {
                 <IonInput
                   type="text"
                   placeholder="Identifiant"
-                  value={email}
                   onIonChange={(e) => setEmail(e.detail.value!)}
                   required
                 />
@@ -81,7 +80,6 @@ const Login: React.FC = () => {
               <IonItem lines="none" className="login-input">
                 <IonInput
                   type={showPassword ? "text" : "password"}
-                  value={password}
                   placeholder="Mot de passe"
                   onIonChange={(e) => setPassword(e.detail.value!)}
                   required
