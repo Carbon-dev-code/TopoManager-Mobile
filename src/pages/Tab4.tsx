@@ -375,16 +375,15 @@ const Tab4 = () => {
 
       await ensureMbtilesDir();
 
-      let overwrite = true; // par défaut on écrase si pas de modal
-
+      // Vérifier si le fichier existe
+      let overwrite = true;
       try {
-        // Vérifier si le fichier existe
         await Filesystem.stat({
           directory: Directory.Documents,
           path: filePath,
         });
 
-        // Si on arrive ici, le fichier existe → demander confirmation
+        // Si le fichier existe → modal
         overwrite = await new Promise<boolean>((resolve) => {
           setShowModalConfirmation({
             message: "Le fichier existe déjà. Voulez-vous l’écraser ?",
@@ -393,30 +392,36 @@ const Tab4 = () => {
           });
         });
 
-        if (!overwrite) {
-          return;
-        } else {
-          await deleteFile("mbtiles/amb.mbtiles");
-        }
+        if (!overwrite) return;
+        await deleteFile(filePath);
+
       } catch {
-        // Fichier n'existe pas → on continue
+        // Fichier n'existe pas → rien à faire
       }
 
-      const fileUri = await Filesystem.getUri({
-        directory: Directory.Documents,
-        path: filePath,
-      });
+      // 🔹 Path complet pour FileTransfer
+      const fileUri = (
+        await Filesystem.getUri({
+          directory: Directory.Documents,
+          path: filePath,
+        })
+      ).uri;
 
-      FileTransfer.addListener("progress", (p) => {
-        if (p.contentLength > 0) setProgression(p.bytes / p.contentLength);
-      });
+      // 🔹 Download avec FileTransfer
+      try {
+        FileTransfer.addListener("progress", (p) => {
+          if (p.contentLength > 0) setProgression(p.bytes / p.contentLength);
+        });
 
-      await FileTransfer.downloadFile({
-        url: `${serverUrl}/getCarte`,
-        path: fileUri.uri,
-        method: "GET",
-        progress: true,
-      });
+        await FileTransfer.downloadFile({
+          url: `${serverUrl}/getCarte`,
+          path: fileUri,
+          method: "GET",
+          progress: true,
+        });
+      } catch (e: any) {
+        console.warn("⚠️ FileTransfer warning (non bloquant):", e.message || e);
+      }
 
       setProgression(1);
     } catch (err: unknown) {
