@@ -133,7 +133,7 @@ const Tab2: React.FC = () => {
     if (!db) {
       loadMBTiles(); // charge la base si pas encore chargé
     }
-  }, [db]);
+  }, [db, loadMBTiles]);
 
   // ---- Load Parcelles & GeoJSON ----
   const loadParcellesFromStorage = useCallback(async (): Promise<
