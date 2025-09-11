@@ -3,7 +3,7 @@ import { CIN } from "./CIN";
 import { v4 as uuidv4 } from 'uuid'; // npm install uuid
 
 export class Demandeur {
-  id:string;
+  id: string;
   type: number; // 0 personne physique, 1 personne morale
   nom: string | null;
   prenom: string | null;
@@ -25,8 +25,12 @@ export class Demandeur {
   siege: string;
   observations: string;
 
+  // 🔹 Nouvelle propriété pour stocker les photos
+  // On stocke une liste d'URI ou Base64 pour gérer plusieurs photos
+  photos: string[];
+
   constructor(
-    id:string,
+    id: string,
     type: number,
     nom: string,
     prenom: string,
@@ -46,9 +50,10 @@ export class Demandeur {
     typeMorale: number,
     dateCreation: string,
     siege: string,
-    observations: string
+    observations: string,
+    photos: string[] = [] // 🔹 valeur par défaut = tableau vide
   ) {
-    this.id = id; // ✅
+    this.id = id;
     this.type = type;
     this.nom = nom;
     this.prenom = prenom;
@@ -69,12 +74,30 @@ export class Demandeur {
     this.dateCreation = dateCreation;
     this.siege = siege;
     this.observations = observations;
+    this.photos = photos; // 🔹 initialisation de la liste de photos
   }
 
+  // 🔹 Méthode statique pour initialiser un Demandeur vide
   static init(): Demandeur {
     return new Demandeur(
       uuidv4(), 0, '', '', false, null, '', 0, '', '', '', '0', '', 2,
-      null, null, '', 0, '', '', ''
+      null, null, '', 0, '', '', '',
+      [] // 🔹 initialisation des photos vide
     );
+  }
+
+  // 🔹 Méthodes utilitaires pour manipuler les photos
+  addPhoto(photo: string) {
+    this.photos.push(photo); // ajoute une photo
+  }
+
+  removePhoto(index: number) {
+    if (index >= 0 && index < this.photos.length) {
+      this.photos.splice(index, 1); // supprime une photo spécifique
+    }
+  }
+
+  clearPhotos() {
+    this.photos = []; // supprime toutes les photos
   }
 }

@@ -62,6 +62,7 @@ import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { TypeMoral } from "../model/TypeMoral";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
@@ -84,10 +85,8 @@ const Tab1: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
     "demandeur"
   );
-  
   const [decomposed, setDecomposed] = useState(false);
-
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const history = useHistory();
   const [seacrh, setSearch] = useState<boolean>(false);
@@ -128,11 +127,9 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
-          parametreActuel.district.codedistrict
-        }-${parametreActuel.commune.codecommune}-${
-          parametreActuel.fokontany.codefokontany
-        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
+          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
+          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
@@ -191,9 +188,13 @@ const Tab1: React.FC = () => {
   }, [showCreateModal]);
 
   const addDemandeur = () => {
+    // Limite déjà gérée côté prise de photo (max 5)
     parcelle.demandeurs.push(demandeur);
     console.log(demandeur);
-    setDemandeur(Demandeur.init);
+
+    // Reset pour un nouveau demandeur
+    setDemandeur(Demandeur.init());
+    setPhotos([]); // si tu gardes ce state pour l’affichage temporaire
     setShowDemandeurModal(false);
   };
 
@@ -276,24 +277,35 @@ const Tab1: React.FC = () => {
     });
   }, [searchQuery, parcelles]);
 
-  const takePhoto = useCallback(async () => {
+  const takePhoto = async () => {
     try {
-      const image = await Camera.getPhoto({
+      // Vérifie si on a déjà 5 photos
+      if (demandeur.photos && demandeur.photos.length >= 5) {
+        setToastMessage("Vous ne pouvez pas ajouter plus de 5 photos");
+        return;
+      }
+
+      const photo = await Camera.getPhoto({
         quality: 90,
-        resultType: CameraResultType.DataUrl, // peut aussi être URI si besoin
-        source: CameraSource.Camera, // caméra seulement
+        resultType: CameraResultType.DataUrl, // Base64
+        source: CameraSource.Camera,
       });
 
-      if (image.dataUrl) {
-        setPhoto(image.dataUrl);
-      } else {
-        setToastMessage("Erreur lors de la capture de la photo");
-      }
+      if (!photo.dataUrl) throw new Error("Pas de photo");
+
+      // Met à jour le state du demandeur
+      setDemandeur(prev => {
+        const newDemandeur = { ...prev };
+        if (!newDemandeur.photos) newDemandeur.photos = [];
+        newDemandeur.photos.push(photo.dataUrl); // ajoute la photo
+        return newDemandeur;
+      });
+
     } catch (err) {
-      console.error("Camera error:", err);
-      setToastMessage("Action annulée ou erreur caméra");
+      console.error(err);
+      setToastMessage("Erreur lors de la capture");
     }
-  }, []);
+  };
 
   return (
     <IonPage>
@@ -442,28 +454,6 @@ const Tab1: React.FC = () => {
             ))}
           </div>
         )}
-        <div className="image-stack-container">
-          <div
-            className={`image-stack ${decomposed ? "decomposed" : ""}`}
-            onClick={() => setDecomposed(!decomposed)}
-          >
-            <img
-              src="https://sf2.sportauto.fr/wp-content/uploads/sportauto/2025/01/lewis-hamilton-f1-ferrari-premieres-images-photos-maranello-2.jpg"
-              alt="image1"
-              className="image"
-            />
-            <img
-              src="https://i.redd.it/new-hamilton-ferrari-pics-v0-ai8yxqahujfe1.jpg?width=1638&format=pjpg&auto=webp&s=f2a523b22d8f96b10a44840fc6df7c99aa815cb3"
-              alt="image2"
-              className="image"
-            />
-            <img
-              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSGUAE9NjylFf9KMJO879JAOWQb64g9dsmyoA&s"
-              alt="image3"
-              className="image"
-            />
-          </div>
-        </div>
       </IonContent>
 
       {/*Modal creation de parcelle*/}
@@ -1025,8 +1015,8 @@ const Tab1: React.FC = () => {
                             value={
                               demandeur.dateNaissance
                                 ? demandeur.dateNaissance
-                                    .toISOString()
-                                    .substring(0, 10)
+                                  .toISOString()
+                                  .substring(0, 10)
                                 : ""
                             }
                             onIonChange={(e) =>
@@ -1125,19 +1115,19 @@ const Tab1: React.FC = () => {
                 <div style={{ marginLeft: "16px" }}>
                   {(demandeur.situation === "1" ||
                     demandeur.situation === "2") && (
-                    <IonInput
-                      className="border-bottom"
-                      label="Nom du conjoint"
-                      placeholder="Enter le nom de la mère du demandeur"
-                      value={demandeur.nomConjoint}
-                      onIonChange={(e) =>
-                        setDemandeur({
-                          ...demandeur,
-                          nomConjoint: String(e.detail.value),
-                        })
-                      }
-                    />
-                  )}
+                      <IonInput
+                        className="border-bottom"
+                        label="Nom du conjoint"
+                        placeholder="Enter le nom de la mère du demandeur"
+                        value={demandeur.nomConjoint}
+                        onIonChange={(e) =>
+                          setDemandeur({
+                            ...demandeur,
+                            nomConjoint: String(e.detail.value),
+                          })
+                        }
+                      />
+                    )}
                 </div>
                 <div className="border-bottom" style={{ marginLeft: "15px" }}>
                   <h5 className="mt-4">Filiation</h5>
@@ -1252,8 +1242,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.cin?.date
                                   ? demandeur.cin.date
-                                      .toISOString()
-                                      .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
@@ -1343,8 +1333,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.acte?.date
                                   ? demandeur.acte.date
-                                      .toISOString()
-                                      .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
@@ -1447,30 +1437,50 @@ const Tab1: React.FC = () => {
               </IonList>
             </>
           )}
+
           <IonToast
             isOpen={!!toastMessage}
             message={toastMessage || ""}
             duration={2000}
             onDidDismiss={() => setToastMessage(null)}
             color="danger"
+            position="top" // 🔹 ici
           />
-          {photo && (
-            <div style={{ marginTop: "20px" }}>
-              <IonImg src={photo} />
+
+          {/* Stack d’images dynamiques */}
+          {demandeur.photos && demandeur.photos.length > 0 && (
+            <div
+              className={`image-stack ${decomposed ? "decomposed" : ""}`}
+              onClick={() => setDecomposed(!decomposed)}
+            >
+              {demandeur.photos.map((p, idx) => (
+                <IonImg key={idx} src={p} className="image" />
+              ))}
+
+              {/* Badge +N si plus de 3 photos */}
+              {!decomposed && demandeur.photos.length > 1 && (
+                <div className="image-badge">
+                  +{demandeur.photos.length}
+                </div>
+              )}
             </div>
           )}
+
+          {/* Boutons en flex */}
           <div className="button-photo">
             <IonButton style={{ flex: 1 }} onClick={takePhoto}>
               Prendre une photo 📸
             </IonButton>
 
-            {photo && (
+            {demandeur.photos && demandeur.photos.length > 0 && (
               <IonButton
                 style={{ flex: 1 }}
                 color="danger"
-                onClick={() => setPhoto(null)}
+                onClick={() =>
+                  setDemandeur(prev => ({ ...prev, photos: [] }))
+                }
               >
-                Supprimer la photo 🗑️
+                Supprimer les photos 🗑️
               </IonButton>
             )}
           </div>
