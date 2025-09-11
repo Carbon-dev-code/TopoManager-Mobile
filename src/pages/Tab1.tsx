@@ -84,6 +84,9 @@ const Tab1: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
     "demandeur"
   );
+  
+  const [decomposed, setDecomposed] = useState(false);
+
   const [photo, setPhoto] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const history = useHistory();
@@ -439,6 +442,28 @@ const Tab1: React.FC = () => {
             ))}
           </div>
         )}
+        <div className="image-stack-container">
+          <div
+            className={`image-stack ${decomposed ? "decomposed" : ""}`}
+            onClick={() => setDecomposed(!decomposed)}
+          >
+            <img
+              src="https://sf2.sportauto.fr/wp-content/uploads/sportauto/2025/01/lewis-hamilton-f1-ferrari-premieres-images-photos-maranello-2.jpg"
+              alt="image1"
+              className="image"
+            />
+            <img
+              src="https://i.redd.it/new-hamilton-ferrari-pics-v0-ai8yxqahujfe1.jpg?width=1638&format=pjpg&auto=webp&s=f2a523b22d8f96b10a44840fc6df7c99aa815cb3"
+              alt="image2"
+              className="image"
+            />
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSGUAE9NjylFf9KMJO879JAOWQb64g9dsmyoA&s"
+              alt="image3"
+              className="image"
+            />
+          </div>
+        </div>
       </IonContent>
 
       {/*Modal creation de parcelle*/}
@@ -1434,14 +1459,7 @@ const Tab1: React.FC = () => {
               <IonImg src={photo} />
             </div>
           )}
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              marginTop: "20px",
-              width: "100%",
-            }}
-          >
+          <div className="button-photo">
             <IonButton style={{ flex: 1 }} onClick={takePhoto}>
               Prendre une photo 📸
             </IonButton>
