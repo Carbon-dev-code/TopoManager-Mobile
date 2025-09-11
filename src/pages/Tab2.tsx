@@ -11,6 +11,7 @@ import {
   IonToast,
   IonTitle,
   IonLoading,
+  useIonViewDidEnter,
 } from "@ionic/react";
 import "./Tab2.css";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -58,7 +59,6 @@ import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
-import { useIonViewDidEnter } from "@ionic/react";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -134,18 +134,39 @@ const Tab2: React.FC = () => {
 
   //load
   useIonViewDidEnter(() => {
-    const loadGeoJsonOnEnter = async () => {
-      const data = await loadGeoJsonFromStorage();
-      setGeojsons(data); // déclenche le useEffect pour injecter les features
+    const loadDataOnEnter = async () => {
+      try {
+        setLoadingMap(true); // loader global
+
+        // 1️⃣ Parcelles & GeoJSON
+        const [geojsonData, savedParcelles] = await Promise.all([
+          loadGeoJsonFromStorage(),
+          loadParcellesFromStorage(),
+        ]);
+
+        setGeojsons(geojsonData);
+        setParcelles(savedParcelles);
+
+        if (from === "tab1" && action === "croquis" && codeParcelle) {
+          const found = savedParcelles.find((p) => p.code === codeParcelle);
+          setCurrentParcelle(found || null);
+        } else {
+          setCurrentParcelle(null);
+          setFabOpen(false);
+        }
+        const database = await loadMBTiles(); // ⚡ retourne toujours DB
+        if (!localLayerRef.current) {
+          await addMbTilesLayer(database); // ajoute seulement une fois
+        }
+      } catch (err) {
+        console.error("Erreur chargement Tab2 :", err);
+      } finally {
+        setLoadingMap(false);
+      }
     };
-    loadGeoJsonOnEnter();
+
+    loadDataOnEnter();
   });
-  // -- load mbtiles ---
-  useEffect(() => {
-    if (!db) {
-      loadMBTiles();
-    }
-  }, [db, loadMBTiles]);
 
   // ---- Load Parcelles & GeoJSON ----
   const loadParcellesFromStorage = useCallback(async (): Promise<
@@ -298,9 +319,9 @@ const Tab2: React.FC = () => {
       baseStyle.setText(
         new Text({
           text: labelText,
-          font: "12px Arial",
+          font: "20px Arial",
           fill: new Fill({ color: "#000" }),
-          stroke: new Stroke({ color: "#fff", width: 1.5 }),
+          stroke: new Stroke({ color: "#fff", width: 3 }),
           overflow: true,
           placement: "point",
         })
@@ -523,24 +544,15 @@ const Tab2: React.FC = () => {
 
   // --- 4. Hook principal ---
   useEffect(() => {
-    // Si le container de la carte n'existe pas OU si db n'est pas encore chargé, on ne fait rien
-    if (!mapElement.current || db === null || mapRef.current) return;
+    if (!mapElement.current || mapRef.current) return; // On initialise la carte une seule fois
 
-    setLoadingMap(true); // show loader
+    setLoadingMap(true);
 
-    const bounds = readBounds(db);
-    const vectorLayers = createVectorLayers();
-    const mbTilesSource = createMbTilesSource(db);
-    const mbTilesLayer = new TileLayer({ source: mbTilesSource });
     const map = new Map({
       target: mapElement.current,
-      layers: [mbTilesLayer, ...vectorLayers],
       view: new View({
-        center: fromLonLat([
-          (bounds[0] + bounds[2]) / 2,
-          (bounds[1] + bounds[3]) / 2,
-        ]),
-        zoom: 11,
+        center: fromLonLat([46.8, -18.8]), // Madagascar
+        zoom: 6,
         maxZoom: 21,
       }),
       controls: [
@@ -551,20 +563,57 @@ const Tab2: React.FC = () => {
         }),
       ],
     });
+
     mapRef.current = map;
-    // --- Gestion moveend ---
+
+    // Crée les layers vecteurs
+    const vectorLayers = createVectorLayers();
+    vectorLayers.forEach((layer) => map.addLayer(layer));
+
+    // --- Gestion moveend pour coord projetées ---
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center)
         setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
     });
 
-    localLayerRef.current = mbTilesLayer;
-    mbTilesSource.refresh();
+    setLoadingMap(false);
+  }, []);
 
-    console.log("✅ Carte initialisée avec cache MBTiles");
-    setLoadingMap(false); // show loader
-  }, [db, readBounds, createMbTilesSource, createVectorLayers]);
+  // --- Hook séparé pour le fond MBTiles ---
+  const addMbTilesLayer = useCallback(
+    async (database: Database) => {
+      if (!mapRef.current || !database) return;
+      setLoadingMap(true); // loader ON
+      try {
+        const bounds = readBounds(database);
+        const mbTilesSource = createMbTilesSource(database);
+        const mbTilesLayer = new TileLayer({ source: mbTilesSource });
+
+        localLayerRef.current = mbTilesLayer;
+        mapRef.current.addLayer(mbTilesLayer);
+        mbTilesSource.refresh();
+
+        // Recentrer la vue sur le bounds du fond
+        mapRef.current
+          .getView()
+          .setCenter(
+            fromLonLat([
+              (bounds[0] + bounds[2]) / 2,
+              (bounds[1] + bounds[3]) / 2,
+            ])
+          );
+        mapRef.current.getView().setZoom(11);
+
+        console.log("✅ Fond MBTiles ajouté dynamiquement");
+      } catch (err) {
+        console.error("Erreur ajout MBTiles:", err);
+      } finally {
+        setLoadingMap(false); // loader OFF
+      }
+    },
+    [readBounds, createMbTilesSource]
+  );
 
   // ---- Injecter les GeoJSON dans les layers quand map prête ----
   useEffect(() => {

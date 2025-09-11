@@ -45,6 +45,7 @@ import { District } from "../model/limite/District";
 import { Commune } from "../model/limite/Commune";
 import { Fokontany } from "../model/limite/Fokontany";
 import { Hameau } from "../model/limite/Hameau";
+import { useDb } from "../model/base/DbContextType";
 
 const Tab4 = () => {
   const [territoire, setTerritoire] = useState<Territoire[]>([]);
@@ -74,6 +75,8 @@ const Tab4 = () => {
     onConfirm: () => void;
     onCancel: () => void;
   } | null>(null);
+  const { resetMBTiles } = useDb();
+
 
   useIonViewWillEnter(() => {
     loadConfig().then(() => refreshCurrentParams());
@@ -362,7 +365,6 @@ const Tab4 = () => {
     }
   };
 
-  // 🔹 Dans ton composant React
   useEffect(() => {
     const listener = FileTransfer.addListener("progress", (p) => {
       if (p.contentLength > 0) {
@@ -404,9 +406,10 @@ const Tab4 = () => {
             onCancel: () => resolve(false),
           });
         });
-
-        if (!overwrite) return;
-        await deleteFile(relativePath);
+        if (overwrite) {
+          await deleteFile(relativePath);
+          await resetMBTiles();
+        }
       } catch {}
 
       // 🔹 URI + conversion en file:// si besoin
