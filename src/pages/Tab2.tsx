@@ -50,7 +50,7 @@ import Fill from "ol/style/Fill";
 import Text from "ol/style/Text";
 import GeoJSON from "ol/format/GeoJSON";
 import { useLocation } from "react-router";
-import { Geolocation } from '@capacitor/geolocation';
+import { Geolocation } from "@capacitor/geolocation";
 import { Polygone } from "../model/vecteur/Polygone";
 import { PointC } from "../model/vecteur/PointC";
 import Point from "ol/geom/Point";
@@ -58,6 +58,7 @@ import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
+import { useIonViewDidEnter } from "@ionic/react";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -102,7 +103,9 @@ const Tab2: React.FC = () => {
   const styleCache = useRef<Record<string, Style>>({});
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
+    number[] | null
+  >(null);
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const [geojsons, setGeojsons] = useState<any[]>([]);
   const intervalDuration = 10000;
@@ -129,6 +132,14 @@ const Tab2: React.FC = () => {
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsStatus, setGpsStatus] = useState<number>(0); // 0=arrêt,1=en cours,2=ok,3=erreur
 
+  //load
+  useIonViewDidEnter(() => {
+    const loadGeoJsonOnEnter = async () => {
+      const data = await loadGeoJsonFromStorage();
+      setGeojsons(data); // déclenche le useEffect pour injecter les features
+    };
+    loadGeoJsonOnEnter();
+  });
   // -- load mbtiles ---
   useEffect(() => {
     if (!db) {
@@ -137,7 +148,9 @@ const Tab2: React.FC = () => {
   }, [db, loadMBTiles]);
 
   // ---- Load Parcelles & GeoJSON ----
-  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<
+    Parcelle[]
+  > => {
     const result = await Preferences.get({ key: STORAGE_KEY });
     if (!result.value) return [];
     try {
@@ -182,7 +195,7 @@ const Tab2: React.FC = () => {
         setCurrentParcelle(found || null);
       } else {
         setCurrentParcelle(null);
-        setFabOpen(false)
+        setFabOpen(false);
       }
     };
     load();
@@ -301,13 +314,13 @@ const Tab2: React.FC = () => {
   /****Dessin du polygone ********/
   const addPolygone = useCallback(async () => {
     if (!currentParcelle) {
-      setToastMessage("Aucune parcelle sélectionnée !")
+      setToastMessage("Aucune parcelle sélectionnée !");
       return;
     }
 
     if (drawPoints.length < 3) {
       console.table(drawPoints);
-      setToastMessage("Un polygone a besoin d'au moins 3 points.")
+      setToastMessage("Un polygone a besoin d'au moins 3 points.");
       return;
     }
 
@@ -425,7 +438,9 @@ const Tab2: React.FC = () => {
   const readBounds = useCallback((db: any): number[] => {
     let bounds: number[] = [];
     try {
-      const stmt = db.prepare("SELECT value FROM metadata WHERE name = 'bounds'");
+      const stmt = db.prepare(
+        "SELECT value FROM metadata WHERE name = 'bounds'"
+      );
       if (stmt.step()) {
         const value = stmt.getAsObject().value as string;
         const parts = value.split(",").map(parseFloat);
@@ -441,36 +456,38 @@ const Tab2: React.FC = () => {
     return bounds;
   }, []);
 
-  // --- 2. Création source MBTiles avec cache --- 
-  const createMbTilesSource = useCallback((db: any) =>
-    new XYZ({
-      tileSize: 256,
-      minZoom: 0,
-      maxZoom: 18,
-      tileUrlFunction: (tileCoord) => `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`, // fake URL
-      tileLoadFunction: (imageTile, src) => {
-        const tileCoord = imageTile.getTileCoord();
-        if (!tileCoord) return;
-        const z = tileCoord[0];
-        const x = tileCoord[1];
-        const y_ol = tileCoord[2];
-        const y = (1 << z) - 1 - y_ol;
-        const image = imageTile.getImage() as HTMLImageElement;
-        const stmt = db.prepare(
-          "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?"
-        );
-        stmt.bind([z, x, y]);
-        if (stmt.step()) {
-          const row = stmt.getAsObject();
-          const blob = new Blob([row.tile_data], { type: "image/png" });
-          const url = URL.createObjectURL(blob);
-          image.src = url;
-        } else {
-          image.src = "";
-        }
-        stmt.free();
-      },
-    }),
+  // --- 2. Création source MBTiles avec cache ---
+  const createMbTilesSource = useCallback(
+    (db: any) =>
+      new XYZ({
+        tileSize: 256,
+        minZoom: 0,
+        maxZoom: 18,
+        tileUrlFunction: (tileCoord) =>
+          `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`, // fake URL
+        tileLoadFunction: (imageTile, src) => {
+          const tileCoord = imageTile.getTileCoord();
+          if (!tileCoord) return;
+          const z = tileCoord[0];
+          const x = tileCoord[1];
+          const y_ol = tileCoord[2];
+          const y = (1 << z) - 1 - y_ol;
+          const image = imageTile.getImage() as HTMLImageElement;
+          const stmt = db.prepare(
+            "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?"
+          );
+          stmt.bind([z, x, y]);
+          if (stmt.step()) {
+            const row = stmt.getAsObject();
+            const blob = new Blob([row.tile_data], { type: "image/png" });
+            const url = URL.createObjectURL(blob);
+            image.src = url;
+          } else {
+            image.src = "";
+          }
+          stmt.free();
+        },
+      }),
     []
   );
 
@@ -519,7 +536,10 @@ const Tab2: React.FC = () => {
       target: mapElement.current,
       layers: [mbTilesLayer, ...vectorLayers],
       view: new View({
-        center: fromLonLat([(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]),
+        center: fromLonLat([
+          (bounds[0] + bounds[2]) / 2,
+          (bounds[1] + bounds[3]) / 2,
+        ]),
         zoom: 11,
         maxZoom: 21,
       }),
@@ -593,7 +613,10 @@ const Tab2: React.FC = () => {
   }, [parcelles]);
 
   // ---- Toggle local tiles ----
-  const toggleLocalTiles = useCallback(() => setShowLocalTiles((prev) => !prev), []);
+  const toggleLocalTiles = useCallback(
+    () => setShowLocalTiles((prev) => !prev),
+    []
+  );
   // --- seach zoom Coords
   const gpsCard = useCallback(() => setShowGPS((prev) => !prev), []);
 
@@ -650,7 +673,9 @@ const Tab2: React.FC = () => {
       }, 500); // Changement toutes les 500ms
 
       // Stop scintillement après 1 minute (60000ms)
-      setTimeout(() => { clearInterval(interval); }, intervalDuration);
+      setTimeout(() => {
+        clearInterval(interval);
+      }, intervalDuration);
     }
     // Source et couche temporaire
     const vectorSource = new VectorSource({
@@ -661,7 +686,9 @@ const Tab2: React.FC = () => {
     });
     map.addLayer(markerLayer);
     // Supprimer après 30 secondes
-    setTimeout(() => { map.removeLayer(markerLayer); }, intervalDuration); // 30 s
+    setTimeout(() => {
+      map.removeLayer(markerLayer);
+    }, intervalDuration); // 30 s
   }, [fabOpen, latitude, longitude]);
 
   // recherche function, detail
@@ -796,7 +823,7 @@ const Tab2: React.FC = () => {
       try {
         setGpsStatus(1); // acquisition en cours
 
-        if (Capacitor.getPlatform() === 'web') {
+        if (Capacitor.getPlatform() === "web") {
           // --- Web ---
           watchId.current = navigator.geolocation.watchPosition(
             (pos) => {
@@ -909,7 +936,7 @@ const Tab2: React.FC = () => {
   useEffect(() => {
     return () => {
       if (watchId.current) {
-        if (Capacitor.getPlatform() === 'web') {
+        if (Capacitor.getPlatform() === "web") {
           navigator.geolocation.clearWatch(watchId.current as number);
         } else {
           Geolocation.clearWatch({ id: watchId.current as string });
@@ -973,8 +1000,8 @@ const Tab2: React.FC = () => {
                           gpsAccuracy < 10
                             ? "green"
                             : gpsAccuracy < 50
-                              ? "orange"
-                              : "red",
+                            ? "orange"
+                            : "red",
                       }}
                     >
                       Précision GPS: {gpsAccuracy.toFixed(1)} m

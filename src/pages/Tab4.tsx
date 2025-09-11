@@ -45,12 +45,10 @@ import { District } from "../model/limite/District";
 import { Commune } from "../model/limite/Commune";
 import { Fokontany } from "../model/limite/Fokontany";
 import { Hameau } from "../model/limite/Hameau";
-import { useDb } from "../model/base/DbContextType";
 
 const Tab4 = () => {
   const [territoire, setTerritoire] = useState<Territoire[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { loadMBTiles } = useDb();
   const [allLoader, setAllLoader] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -88,9 +86,11 @@ const Tab4 = () => {
         const current = JSON.parse(value);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.coderegion}-${current.district.codedistrict
-          }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${current.hameau.codehameau
-          }-${current.increment + 1}`;
+        const codeComplet = `${current.region.coderegion}-${
+          current.district.codedistrict
+        }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${
+          current.hameau.codehameau
+        }-${current.increment + 1}`;
         setCurrentParcelleCode(codeComplet);
       }
     } catch (error) {
@@ -338,7 +338,9 @@ const Tab4 = () => {
       console.log("📂 Le dossier TopoManager/mbtiles existe déjà");
     } catch (err) {
       // Si erreur → le dossier n’existe pas → on le crée
-      console.log("📂 Le dossier TopoManager/mbtiles n’existe pas, création...");
+      console.log(
+        "📂 Le dossier TopoManager/mbtiles n’existe pas, création..."
+      );
       await Filesystem.mkdir({
         directory: Directory.Documents,
         path: "TopoManager/mbtiles",
@@ -360,6 +362,20 @@ const Tab4 = () => {
     }
   };
 
+  // 🔹 Dans ton composant React
+  useEffect(() => {
+    const listener = FileTransfer.addListener("progress", (p) => {
+      if (p.contentLength > 0) {
+        setProgression(p.bytes / p.contentLength);
+      }
+    });
+
+    // Nettoyage pour éviter fuite mémoire
+    return () => {
+      listener.remove();
+    };
+  }, []);
+
   const fetchCarte = async () => {
     setShowModalCarte(false);
     setIsDownloadingTiles(true);
@@ -370,19 +386,17 @@ const Tab4 = () => {
       const serverUrl = await ConfigService.getServerBaseUrl();
       if (!serverUrl) throw new Error("Configuration serveur manquante");
 
-      const filePath = "TopoManager/mbtiles/amb.mbtiles";
+      const relativePath = "TopoManager/mbtiles/amb.mbtiles";
 
       await ensureMbtilesDir();
 
-      // Vérifier si le fichier existe
       let overwrite = true;
       try {
         await Filesystem.stat({
           directory: Directory.Documents,
-          path: filePath,
+          path: relativePath,
         });
 
-        // Si le fichier existe → modal
         overwrite = await new Promise<boolean>((resolve) => {
           setShowModalConfirmation({
             message: "Le fichier existe déjà. Voulez-vous l’écraser ?",
@@ -392,35 +406,23 @@ const Tab4 = () => {
         });
 
         if (!overwrite) return;
-        await deleteFile(filePath);
+        await deleteFile(relativePath);
+      } catch {}
 
-      } catch {
-        // Fichier n'existe pas → rien à faire
-      }
+      // 🔹 URI + conversion en file:// si besoin
+      const { uri } = await Filesystem.getUri({
+        directory: Directory.Documents,
+        path: relativePath,
+      });
+      const filePathAbs = uri.startsWith("file://") ? uri : `file://${uri}`;
 
-      // 🔹 Path complet pour FileTransfer
-      const fileUri = (
-        await Filesystem.getUri({
-          directory: Directory.Documents,
-          path: filePath,
-        })
-      ).uri;
-
-      // 🔹 Download avec FileTransfer
-      try {
-        FileTransfer.addListener("progress", (p) => {
-          if (p.contentLength > 0) setProgression(p.bytes / p.contentLength);
-        });
-
-        await FileTransfer.downloadFile({
-          url: `${serverUrl}/getCarte`,
-          path: fileUri,
-          method: "GET",
-          progress: true,
-        });
-      } catch (e: any) {
-        console.warn("⚠️ FileTransfer warning (non bloquant):", e.message || e);
-      }
+      // 🔹 Download (progress listener géré dans useEffect)
+      await FileTransfer.downloadFile({
+        url: `${serverUrl}/getCarte`,
+        path: filePathAbs,
+        method: "GET",
+        progress: true,
+      });
 
       setProgression(1);
     } catch (err: unknown) {
@@ -587,10 +589,13 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
-        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany
-        }-${nouveauParametre.hameau.codehameau}-${nouveauParametre.increment + 1
-        }`;
+      const codeComplet = `${nouveauParametre.region.coderegion}-${
+        nouveauParametre.district.codedistrict
+      }-${nouveauParametre.commune.codecommune}-${
+        nouveauParametre.fokontany.codefokontany
+      }-${nouveauParametre.hameau.codehameau}-${
+        nouveauParametre.increment + 1
+      }`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -607,9 +612,11 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.coderegion}-${parametre.district.codedistrict
-        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
-        }-${parametre.increment + 1}`;
+      const codeComplet = `${parametre.region.coderegion}-${
+        parametre.district.codedistrict
+      }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${
+        parametre.hameau.codehameau
+      }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);

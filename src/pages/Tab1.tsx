@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Preferences } from "@capacitor/preferences";
 import {
   IonContent,
@@ -573,7 +573,7 @@ const Tab1: React.FC = () => {
                         })
                       }
                     >
-                      Revandication
+                      Revendication
                     </IonCheckbox>
                   </IonCol>
                 </IonRow>
