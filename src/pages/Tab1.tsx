@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
 import {
   IonContent,
@@ -35,6 +35,7 @@ import {
   IonChip,
   useIonViewWillEnter,
   IonSearchbar,
+  IonImg,
 } from "@ionic/react";
 import {
   trash,
@@ -60,6 +61,7 @@ import { Demandeur } from "../model/parcelle/Demandeur";
 import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { TypeMoral } from "../model/TypeMoral";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
@@ -82,6 +84,8 @@ const Tab1: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
     "demandeur"
   );
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const history = useHistory();
   const [seacrh, setSearch] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState(""); // texte de recherche
@@ -121,9 +125,11 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
-          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
-          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
+          parametreActuel.district.codedistrict
+        }-${parametreActuel.commune.codecommune}-${
+          parametreActuel.fokontany.codefokontany
+        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
@@ -266,6 +272,25 @@ const Tab1: React.FC = () => {
       return false;
     });
   }, [searchQuery, parcelles]);
+
+  const takePhoto = useCallback(async () => {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 90,
+        resultType: CameraResultType.DataUrl, // peut aussi être URI si besoin
+        source: CameraSource.Camera, // caméra seulement
+      });
+
+      if (image.dataUrl) {
+        setPhoto(image.dataUrl);
+      } else {
+        setToastMessage("Erreur lors de la capture de la photo");
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      setToastMessage("Action annulée ou erreur caméra");
+    }
+  }, []);
 
   return (
     <IonPage>
@@ -975,8 +1000,8 @@ const Tab1: React.FC = () => {
                             value={
                               demandeur.dateNaissance
                                 ? demandeur.dateNaissance
-                                  .toISOString()
-                                  .substring(0, 10)
+                                    .toISOString()
+                                    .substring(0, 10)
                                 : ""
                             }
                             onIonChange={(e) =>
@@ -1075,19 +1100,19 @@ const Tab1: React.FC = () => {
                 <div style={{ marginLeft: "16px" }}>
                   {(demandeur.situation === "1" ||
                     demandeur.situation === "2") && (
-                      <IonInput
-                        className="border-bottom"
-                        label="Nom du conjoint"
-                        placeholder="Enter le nom de la mère du demandeur"
-                        value={demandeur.nomConjoint}
-                        onIonChange={(e) =>
-                          setDemandeur({
-                            ...demandeur,
-                            nomConjoint: String(e.detail.value),
-                          })
-                        }
-                      />
-                    )}
+                    <IonInput
+                      className="border-bottom"
+                      label="Nom du conjoint"
+                      placeholder="Enter le nom de la mère du demandeur"
+                      value={demandeur.nomConjoint}
+                      onIonChange={(e) =>
+                        setDemandeur({
+                          ...demandeur,
+                          nomConjoint: String(e.detail.value),
+                        })
+                      }
+                    />
+                  )}
                 </div>
                 <div className="border-bottom" style={{ marginLeft: "15px" }}>
                   <h5 className="mt-4">Filiation</h5>
@@ -1149,7 +1174,6 @@ const Tab1: React.FC = () => {
                           Acte de naissance
                         </IonRadio>
                       </IonItem>
-
                     </div>
                   </IonRadioGroup>
                 </IonItem>
@@ -1203,8 +1227,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.cin?.date
                                   ? demandeur.cin.date
-                                    .toISOString()
-                                    .substring(0, 10)
+                                      .toISOString()
+                                      .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
@@ -1294,8 +1318,8 @@ const Tab1: React.FC = () => {
                               value={
                                 demandeur.acte?.date
                                   ? demandeur.acte.date
-                                    .toISOString()
-                                    .substring(0, 10)
+                                      .toISOString()
+                                      .substring(0, 10)
                                   : ""
                               }
                               onIonChange={(e) =>
@@ -1398,6 +1422,40 @@ const Tab1: React.FC = () => {
               </IonList>
             </>
           )}
+          <IonToast
+            isOpen={!!toastMessage}
+            message={toastMessage || ""}
+            duration={2000}
+            onDidDismiss={() => setToastMessage(null)}
+            color="danger"
+          />
+          {photo && (
+            <div style={{ marginTop: "20px" }}>
+              <IonImg src={photo} />
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              marginTop: "20px",
+              width: "100%",
+            }}
+          >
+            <IonButton style={{ flex: 1 }} onClick={takePhoto}>
+              Prendre une photo 📸
+            </IonButton>
+
+            {photo && (
+              <IonButton
+                style={{ flex: 1 }}
+                color="danger"
+                onClick={() => setPhoto(null)}
+              >
+                Supprimer la photo 🗑️
+              </IonButton>
+            )}
+          </div>
         </IonContent>
       </IonModal>
     </IonPage>

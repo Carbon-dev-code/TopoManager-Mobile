@@ -17,6 +17,7 @@
     "@capacitor-community/sqlite": "^7.0.1",
     "@capacitor/android": "7.2.0",
     "@capacitor/app": "7.0.1",
+    "@capacitor/camera": "^7.0.2",
     "@capacitor/core": "7.2.0",
     "@capacitor/file-transfer": "^1.0.5",
     "@capacitor/filesystem": "^7.1.3",
