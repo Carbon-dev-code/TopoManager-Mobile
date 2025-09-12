@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo} from "react";
 import { Preferences } from "@capacitor/preferences";
 import {
   IonContent,
@@ -62,7 +62,6 @@ import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { TypeMoral } from "../model/TypeMoral";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-import { Directory, Filesystem } from "@capacitor/filesystem";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";

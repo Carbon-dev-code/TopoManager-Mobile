@@ -20,12 +20,7 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
                                 label="Nom"
                                 placeholder="Enter le nom du demandeur"
                                 value={demandeur.nom}
-                                onIonChange={(e) =>
-                                    setDemandeur({
-                                        ...demandeur,
-                                        nom: String(e.detail.value),
-                                    })
-                                }
+                                onIonChange={(e) => setDemandeur({...demandeur,nom: String(e.detail.value)})}
                             />
                         </IonCol>
                         <IonCol size="12" sizeMd="6">
@@ -33,11 +28,7 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
                                 label="Prenom"
                                 placeholder="Enter le prenom du demandeur"
                                 value={demandeur.prenom}
-                                onIonChange={(e) =>
-                                    setDemandeur({
-                                        ...demandeur,
-                                        prenom: String(e.detail.value),
-                                    })
+                                onIonChange={(e) => setDemandeur({ ...demandeur, prenom: String(e.detail.value)})
                                 }
                             />
                         </IonCol>
