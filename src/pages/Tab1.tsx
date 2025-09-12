@@ -686,7 +686,7 @@ const Tab1: React.FC = () => {
               </div>
             </div>
 
-            <IonItem className="mb-2">
+            <IonItem>
               <Photo
                 photos={parcelle.photos}
                 decomposed={decomposed} setDecomposed={setDecomposed}

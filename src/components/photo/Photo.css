@@ -13,7 +13,6 @@
   height: 200px;
   cursor: pointer;
   margin-top: 20px;
-  transition: height 0.5s ease;
 }
 
 /* Images superposées */
@@ -25,7 +24,6 @@
   width: 80%;
   height: 100%;
   object-fit: cover;
-  transition: all 0.5s ease;
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
 }
 
@@ -62,7 +60,7 @@
 /* Mode décomposé → grille carrés */
 .image-stack.decomposed {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   height: auto;
 }

@@ -21,7 +21,7 @@ const Photo: React.FC<PhotoProps> = ({
   name
 }) => {
   return (
-    <div>
+    <div className="w-100">
       {/* Stack d’images dynamiques */}
       {photos && photos.length > 0 && (
         <div
@@ -41,13 +41,13 @@ const Photo: React.FC<PhotoProps> = ({
 
       {/* Boutons en flex */}
       <div className="button-photo">
-        <IonButton style={{ flex: 1 }} onClick={takePhoto} size="default">
-          <IonIcon icon={cameraOutline} size="default" slot="icon-only" className="mx-2"/> {name}
+        <IonButton style={{ flex: 1 }} onClick={takePhoto} size="small" expand="full">
+          <IonIcon icon={cameraOutline} size="small" slot="icon-only" className="mx-2"/> {name}
         </IonButton>
 
         {photos && photos.length > 0 && (
-          <IonButton style={{ flex: 1 }} color="danger" onClick={clearPhotos} size="default">
-             <IonIcon icon={trashOutline} size="default" slot="icon-only" className="mx-2"/> Supprimer les photos
+          <IonButton style={{ flex: 1 }} color="danger" onClick={clearPhotos} size="small" expand="full">
+             <IonIcon icon={trashOutline} size="small" slot="icon-only" className="mx-2"/> Supprimer les photos
           </IonButton>
         )}
       </div>
