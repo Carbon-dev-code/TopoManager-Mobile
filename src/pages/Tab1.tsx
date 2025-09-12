@@ -59,6 +59,7 @@ import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
+import ModalRiverin from "../components/riverin/ModalRiverin";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
@@ -120,11 +121,9 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
-          parametreActuel.district.codedistrict
-        }-${parametreActuel.commune.codecommune}-${
-          parametreActuel.fokontany.codefokontany
-        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
+          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
+          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
@@ -770,89 +769,13 @@ const Tab1: React.FC = () => {
       </IonModal>
 
       {/**Modal riverin */}
-      <IonModal
-        isOpen={showRiverin}
-        onDidDismiss={() => {
-          setShowRiverin(false);
-        }}
-      >
-        <IonHeader>
-          <IonToolbar color="primary">
-            <IonButtons slot="start">
-              <IonButton
-                onClick={() => {
-                  setShowRiverin(false);
-                }}
-              >
-                <IonIcon icon={close} />
-              </IonButton>
-            </IonButtons>
-            <IonTitle>Ajout de nouveau riverain au parcelle</IonTitle>
-            <IonButtons slot="end">
-              <IonButton onClick={addRiverin} id="open-loading">
-                Ajouter
-              </IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent>
-          <IonToast
-            trigger="open-loading"
-            message={riverinMess}
-            duration={900}
-          ></IonToast>
-          <IonList>
-            <IonItem>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12">
-                    <IonSelect
-                      label="Repère :"
-                      onIonChange={(e) =>
-                        setNewRiverin({
-                          ...newRiverin,
-                          repere: Number(e.detail.value),
-                        })
-                      }
-                      placeholder="Riverain du parcelle"
-                    >
-                      {repereL.map((rep, index) => (
-                        <IonSelectOption
-                          key={`rep-${index}`}
-                          value={rep.code_repere}
-                        >
-                          {rep.repere}
-                        </IonSelectOption>
-                      ))}
-                    </IonSelect>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-
-            <IonItem>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12">
-                    <IonTextarea
-                      label="Observation"
-                      value={newRiverin.observation}
-                      onIonChange={(e) =>
-                        setNewRiverin({
-                          ...newRiverin,
-                          observation: e.detail.value || "",
-                        })
-                      }
-                      labelPlacement="stacked"
-                      placeholder="Votre observation sur la parcelle"
-                    ></IonTextarea>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-          </IonList>
-        </IonContent>
-      </IonModal>
+      <ModalRiverin
+        showRiverin={showRiverin} setShowRiverin={setShowRiverin}
+        addRiverin={addRiverin}
+        riverinMess={riverinMess}
+        repereL={repereL}
+        newRiverin={newRiverin} setNewRiverin={setNewRiverin}
+      />
 
       {/**Modal creation demandeur*/}
       <ModalDemandeur
