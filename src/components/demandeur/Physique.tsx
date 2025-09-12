@@ -15,7 +15,7 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
             <IonItem className="mb-2">
                 <IonGrid>
                     <IonRow>
-                        <IonCol size="12" sizeMd="6">
+                        <IonCol size="12">
                             <IonInput
                                 label="Nom"
                                 placeholder="Enter le nom du demandeur"
@@ -23,7 +23,7 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
                                 onIonChange={(e) => setDemandeur({...demandeur,nom: String(e.detail.value)})}
                             />
                         </IonCol>
-                        <IonCol size="12" sizeMd="6">
+                        <IonCol size="12">
                             <IonInput
                                 label="Prenom"
                                 placeholder="Enter le prenom du demandeur"
@@ -51,7 +51,7 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
             <IonItem>
                 <IonGrid>
                     <IonRow>
-                        <IonCol size="12" size-md="6">
+                        <IonCol size="12">
                             {demandeur.neVers ? (
                                 <IonInput
                                     labelPlacement="stacked"
@@ -104,7 +104,7 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
                                 />
                             )}
                         </IonCol>
-                        <IonCol size="12" size-md="6">
+                        <IonCol size="12">
                             <IonInput
                                 labelPlacement="stacked"
                                 label="Lieu de naissance"

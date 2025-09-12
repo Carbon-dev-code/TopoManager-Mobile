@@ -34,6 +34,7 @@ const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
         <IonSelect
           label="Type :"
           value={demandeur.typeMorale}
+          placeholder="Type de personne morale"
           onIonChange={(e) =>
             setDemandeur({
               ...demandeur,
