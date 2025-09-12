@@ -22,6 +22,7 @@ import Physique from "./Physique";
 import Moral from "./Moral";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import Photo from "../photo/Photo";
 
 interface ModalDemandeurProps {
   showCreateModal: boolean;
@@ -141,39 +142,13 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             setDemandeur={setDemandeur}
           />
         )}
-        {/* Stack d’images dynamiques */}
-        {demandeur.photos && demandeur.photos.length > 0 && (
-          <div
-            className={`image-stack ${decomposed ? "decomposed" : ""}`}
-            onClick={() => setDecomposed(!decomposed)}
-          >
-            {demandeur.photos.map((p, idx) => (
-              <IonImg key={idx} src={p} className="image" />
-            ))}
-
-            {/* Badge +N si plus de 3 photos */}
-            {!decomposed && demandeur.photos.length > 1 && (
-              <div className="image-badge">+{demandeur.photos.length}</div>
-            )}
-          </div>
-        )}
-
-        {/* Boutons en flex */}
-        <div className="button-photo">
-          <IonButton style={{ flex: 1 }} onClick={takePhoto}>
-            Prendre une photo 📸
-          </IonButton>
-
-          {demandeur.photos && demandeur.photos.length > 0 && (
-            <IonButton
-              style={{ flex: 1 }}
-              color="danger"
-              onClick={() => setDemandeur((prev) => ({ ...prev, photos: [] }))}
-            >
-              Supprimer les photos 🗑️
-            </IonButton>
-          )}
-        </div>
+        <Photo
+          photos={demandeur.photos}
+          decomposed={decomposed}
+          setDecomposed={setDecomposed}
+          takePhoto={takePhoto}
+          clearPhotos={() => setDemandeur((prev) => ({ ...prev, photos: [] }))}
+        />
       </IonContent>
 
       {toastMessage && setToastMessage && (
