@@ -20,7 +20,6 @@ import { close } from "ionicons/icons";
 import Physique from "./Physique";
 import Moral from "./Moral";
 import { Demandeur } from "../../model/parcelle/Demandeur";
-import { TypeMoral } from "../../model/TypeMoral";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 interface ModalDemandeurProps {
@@ -28,7 +27,6 @@ interface ModalDemandeurProps {
   setShowCreateModal: (b: boolean) => void;
   demandeur: Demandeur;
   setDemandeur: (d: Demandeur) => void;
-  typeMoral: TypeMoral[];
   addDemandeur: () => void;
   toastMessage?: string | null;
   setToastMessage?: (msg: string | null) => void;
@@ -43,7 +41,6 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   setShowCreateModal,
   demandeur,
   setDemandeur,
-  typeMoral,
   addDemandeur,
   toastMessage,
   setToastMessage,
@@ -141,7 +138,6 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
           <Moral
             demandeur={demandeur}
             setDemandeur={setDemandeur}
-            typeMoral={typeMoral}
           />
         )}
         {/* Stack d’images dynamiques */}

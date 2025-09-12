@@ -12,11 +12,9 @@ import {
 } from "@ionic/react";
 import "./Tab5.css";
 import { searchSharp, create, close } from "ionicons/icons";
-import { useEffect, useState } from "react";
 import { Demandeur } from "../model/parcelle/Demandeur";
-import { TypeMoral } from "../model/TypeMoral";
-import { Preferences } from "@capacitor/preferences";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
+import { useState } from "react";
 
 const Tab5: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState(""); 
@@ -24,21 +22,9 @@ const Tab5: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [isPhysique, setIsPhysique] = useState(0);
-  const [typeMoral, setTypeMoral] = useState<TypeMoral[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [decomposed, setDecomposed] = useState(false);
 
-
-  useEffect(() => {
-    const loadData = async () => {
-      const { value } = await Preferences.get({ key: "typeMoralData" });
-      if (value) {
-        setTypeMoral(JSON.parse(value));
-      }
-    };
-
-    loadData();
-  }, []);
 
   const addDemandeur = () => {
     console.log(demandeur);
@@ -58,10 +44,7 @@ const Tab5: React.FC = () => {
             <IonButton aria-label="Rechercher" onClick={() => setSearch(true)}>
               <IonIcon icon={searchSharp} slot="icon-only" />
             </IonButton>
-            <IonButton
-              aria-label="Créer une nouvelle demandeur"
-              onClick={() => setShowCreateModal(true)}
-            >
+            <IonButton aria-label="Créer une nouvelle demandeur" onClick={() => setShowCreateModal(true)}>
               <IonIcon icon={create} slot="icon-only" />
             </IonButton>
           </IonButtons>
@@ -81,10 +64,7 @@ const Tab5: React.FC = () => {
             <IonButton
               fill="clear"
               color="danger"
-              onClick={() => {
-                setSearch(false);
-                setSearchQuery(""); // réinitialise la recherche
-              }}
+              onClick={() => {setSearch(false);setSearchQuery("");}}
             >
               <IonIcon icon={close} slot="icon-only" />
             </IonButton>
@@ -93,11 +73,10 @@ const Tab5: React.FC = () => {
       )}
 
       <IonContent fullscreen>
-        {/**Modal creation demandeur*/}
         <ModalDemandeur 
           showCreateModal={showCreateModal} setShowCreateModal={setShowCreateModal} 
           demandeur={demandeur} setDemandeur={setDemandeur}
-          typeMoral={typeMoral} addDemandeur={addDemandeur}
+          addDemandeur={addDemandeur}
           toastMessage={toastMessage} setToastMessage={setToastMessage}
           isPhysique={isPhysique} setIsPhysique={setIsPhysique}
           decomposed={decomposed} setDecomposed={setDecomposed}
