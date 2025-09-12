@@ -17,6 +17,7 @@ import {
   IonImg,
 } from "@ionic/react";
 import { close } from "ionicons/icons";
+import "./ModalDemandeur.css";
 import Physique from "./Physique";
 import Moral from "./Moral";
 import { Demandeur } from "../../model/parcelle/Demandeur";

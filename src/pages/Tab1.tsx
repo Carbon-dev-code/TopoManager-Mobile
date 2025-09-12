@@ -20,8 +20,6 @@ import {
   IonTextarea,
   IonIcon,
   IonCard,
-  IonRadioGroup,
-  IonRadio,
   IonGrid,
   IonCol,
   IonRow,
@@ -35,7 +33,6 @@ import {
   IonChip,
   useIonViewWillEnter,
   IonSearchbar,
-  IonImg,
 } from "@ionic/react";
 import {
   trash,
@@ -60,7 +57,6 @@ import { Parcelle } from "../model/parcelle/Parcelle";
 import { Demandeur } from "../model/parcelle/Demandeur";
 import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
-import { TypeMoral } from "../model/TypeMoral";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 
@@ -71,12 +67,10 @@ const Tab1: React.FC = () => {
   const [showRiverin, setShowRiverin] = useState<boolean>(false);
   const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
   const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] =
-    useState<ParametreTerritoire | null>(null);
+  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
   const [repereL, setRepere] = useState<Repere[]>([]);
-  const [typeMoral, setTypeMoral] = useState<TypeMoral[]>([]);
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [isPhysique, setIsPhysique] = useState(0);
@@ -86,7 +80,6 @@ const Tab1: React.FC = () => {
     "demandeur"
   );
   const [decomposed, setDecomposed] = useState(false);
-  const [photos, setPhotos] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const history = useHistory();
   const [seacrh, setSearch] = useState<boolean>(false);
@@ -171,32 +164,20 @@ const Tab1: React.FC = () => {
     }
   };
 
-  const getTypeMoral = async () => {
-    const { value } = await Preferences.get({ key: "typeMoralData" });
-
-    if (value) {
-      setTypeMoral(JSON.parse(value));
-    }
-  };
-
   useEffect(() => {
     if (showCreateModal) {
       nextCodeParcelle();
       getCategorie();
       getStatus();
       getRepere();
-      getTypeMoral();
     }
   }, [showCreateModal]);
 
   const addDemandeur = () => {
     // Limite déjà gérée côté prise de photo (max 5)
     parcelle.demandeurs.push(demandeur);
-    console.log(demandeur);
-
     // Reset pour un nouveau demandeur
     setDemandeur(Demandeur.init());
-    setPhotos([]); // si tu gardes ce state pour l’affichage temporaire
     setShowDemandeurModal(false);
   };
 
