@@ -1,5 +1,7 @@
 import React from "react";
-import { IonImg, IonButton } from "@ionic/react";
+import { IonImg, IonButton, IonIcon } from "@ionic/react";
+import { cameraOutline, trashOutline } from "ionicons/icons";
+import "./Photo.css";
 
 interface PhotoProps {
   photos: string[];
@@ -7,6 +9,7 @@ interface PhotoProps {
   setDecomposed: (value: boolean) => void;
   takePhoto: () => void;
   clearPhotos: () => void;
+  name?: string;
 }
 
 const Photo: React.FC<PhotoProps> = ({
@@ -15,6 +18,7 @@ const Photo: React.FC<PhotoProps> = ({
   setDecomposed,
   takePhoto,
   clearPhotos,
+  name
 }) => {
   return (
     <div>
@@ -37,13 +41,13 @@ const Photo: React.FC<PhotoProps> = ({
 
       {/* Boutons en flex */}
       <div className="button-photo">
-        <IonButton style={{ flex: 1 }} onClick={takePhoto}>
-          Prendre une photo 📸
+        <IonButton style={{ flex: 1 }} onClick={takePhoto} size="default">
+          <IonIcon icon={cameraOutline} size="default" slot="icon-only" className="mx-2"/> {name}
         </IonButton>
 
         {photos && photos.length > 0 && (
-          <IonButton style={{ flex: 1 }} color="danger" onClick={clearPhotos}>
-            Supprimer les photos 🗑️
+          <IonButton style={{ flex: 1 }} color="danger" onClick={clearPhotos} size="default">
+             <IonIcon icon={trashOutline} size="default" slot="icon-only" className="mx-2"/> Supprimer les photos
           </IonButton>
         )}
       </div>

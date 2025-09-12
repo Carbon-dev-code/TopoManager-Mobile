@@ -22,12 +22,16 @@ export class Parcelle {
     syncing?: boolean; // etat du spinner
     polygone: Polygone[]
 
+    // 🔹 Nouvelle propriété pour stocker les photos
+    // On stocke une liste d'URI ou Base64 pour gérer plusieurs photos
+    photos: string[];
+
 
     constructor(code: string | null, dateCreation: string | null, status: number | null,
         anneeOccup: number | null, categorie: number | null, consistance: string | null, opposition: boolean, revandication: boolean,
         observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[],
-        synchronise: number, syncError: string, lastSync:string, syncing: boolean,
-        polygone: Polygone[]
+        synchronise: number, syncError: string, lastSync: string, syncing: boolean,
+        polygone: Polygone[], photos: string[] = []
     ) {
         this.code = code;
         this.dateCreation = dateCreation;
@@ -35,7 +39,7 @@ export class Parcelle {
         this.anneeOccup = anneeOccup
         this.demandeurs = demandeurs;
         this.parametreTerritoire = parametreterritoire,
-        this.categorie = categorie;
+            this.categorie = categorie;
         this.consistance = consistance;
         this.oppossition = opposition;
         this.revandication = revandication;
@@ -46,10 +50,11 @@ export class Parcelle {
         this.lastSync = lastSync;
         this.syncing = syncing
         this.polygone = polygone
+        this.photos = photos;
     }
 
     static init(): Parcelle {
-        return new Parcelle(null, null, null, null, null, null, false, false, '', [], null, [], 0, '', '', false,[])
+        return new Parcelle(null, null, null, null, null, null, false, false, '', [], null, [], 0, '', '', false, [], []);
     }
 
 }

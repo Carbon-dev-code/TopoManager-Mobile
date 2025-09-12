@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
 import {
   IonContent,
@@ -60,6 +60,7 @@ import { Repere } from "../model/Repere";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import ModalRiverin from "../components/riverin/ModalRiverin";
+import Photo from "../components/photo/Photo";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
@@ -85,6 +86,7 @@ const Tab1: React.FC = () => {
   const history = useHistory();
   const [seacrh, setSearch] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState(""); // texte de recherche
+
 
   const handleCardClick = (codeParcelle: string) => {
     history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
@@ -259,34 +261,32 @@ const Tab1: React.FC = () => {
     });
   }, [searchQuery, parcelles]);
 
-  const takePhoto = async () => {
+  const takePhotoParcelle = useCallback(async () => {
     try {
-      // Vérifie si on a déjà 5 photos
-      if (demandeur.photos && demandeur.photos.length >= 5) {
-        setToastMessage("Vous ne pouvez pas ajouter plus de 5 photos");
+      if (parcelle.photos && parcelle.photos.length >= 5) {
+        setToastMessage?.("Vous ne pouvez pas ajouter plus de 5 photos");
         return;
       }
 
       const photo = await Camera.getPhoto({
         quality: 90,
-        resultType: CameraResultType.DataUrl, // Base64
+        resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
       });
 
       if (!photo.dataUrl) throw new Error("Pas de photo");
 
-      // Met à jour le state du demandeur
-      setDemandeur((prev) => {
-        const newDemandeur = { ...prev };
-        if (!newDemandeur.photos) newDemandeur.photos = [];
-        newDemandeur.photos.push(photo.dataUrl); // ajoute la photo
-        return newDemandeur;
+      setParcelle((prev) => {
+        const newParcelle = { ...prev };
+        if (!newParcelle.photos) newParcelle.photos = [];
+        newParcelle.photos.push(photo.dataUrl);
+        return newParcelle;
       });
     } catch (err) {
       console.error(err);
-      setToastMessage("Erreur lors de la capture");
+      setToastMessage?.("Erreur lors de la capture");
     }
-  };
+  }, [demandeur.photos, setDemandeur, setToastMessage]);
 
   return (
     <IonPage>
@@ -686,6 +686,17 @@ const Tab1: React.FC = () => {
               </div>
             </div>
 
+            <IonItem className="mb-2">
+              <Photo
+                photos={parcelle.photos}
+                decomposed={decomposed} setDecomposed={setDecomposed}
+                takePhoto={takePhotoParcelle} // Pas de photo ici
+                clearPhotos={() => { setParcelle({ ...parcelle, photos: [] }); }}
+                name="Prendre une photo de groupe"
+
+              />
+            </IonItem>
+
             <IonItem>
               <IonGrid className="ion-margin-bottom">
                 <IonRow className="ion-wrap ion-gap">
@@ -742,6 +753,7 @@ const Tab1: React.FC = () => {
                 </IonRow>
               </IonGrid>
             </IonItem>
+
             <IonItem>
               <IonGrid>
                 <IonRow>
@@ -762,6 +774,7 @@ const Tab1: React.FC = () => {
               </IonGrid>
             </IonItem>
           </IonList>
+
           <IonButton expand="full" onClick={createParcelle}>
             Enregistrer la parcelle
           </IonButton>

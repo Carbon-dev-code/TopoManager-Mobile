@@ -85,19 +85,4 @@ export class Demandeur {
       [] // 🔹 initialisation des photos vide
     );
   }
-
-  // 🔹 Méthodes utilitaires pour manipuler les photos
-  addPhoto(photo: string) {
-    this.photos.push(photo); // ajoute une photo
-  }
-
-  removePhoto(index: number) {
-    if (index >= 0 && index < this.photos.length) {
-      this.photos.splice(index, 1); // supprime une photo spécifique
-    }
-  }
-
-  clearPhotos() {
-    this.photos = []; // supprime toutes les photos
-  }
 }

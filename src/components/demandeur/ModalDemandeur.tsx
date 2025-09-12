@@ -148,6 +148,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
           setDecomposed={setDecomposed}
           takePhoto={takePhoto}
           clearPhotos={() => setDemandeur((prev) => ({ ...prev, photos: [] }))}
+          name="Prendre une photo du demandeur"
         />
       </IonContent>
 
