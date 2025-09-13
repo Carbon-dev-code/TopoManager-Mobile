@@ -1,9 +1,13 @@
 import {
+  IonAvatar,
   IonButton,
   IonButtons,
   IonContent,
   IonHeader,
   IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
   IonMenuButton,
   IonPage,
   IonSearchbar,
@@ -17,7 +21,7 @@ import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import { useState } from "react";
 
 const Tab5: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState(""); 
+  const [searchQuery, setSearchQuery] = useState("");
   const [seacrh, setSearch] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
@@ -64,7 +68,7 @@ const Tab5: React.FC = () => {
             <IonButton
               fill="clear"
               color="danger"
-              onClick={() => {setSearch(false);setSearchQuery("");}}
+              onClick={() => { setSearch(false); setSearchQuery(""); }}
             >
               <IonIcon icon={close} slot="icon-only" />
             </IonButton>
@@ -73,8 +77,17 @@ const Tab5: React.FC = () => {
       )}
 
       <IonContent fullscreen>
-        <ModalDemandeur 
-          showCreateModal={showCreateModal} setShowCreateModal={setShowCreateModal} 
+        <IonList>
+          <div className="person-card">
+            <IonAvatar className="person-avatar">R</IonAvatar>
+            <div className="person-info">
+              <span className="prenom">Jean</span>
+              <span className="nom">Rakoto</span>
+            </div>
+          </div>
+        </IonList>
+        <ModalDemandeur
+          showCreateModal={showCreateModal} setShowCreateModal={setShowCreateModal}
           demandeur={demandeur} setDemandeur={setDemandeur}
           addDemandeur={addDemandeur}
           toastMessage={toastMessage} setToastMessage={setToastMessage}

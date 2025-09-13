@@ -1,0 +1,39 @@
+.person-card {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 15px;
+  background-color: #efefef;
+  margin: 10px;
+}
+
+.person-avatar {
+  background-color: #ccc;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 18px;
+  color: #fff;
+  margin-right: 12px;
+}
+
+.person-info {
+  display: flex;
+  gap: 5px; /* espace entre prénom et nom */
+  align-items: center;
+  font-size: 13px;
+}
+
+.person-info .prenom {
+  color: #888;
+  font-weight: 400;
+}
+
+.person-info .nom {
+  color: #000;
+  font-weight: 600;
+}

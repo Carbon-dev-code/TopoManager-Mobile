@@ -14,7 +14,6 @@ import {
   IonLabel,
   IonRadio,
   IonRadioGroup,
-  IonImg,
 } from "@ionic/react";
 import { close } from "ionicons/icons";
 import "./ModalDemandeur.css";
