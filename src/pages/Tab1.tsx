@@ -61,11 +61,13 @@ import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import ModalRiverin from "../components/riverin/ModalRiverin";
 import Photo from "../components/photo/Photo";
+import SeacrhModal from "../components/demandeur/SearchModal";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState<boolean>(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState<boolean>(false);
   const [showRiverin, setShowRiverin] = useState<boolean>(false);
   const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
   const [currentIncrement, setCurrentIncrement] = useState(0);
@@ -75,6 +77,7 @@ const Tab1: React.FC = () => {
   const [repereL, setRepere] = useState<Repere[]>([]);
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
+  const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
   const [isPhysique, setIsPhysique] = useState(0);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
@@ -107,9 +110,24 @@ const Tab1: React.FC = () => {
     return [];
   };
 
+  const loadDemandeurFromStorage = async (): Promise<Demandeur[]> => {
+    const result = await Preferences.get({ key: "demandeur" });
+    if (result.value) {
+      try {
+        const parsed = JSON.parse(result.value);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (error) {
+        console.error("Erreur parsing JSON:", error);
+      }
+    }
+    return [];
+  };
+
   const load = async () => {
-    const savedParcelles = await loadParcellesFromStorage();
-    setParcelles(savedParcelles);
+    setParcelles(await loadParcellesFromStorage());
+    setDemandeurList(await loadDemandeurFromStorage());
   };
 
   useIonViewWillEnter(() => {
@@ -611,7 +629,11 @@ const Tab1: React.FC = () => {
                     </IonButton>
                   </IonCol>
                   <IonCol size="12" size-md="4">
-                    <IonButton expand="full" color="tertiary">
+                    <IonButton
+                      expand="full"
+                      color="tertiary"
+                      onClick={() => setShowSearchDemandeurModal(true)}
+                    >
                       Recherche demandeur
                     </IonButton>
                   </IonCol>
@@ -787,6 +809,13 @@ const Tab1: React.FC = () => {
         riverinMess={riverinMess}
         repereL={repereL}
         newRiverin={newRiverin} setNewRiverin={setNewRiverin}
+      />
+
+      {/** Modal de recharche de demandeur **/}
+      <SeacrhModal
+        showSearchModal={showSearchDemandeurModal} setShowSearchModal={setShowSearchDemandeurModal}
+        demandeurs={demandeurList}
+        onSelect={(d) => parcelle.demandeurs.push(d)}
       />
 
       {/**Modal creation demandeur*/}
