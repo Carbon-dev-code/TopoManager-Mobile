@@ -45,13 +45,6 @@ const MainRouter: React.FC = () => {
   return (
     <IonSplitPane contentId="main-content" when={false}>
       <IonMenu contentId="main-content" type="overlay">
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle className='text-start'>
-              <IonLabel style={{ fontSize: "20px" }}>T.M MOBILE</IonLabel>
-            </IonTitle>
-          </IonToolbar>
-        </IonHeader>
         <IonContent>
           <IonList>
             <IonMenuToggle autoHide={false}>
