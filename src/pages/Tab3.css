@@ -165,10 +165,3 @@
   flex-wrap: wrap;
   gap: 16px;
 }
-
-ion-title {
-  margin: 0 auto;
-  text-align: center;
-  left: 0 !important;
-  right: 0 !important;
-}

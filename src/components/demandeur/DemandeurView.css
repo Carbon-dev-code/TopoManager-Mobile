@@ -1,7 +1,7 @@
 .person-card {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 5px 10px;
   border-radius: 12px;
   background-color: #ffffff;
   margin: 10px;

@@ -45,7 +45,7 @@ const MainRouter: React.FC = () => {
 
   return (
     <IonSplitPane contentId="main-content" when={false}>
-      <IonMenu contentId="main-content" type="overlay" side="start" swipeGesture={true}>
+      <IonMenu contentId="main-content" type="push" side="start" swipeGesture={true}>
         <IonHeader>
           <IonToolbar color="primary">
             <IonTitle className='text-start'>TopoManager Mobile</IonTitle>
