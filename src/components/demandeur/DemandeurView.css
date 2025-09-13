@@ -2,9 +2,10 @@
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  border-radius: 15px;
+  border-radius: 12px;
   background-color: #efefef;
   margin: 10px;
+  position: relative;
 }
 
 .person-avatar {
@@ -19,29 +20,44 @@
   font-size: 18px;
   color: #fff;
   margin-right: 12px;
-  overflow: hidden; /* 🔹 pour que l'image ne dépasse pas */
-}
-
-.person-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* 🔹 l'image remplit le cercle */
-  border-radius: 50%;
 }
 
 .person-info {
   display: flex;
-  gap: 5px; /* espace entre prénom et nom */
-  align-items: center;
+  flex-direction: column;
   font-size: 13px;
 }
 
-.person-info .prenom {
+.person-info .line1 {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-weight: 600;
+}
+
+.person-info .line1 .prenom {
   color: #888;
   font-weight: 400;
 }
 
-.person-info .nom {
+.person-info .line1 .nom,
+.person-info .line1 .denomination {
   color: #000;
-  font-weight: 600;
+}
+
+.person-info .line2 {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* espace entre icônes et texte */
+  color: #777777;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.person-bg-icon {
+  position: absolute;
+  font-size: 15px;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
 }
