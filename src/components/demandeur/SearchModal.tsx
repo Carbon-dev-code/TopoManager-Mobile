@@ -14,6 +14,7 @@ import { useState } from "react";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 
 import "./SearchModal.css"; // 👉 Import du CSS
+import DemandeurView from "./DemandeurView";
 
 interface SearchModalProps {
   showSearchModal: boolean;
@@ -59,31 +60,26 @@ const SearchModal: React.FC<SearchModalProps> = ({
           />
         </div>
 
-        {/* Liste filtrée */}
-        <IonList>
+        {/* Liste filtrée avec ton composant */}
+        <div className="search-results">
           {filtered.length > 0 ? (
             filtered.map((d, idx) => (
-              <IonItem
+              <div
                 key={idx}
-                button
                 onClick={() => {
                   onSelect(d);
                   setShowSearchModal(false);
                 }}
               >
-                <IonLabel>
-                  {d.type === 0
-                    ? `${d.prenom ?? ""} ${d.nom ?? ""}`
-                    : d.denomination}
-                </IonLabel>
-              </IonItem>
+                <DemandeurView demandeur={d} />
+              </div>
             ))
           ) : (
-            <IonItem>
-              <IonLabel>Aucun résultat</IonLabel>
-            </IonItem>
+            <p style={{ textAlign: "center", marginTop: "20px" }}>
+              Aucun résultat
+            </p>
           )}
-        </IonList>
+        </div>
       </IonContent>
     </IonModal>
   );
