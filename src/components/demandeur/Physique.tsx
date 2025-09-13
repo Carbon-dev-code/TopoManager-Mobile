@@ -128,7 +128,7 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
                 </IonGrid>
             </IonItem>
             <IonItem>
-                <IonLabel className="me-3">Sexe :</IonLabel>
+                <IonLabel className="me-3 truncate">Sexe :</IonLabel>
                 <IonRadioGroup
                     value={demandeur.sexe}
                     onIonChange={(e) =>

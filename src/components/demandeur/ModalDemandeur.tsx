@@ -110,7 +110,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         {/* ⚡️ Ici tu colles tout ton <IonList> ... <IonToast> ... <div> ... etc. */}
         <IonList>
           <IonItem>
-            <IonLabel className="me-3">Type :</IonLabel>
+            <IonLabel className="me-3 truncate">Type :</IonLabel>
             <IonRadioGroup
               value={isPhysique.toString()}
               onIonChange={(e) => {
