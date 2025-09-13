@@ -25,6 +25,7 @@ import Accueil from './pages/accueil/Accueil';
 import Login from './pages/login/Login';
 import Demandeur from './pages/Tab5';
 import { Preferences } from '@capacitor/preferences';
+import "./MainRouter.css";
 
 const MainRouter: React.FC = () => {
   const location = useLocation();
@@ -44,7 +45,12 @@ const MainRouter: React.FC = () => {
 
   return (
     <IonSplitPane contentId="main-content" when={false}>
-      <IonMenu contentId="main-content" type="overlay">
+      <IonMenu contentId="main-content" type="overlay" side="start" swipeGesture={true}>
+        <IonHeader>
+          <IonToolbar color="primary">
+            <IonTitle className='text-start'>TopoManager Mobile</IonTitle>
+          </IonToolbar>
+        </IonHeader>
         <IonContent>
           <IonList>
             <IonMenuToggle autoHide={false}>
