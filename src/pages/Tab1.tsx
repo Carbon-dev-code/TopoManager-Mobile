@@ -38,11 +38,7 @@ import {
   trash,
   close,
   informationCircle,
-  person,
-  business,
   create,
-  personOutline,
-  businessOutline,
   sync,
   map,
   searchSharp,
@@ -201,16 +197,26 @@ const Tab1: React.FC = () => {
   };
 
   const addRiverin = () => {
-    if (newRiverin.repere == null || newRiverin.observation.trim() === "") {
+    if (newRiverin.repere == null || !newRiverin.observation.trim()) {
       setRiverinMess("‼️Vérifiez votre insertion");
-      return; // stop ici
+      return;
     }
-    parcelle.riverin.push(newRiverin);
     console.log(newRiverin);
-    setNewRiverin(Riverin.init);
+    setParcelle(prev => ({
+      ...prev,
+      riverin: [...prev.riverin, newRiverin], // ajout du riverain
+    }));
+    setNewRiverin(Riverin.init()); // reset
     setRiverinMess("✅ Riverin ajouté");
   };
 
+  const handleSelectDemandeurForRiverin = (d: Demandeur) => {
+    setNewRiverin((prev) => ({
+      ...prev,
+      demandeur: d,
+    }));
+    setShowSearchDemandeurModal(false); // Ferme le modal après la sélection
+  };
   const removeParcelle = (code: string) => {
     setParcelles(parcelles.filter((p) => p.code !== code));
   };
@@ -781,19 +787,27 @@ const Tab1: React.FC = () => {
       </IonModal>
 
       {/**Modal riverin */}
+
       <ModalRiverin
-        showRiverin={showRiverin} setShowRiverin={setShowRiverin}
+        showRiverin={showRiverin}
+        setShowRiverin={setShowRiverin}
         addRiverin={addRiverin}
         riverinMess={riverinMess}
         repereL={repereL}
-        newRiverin={newRiverin} setNewRiverin={setNewRiverin}
+        newRiverin={newRiverin}
+        setNewRiverin={setNewRiverin}
       />
 
       {/** Modal de recharche de demandeur **/}
       <SeacrhModal
         showSearchModal={showSearchDemandeurModal} setShowSearchModal={setShowSearchDemandeurModal}
         demandeurs={demandeurList}
-        onSelect={(d) => parcelle.demandeurs.push(d)}
+        onSelect={(d) => {
+          setParcelle(prev => ({
+            ...prev,
+            demandeurs: [...prev.demandeurs, d]
+          }));
+        }}
       />
 
       {/**Modal creation demandeur*/}
