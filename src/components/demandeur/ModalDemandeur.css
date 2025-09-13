@@ -1,0 +1,5 @@
+/* fichier CSS lié à ton Modal ou global */
+.alert-button-group {
+  display: flex !important;
+  justify-content: space-evenly !important; /* sépare les boutons aux extrémités */
+}

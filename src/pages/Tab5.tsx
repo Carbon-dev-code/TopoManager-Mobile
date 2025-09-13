@@ -13,12 +13,15 @@ import {
   IonSearchbar,
   IonTitle,
   IonToolbar,
+  useIonViewWillEnter,
 } from "@ionic/react";
 import "./Tab5.css";
 import { searchSharp, create, close } from "ionicons/icons";
 import { Demandeur } from "../model/parcelle/Demandeur";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import { useState } from "react";
+import DemandeurView from "../components/demandeur/DemandeurView";
+import { Preferences } from "@capacitor/preferences";
 
 const Tab5: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,13 +31,41 @@ const Tab5: React.FC = () => {
   const [isPhysique, setIsPhysique] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [decomposed, setDecomposed] = useState(false);
+  const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
 
 
-  const addDemandeur = () => {
+  const loadDemandeurFromStorage = async (): Promise<Demandeur[]> => {
+    const result = await Preferences.get({ key: "demandeur" });
+    if (result.value) {
+      try {
+        const parsed = JSON.parse(result.value);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (error) {
+        console.error("Erreur parsing JSON:", error);
+      }
+    }
+    return [];
+  };
+
+  const load = async () => {
+    setDemandeurList(await loadDemandeurFromStorage());
+  };
+
+  useIonViewWillEnter(() => {
+    load();
+  });
+
+  const addDemandeur = async () => {
     console.log(demandeur);
+    const newList = [...demandeurList, demandeur];
+    setDemandeurList(newList);
+    await Preferences.set({ key: "demandeur", value: JSON.stringify(newList) });
     setDemandeur(Demandeur.init);
     setShowCreateModal(false);
   };
+
 
   return (
     <IonPage>
@@ -56,18 +87,12 @@ const Tab5: React.FC = () => {
       </IonHeader>
       {seacrh && (
         <IonToolbar className="transparent-toolbar">
-          <IonSearchbar
-            autoFocus
-            showCancelButton="focus"
-            className="custom-search"
-            placeholder="Recherche demandeur"
-            value={searchQuery}
-            onIonInput={(e) => setSearchQuery(e.detail.value!)}
+          <IonSearchbar autoFocus showCancelButton="focus"
+            className="custom-search" placeholder="Recherche demandeur"
+            value={searchQuery} onIonInput={(e) => setSearchQuery(e.detail.value!)}
           />
           <IonButtons slot="end">
-            <IonButton
-              fill="clear"
-              color="danger"
+            <IonButton fill="clear" color="danger"
               onClick={() => { setSearch(false); setSearchQuery(""); }}
             >
               <IonIcon icon={close} slot="icon-only" />
@@ -78,13 +103,9 @@ const Tab5: React.FC = () => {
 
       <IonContent fullscreen>
         <IonList>
-          <div className="person-card">
-            <IonAvatar className="person-avatar">R</IonAvatar>
-            <div className="person-info">
-              <span className="prenom">Jean</span>
-              <span className="nom">Rakoto</span>
-            </div>
-          </div>
+          {demandeurList.map((demandeur, index) => (
+            <DemandeurView key={index} demandeur={demandeur} />
+          ))}
         </IonList>
         <ModalDemandeur
           showCreateModal={showCreateModal} setShowCreateModal={setShowCreateModal}

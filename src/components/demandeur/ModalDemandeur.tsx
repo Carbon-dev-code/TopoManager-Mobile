@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   IonModal,
   IonHeader,
@@ -14,6 +14,7 @@ import {
   IonLabel,
   IonRadio,
   IonRadioGroup,
+  IonAlert,
 } from "@ionic/react";
 import { close } from "ionicons/icons";
 import "./ModalDemandeur.css";
@@ -50,10 +51,12 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   decomposed,
   setDecomposed,
 }) => {
+  const [showConfirmProfile, setShowConfirmProfile] = useState(false);
+  const [lastPhotoIndex, setLastPhotoIndex] = useState<number | null>(null);
   // ⚡ takePhoto définie en interne
   const takePhoto = async () => {
     try {
-      if (demandeur.photos && demandeur.photos.length >= 5) {
+      if (demandeur.photos.length >= 5) {
         setToastMessage?.("Vous ne pouvez pas ajouter plus de 5 photos");
         return;
       }
@@ -68,15 +71,18 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 
       setDemandeur((prev) => {
         const newDemandeur = { ...prev };
-        if (!newDemandeur.photos) newDemandeur.photos = [];
         newDemandeur.photos.push(photo.dataUrl);
+        setLastPhotoIndex(newDemandeur.photos.length - 1);
         return newDemandeur;
       });
+
+      setShowConfirmProfile(true); // Affiche le pop-up
     } catch (err) {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
     }
   };
+  
   return (
     <IonModal
       isOpen={showCreateModal}
@@ -150,6 +156,29 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
           name="Prendre une photo du demandeur"
         />
       </IonContent>
+
+      <IonAlert
+        isOpen={showConfirmProfile}
+        header="Photo de profil"
+        message="Voulez-vous définir cette photo comme photo de profil ?"
+        buttons={[
+          {
+            text: "Non",
+            role: "cancel",
+            handler: () => setShowConfirmProfile(false),
+          },
+          {
+            text: "Oui",
+            handler: () => {
+              if (lastPhotoIndex !== null) {
+                setDemandeur((prev) => ({ ...prev, indexPhoto: lastPhotoIndex }));
+              }
+              setShowConfirmProfile(false);
+            },
+          },
+        ]}
+      />
+
 
       {toastMessage && setToastMessage && (
         <IonToast
