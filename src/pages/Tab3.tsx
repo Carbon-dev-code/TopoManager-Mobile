@@ -41,6 +41,7 @@ import {
 import "./Tab3.css";
 import { ConfigService } from "../model/ConfigService";
 import { Parcelle } from "../model/parcelle/Parcelle";
+import DemandeurView from "../components/demandeur/DemandeurView";
 
 interface ApiResponse {
   success: boolean;
@@ -419,40 +420,34 @@ const Tab3: React.FC = () => {
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
-        <div className="row align-items-center g-2">
-          <div className="col-12 col-md">
-            <IonItem lines="none">
-              <IonLabel>Adresse serveur :</IonLabel>
-              <IonText color="primary" className="ms-2">
-                {serverIpPort}
-              </IonText>
-            </IonItem>
-          </div>
 
-          <div className="col-12 col-md">
-            <IonButton
-              size="default"
-              expand="block"
-              color="primary"
-              onClick={testerConnexion}
-              disabled={testingConnection}
-            >
-              <IonIcon icon={wifi} slot="start" />
-              {testingConnection ? "Test en cours..." : "Tester la connexion"}
-            </IonButton>
-          </div>
+        {/* === Card info serveur === */}
+        <div className="server-info-card">
+          <IonLabel>Adresse serveur :</IonLabel>
+          <IonText color="primary">{serverIpPort}</IonText>
         </div>
 
-        {hasUnsynced && (
+        <div className="btn-group">
           <IonButton
-            expand="block"
-            color="success"
-            onClick={synchroniserToutes}
-            disabled={syncingAll}
+            color="primary"
+            onClick={testerConnexion}
+            disabled={testingConnection}
           >
-            <IonIcon icon={sync} slot="start" /> Synchroniser toutes les parcelles
+            <IonIcon icon={wifi} slot="start" />
+            {testingConnection ? "Test en cours..." : "Tester la connexion"}
           </IonButton>
-        )}
+
+          {hasUnsynced && (
+            <IonButton
+              color="success"
+              onClick={synchroniserToutes}
+              disabled={syncingAll}
+            >
+              <IonIcon icon={sync} slot="start" />
+              Synchroniser toutes les parcelles
+            </IonButton>
+          )}
+        </div>
 
         {/* Filtres */}
         <div className="mb-3 mt-3">
@@ -529,7 +524,7 @@ const Tab3: React.FC = () => {
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
-                  className={`position-badge-custom-tab2 ion-color ${parcelle.synchronise === 1 ? "ion-color-success" : "ion-color-danger" } ${parcelle.synchronise === 1 ? "disabled" : ""}`}
+                  className={`position-badge-custom-tab2 ion-color ${parcelle.synchronise === 1 ? "ion-color-success" : "ion-color-danger"} ${parcelle.synchronise === 1 ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
                     if (parcelle.synchronise !== 1 && !parcelle.syncing) {
@@ -581,18 +576,9 @@ const Tab3: React.FC = () => {
                 <IonCardContent>
                   <IonList className="scrollable-list">
                     {(parcelle.demandeurs ?? []).map((demandeur) => (
-                      <IonItem key={`dem${demandeur.id}`} lines="none">
-                        <IonIcon
-                          slot="start"
-                          icon={demandeur.type === 0 ? person : business}
-                        />
-                        <IonLabel>
-                          {demandeur.type === 0
-                            ? `${demandeur.nom} ${demandeur.prenom}`
-                            : demandeur.denomination}
-                        </IonLabel>
-                      </IonItem>
+                      <DemandeurView key={`dem${demandeur.id}`} demandeur={demandeur} />
                     ))}
+
                   </IonList>
                 </IonCardContent>
               </IonCard>

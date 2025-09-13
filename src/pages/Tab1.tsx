@@ -212,7 +212,6 @@ const Tab1: React.FC = () => {
   };
 
   const removeParcelle = (code: string) => {
-    //Fonction remove mila fafana ny ao am stockage
     setParcelles(parcelles.filter((p) => p.code !== code));
   };
 
@@ -433,21 +432,11 @@ const Tab1: React.FC = () => {
                 </IonCardHeader>
 
                 <IonCardContent>
-                  <IonList className="scrollable-list">
+                  <div className="scrollable-list">
                     {parcelle.demandeurs.map((demandeur) => (
-                      <IonItem key={`dem${demandeur.id}`} lines="none">
-                        <IonIcon
-                          slot="start"
-                          icon={demandeur.type === 0 ? person : business}
-                        />
-                        <IonLabel>
-                          {demandeur.type === 0
-                            ? `${demandeur.nom} ${demandeur.prenom}`
-                            : demandeur.denomination}
-                        </IonLabel>
-                      </IonItem>
+                      <DemandeurView key={`dem${demandeur.id}`} demandeur={demandeur} />
                     ))}
-                  </IonList>
+                  </div>
                 </IonCardContent>
               </IonCard>
             ))}
