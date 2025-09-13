@@ -174,10 +174,9 @@ const Tab1: React.FC = () => {
     }
   }, [showCreateModal]);
 
-  const addDemandeur = () => {
-    // Limite déjà gérée côté prise de photo (max 5)
+  const addDemandeur = async () => {
     parcelle.demandeurs.push(demandeur);
-    // Reset pour un nouveau demandeur
+    await Preferences.set({ key: "demandeur", value: JSON.stringify(demandeur) });
     setDemandeur(Demandeur.init());
     setShowDemandeurModal(false);
   };
