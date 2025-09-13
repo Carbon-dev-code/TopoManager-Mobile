@@ -62,6 +62,7 @@ import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import ModalRiverin from "../components/riverin/ModalRiverin";
 import Photo from "../components/photo/Photo";
 import SeacrhModal from "../components/demandeur/SearchModal";
+import DemandeurView from "../components/demandeur/DemandeurView";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
@@ -671,21 +672,9 @@ const Tab1: React.FC = () => {
                 {activeTab === "demandeur" && (
                   <div className="demandeur-list">
                     {parcelle.demandeurs.map((d, i) => (
-                      <IonItem key={i} lines="none" className="custom-item">
-                        <IonIcon
-                          icon={d.type === 0 ? personOutline : businessOutline}
-                          slot="start"
-                          color="primary"
-                          style={{ fontSize: "24px", marginRight: "12px" }}
-                        />
-                        <IonLabel>
-                          <h3 style={{ marginBottom: 4 }}>
-                            {d.type === 0
-                              ? `${d.nom} ${d.prenom}`
-                              : d.denomination}
-                          </h3>
-                        </IonLabel>
-                      </IonItem>
+                      <div key={i} onClick={() => console.log("Clicked", d)}>
+                        <DemandeurView demandeur={d} />
+                      </div>
                     ))}
                   </div>
                 )}

@@ -1,32 +1,46 @@
 .person-card {
   display: flex;
   align-items: center;
-  padding: 5px 10px;
+  justify-content: flex-start;
+  padding: 0.5rem;
   border-radius: 12px;
   background-color: #ffffff;
-  margin: 10px;
+  margin: 0.5rem 0;
   position: relative;
-  box-shadow: 0px 0px 19px 0px rgba(0, 0, 0, 0.1)
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.08);
+  gap: 0.5rem;
+  flex-wrap: nowrap;
 }
 
 .person-avatar {
   background-color: #ccc;
   width: 50px;
   height: 50px;
+  min-width: 35px;
+  min-height: 35px;
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 1.2rem;
   color: #fff;
-  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.person-avatar img.person-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .person-info {
   display: flex;
   flex-direction: column;
   font-size: 13px;
+  flex: 1;
+  min-width: 0; /* essentiel pour le text-overflow */
 }
 
 .person-info .line1 {
@@ -34,32 +48,65 @@
   gap: 5px;
   align-items: center;
   font-weight: 600;
+  flex-wrap: wrap;
 }
 
 .person-info .line1 .prenom {
   color: #888;
   font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .person-info .line1 .nom,
 .person-info .line1 .denomination {
   color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .person-info .line2 {
   display: flex;
   align-items: center;
-  gap: 6px; /* espace entre icônes et texte */
+  gap: 6px;
   color: #777777;
   font-size: 10px;
   margin-top: 2px;
+  flex-wrap: wrap;
 }
 
 .person-bg-icon {
   position: absolute;
   opacity: 0.8;
-  font-size: 13px;
+  font-size: 1.5rem;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
+  pointer-events: none; /* pour ne pas gêner le clic */
+}
+
+/* ===== Responsivité ===== */
+@media (max-width: 400px) {
+  .person-card {
+    padding: 0.8rem;
+    gap: 0.3rem;
+  }
+  .person-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+  .person-info {
+    font-size: 11px;
+  }
+  .person-info .line2 {
+    font-size: 9px;
+    gap: 4px;
+  }
+  .person-bg-icon {
+    font-size: 1.2rem;
+    right: 5px;
+  }
 }
