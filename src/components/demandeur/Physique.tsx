@@ -11,24 +11,24 @@ interface PhysiqueProps {
 
 const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
     return (
-        <IonList>
+        <IonList className="pt-0">
             <IonItem className="mb-2">
-                <IonGrid>
+                <IonGrid className="p-0">
                     <IonRow>
-                        <IonCol size="12">
+                        <IonCol size="12" className="m-0 p-0">
                             <IonInput
                                 label="Nom"
                                 placeholder="Enter le nom du demandeur"
                                 value={demandeur.nom}
-                                onIonChange={(e) => setDemandeur({...demandeur,nom: String(e.detail.value)})}
+                                onIonChange={(e) => setDemandeur({ ...demandeur, nom: String(e.detail.value) })}
                             />
                         </IonCol>
-                        <IonCol size="12">
+                        <IonCol size="12" className="m-0 p-0">
                             <IonInput
                                 label="Prenom"
                                 placeholder="Enter le prenom du demandeur"
                                 value={demandeur.prenom}
-                                onIonChange={(e) => setDemandeur({ ...demandeur, prenom: String(e.detail.value)})
+                                onIonChange={(e) => setDemandeur({ ...demandeur, prenom: String(e.detail.value) })
                                 }
                             />
                         </IonCol>
@@ -111,6 +111,19 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
                                 placeholder="Entrer le lieu de naissance du demandeur"
                             ></IonInput>
                         </IonCol>
+                        <IonCol size="12">
+                            <IonInput
+                                labelPlacement="stacked"
+                                label="Adresse"
+                                placeholder="Enter l'adresse du demandeur"
+                                onIonChange={(e) =>
+                                    setDemandeur({
+                                        ...demandeur,
+                                        adresse: String(e.detail.value),
+                                    })
+                                }
+                            ></IonInput>
+                        </IonCol>
                     </IonRow>
                 </IonGrid>
             </IonItem>
@@ -144,19 +157,6 @@ const Physique: React.FC<PhysiqueProps> = ({ demandeur, setDemandeur }) => {
                         </IonItem>
                     </div>
                 </IonRadioGroup>
-            </IonItem>
-            <IonItem>
-                <IonInput
-                    label="Adresse"
-                    placeholder="Enter l'adresse du demandeur"
-                    value={demandeur.adresse}
-                    onIonChange={(e) =>
-                        setDemandeur({
-                            ...demandeur,
-                            adresse: String(e.detail.value),
-                        })
-                    }
-                />
             </IonItem>
             <IonItem className="custom-wrapper">
                 <IonLabel className="me-3">Situation matrimoniale</IonLabel>
