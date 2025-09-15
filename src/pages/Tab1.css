@@ -168,3 +168,28 @@ ion-searchbar.custom-search {
   --border-radius: 25px;
   padding: 4px 8px;
 }
+
+.parcelle-chips {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* Limite la largeur des chips */
+.parcelle-chips ion-chip {
+  max-width: fit-content; /* Ajuste selon ton design */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+/* Masquer le texte sur petits écrans */
+@media (max-width: 400px) {
+  .parcelle-chips ion-chip ion-label {
+    display: none;
+  }
+}

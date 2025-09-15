@@ -1,80 +1,73 @@
 // db.ts
-import PouchDB from "pouchdb-browser";
+import localforage from "localforage";
 import { Parcelle } from "../parcelle/Parcelle";
 import { Demandeur } from "../parcelle/Demandeur";
 
-// ✅ Création / ouverture unique des bases
-const parcelleDB = new PouchDB("parcelles");
-const demandeurDB = new PouchDB("demandeurs");
+// ✅ Créer / configurer les bases
+const parcelleStore = localforage.createInstance({
+  name: "parcelles",
+});
 
-// ➕ Insert parcelle
+const demandeurStore = localforage.createInstance({
+  name: "demandeurs",
+});
+
+// ➕ Insert / Update Parcelle
 export async function insertParcelle(parcelle: Parcelle) {
-  const doc = {
-    _id: parcelle.code || new Date().toISOString(),
-    ...parcelle,
-  };
-  return await parcelleDB.put(doc);
+  const allParcelles: Parcelle[] = (await parcelleStore.getItem("allParcelles")) || [];
+  const index = allParcelles.findIndex((p) => p.code === parcelle.code);
+
+  if (index !== -1) {
+    allParcelles[index] = parcelle; // update
+  } else {
+    allParcelles.push(parcelle); // insert
+  }
+
+  await parcelleStore.setItem("allParcelles", allParcelles);
+  return parcelle;
 }
 
 // 🔍 Récupérer toutes les parcelles
-export async function getAllParcelles() {
-  const result = await parcelleDB.allDocs({ include_docs: true });
-  return result.rows.map((r) => r.doc);
+export async function getAllParcelles(): Promise<Parcelle[]> {
+  return (await parcelleStore.getItem("allParcelles")) || [];
 }
 
-// ➕ Insert demandeur
+// ➕ Insert / Update Demandeur
 export async function insertDemandeur(demandeur: Demandeur) {
-  const doc = {
-    _id: demandeur.id || new Date().toISOString(),
-    ...demandeur,
-  };
-  return await demandeurDB.put(doc);
+  const allDemandeurs: Demandeur[] = (await demandeurStore.getItem("allDemandeurs")) || [];
+  const index = allDemandeurs.findIndex((d) => d.id === demandeur.id);
+
+  if (index !== -1) {
+    allDemandeurs[index] = demandeur; // update
+  } else {
+    allDemandeurs.push(demandeur); // insert
+  }
+
+  await demandeurStore.setItem("allDemandeurs", allDemandeurs);
+
+  // 🔄 Mettre à jour les parcelles contenant ce demandeur
+  const parcelles: Parcelle[] = (await parcelleStore.getItem("allParcelles")) || [];
+  let changed = false;
+
+  parcelles.forEach((parcelle) => {
+    const dIndex = parcelle.demandeurs.findIndex((d) => d.id === demandeur.id);
+    if (dIndex !== -1) {
+      parcelle.demandeurs[dIndex] = demandeur;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    await parcelleStore.setItem("allParcelles", parcelles);
+  }
+
+  return demandeur;
 }
 
 // 🔍 Récupérer tous les demandeurs
-export async function getAllDemandeurs() {
-  const result = await demandeurDB.allDocs({ include_docs: true });
-  return result.rows.map((r) => r.doc);
+export async function getAllDemandeurs(): Promise<Demandeur[]> {
+  return (await demandeurStore.getItem("allDemandeurs")) || [];
 }
 
-// ⚡ Update d’un demandeur + synchro dans toutes les parcelles
-export async function updateDemandeur(updatedDemandeur: Demandeur) {
-  // 1. Update dans la base demandeurs
-  const existing = await demandeurDB.get(updatedDemandeur.id);
-  await demandeurDB.put({
-    ...existing,
-    ...updatedDemandeur,
-    _id: updatedDemandeur.id,
-    _rev: existing._rev,
-  });
-
-  // 2. Chercher toutes les parcelles qui contiennent ce demandeur
-  const parcelles = await parcelleDB.allDocs({ include_docs: true });
-
-  for (const row of parcelles.rows) {
-    const parcelle = row.doc as Parcelle;
-    if (!parcelle || !parcelle.demandeurs) continue;
-
-    let modified = false;
-
-    const newDemandeurs = parcelle.demandeurs.map((d: Demandeur) => {
-      if (d.id === updatedDemandeur.id) {
-        modified = true;
-        return { ...d, ...updatedDemandeur };
-      }
-      return d;
-    });
-
-    if (modified) {
-      await parcelleDB.put({
-        ...parcelle,
-        demandeurs: newDemandeurs,
-        _id: parcelle._id,
-        _rev: parcelle._rev,
-      });
-    }
-  }
-}
-
-// ✅ Export des bases si besoin
-export { parcelleDB, demandeurDB };
+// ✅ Export stores si besoin
+export { parcelleStore, demandeurStore };

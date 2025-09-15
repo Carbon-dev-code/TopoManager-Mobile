@@ -58,19 +58,24 @@ import ModalRiverin from "../components/riverin/ModalRiverin";
 import Photo from "../components/photo/Photo";
 import SeacrhModal from "../components/demandeur/SearchModal";
 import DemandeurView from "../components/demandeur/DemandeurView";
-
-
-import { openRealm, ParcelleShema } from '../model/base/DbSchema';
+import {
+  getAllDemandeurs,
+  getAllParcelles,
+  insertDemandeur,
+  insertParcelle,
+} from "../model/base/DbSchema";
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState<boolean>(false);
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState<boolean>(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
+    useState<boolean>(false);
   const [showRiverin, setShowRiverin] = useState<boolean>(false);
   const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
   const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
+  const [parametreTerritoire, setParametreTerritoire] =
+    useState<ParametreTerritoire | null>(null);
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
   const [repereL, setRepere] = useState<Repere[]>([]);
@@ -89,39 +94,16 @@ const Tab1: React.FC = () => {
   const [seacrh, setSearch] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState(""); // texte de recherche
 
-
   const handleCardClick = (codeParcelle: string) => {
     history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
   };
 
   const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
-    const result = await Preferences.get({ key: STORAGE_KEY });
-    if (result.value) {
-      try {
-        const parsed = JSON.parse(result.value);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (error) {
-        console.error("Erreur parsing JSON:", error);
-      }
-    }
-    return [];
+    return await getAllParcelles();
   };
 
   const loadDemandeurFromStorage = async (): Promise<Demandeur[]> => {
-    const result = await Preferences.get({ key: "demandeur" });
-    if (result.value) {
-      try {
-        const parsed = JSON.parse(result.value);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (error) {
-        console.error("Erreur parsing JSON:", error);
-      }
-    }
-    return [];
+    return await getAllDemandeurs();
   };
 
   const load = async () => {
@@ -140,9 +122,11 @@ const Tab1: React.FC = () => {
       if (parametrePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
-          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
-          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
+          parametreActuel.district.codedistrict
+        }-${parametreActuel.commune.codecommune}-${
+          parametreActuel.fokontany.codefokontany
+        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);
@@ -193,8 +177,7 @@ const Tab1: React.FC = () => {
 
   const addDemandeur = async () => {
     parcelle.demandeurs.push(demandeur);
-    const newList = [...demandeurList, demandeur];
-    await Preferences.set({ key: "demandeur", value: JSON.stringify(newList) });
+    await insertDemandeur(demandeur);
     setDemandeur(Demandeur.init());
     setShowDemandeurModal(false);
   };
@@ -204,8 +187,7 @@ const Tab1: React.FC = () => {
       setRiverinMess("‼️Vérifiez votre insertion");
       return;
     }
-    console.log(newRiverin);
-    setParcelle(prev => ({
+    setParcelle((prev) => ({
       ...prev,
       riverin: [...prev.riverin, newRiverin], // ajout du riverain
     }));
@@ -214,6 +196,7 @@ const Tab1: React.FC = () => {
   };
 
   const removeParcelle = (code: string) => {
+    //mis zvtr tokn corrigena
     setParcelles(parcelles.filter((p) => p.code !== code));
   };
 
@@ -226,25 +209,7 @@ const Tab1: React.FC = () => {
       console.log(parcelle); // visualisation
 
       parcelles.push(parcelle);
-
-      const realm = await openRealm();
-      realm.write(() => {
-        realm.create(ParcelleShema, parcelle);
-      });
-      realm.close();
-
-      //----------------------TAY MAFANA-------------------------
-      const existing = await Preferences.get({ key: STORAGE_KEY });
-      let oldParcelles: Parcelle[] = [];
-      if (existing.value) {
-        oldParcelles = JSON.parse(existing.value);
-      }
-      const allParcelles = [...oldParcelles, parcelle];
-      await Preferences.set({
-        key: STORAGE_KEY,
-        value: JSON.stringify(allParcelles),
-      });
-      //----------------------TAY MAFANA-------------------------
+      await insertParcelle(parcelle);
 
       // 6. Mettre à jour l'incrément seulement après succès
       await Preferences.set({
@@ -290,7 +255,7 @@ const Tab1: React.FC = () => {
 
   const takePhotoParcelle = useCallback(async () => {
     try {
-      if (parcelle.photos && parcelle.photos.length >= 5) {
+      if (parcelle.photos && parcelle.photos.length >= 1) {
         setToastMessage?.("Vous ne pouvez pas ajouter plus de 5 photos");
         return;
       }
@@ -305,7 +270,6 @@ const Tab1: React.FC = () => {
 
       setParcelle((prev) => {
         const newParcelle = { ...prev };
-        if (!newParcelle.photos) newParcelle.photos = [];
         newParcelle.photos.push(photo.dataUrl);
         return newParcelle;
       });
@@ -313,7 +277,7 @@ const Tab1: React.FC = () => {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
     }
-  }, [demandeur.photos, setDemandeur, setToastMessage]);
+  }, [parcelle.photos]);
 
   return (
     <IonPage>
@@ -401,11 +365,12 @@ const Tab1: React.FC = () => {
                   <IonCardTitle>
                     <strong>{parcelle.code}</strong>
                   </IonCardTitle>
-                  <IonCardSubtitle>
+                  <IonCardSubtitle className="parcelle-chips">
                     <IonChip
                       color={parcelle.synchronise === 1 ? "success" : "danger"}
                     >
                       <IonIcon
+                        className="mx-0"
                         icon={sync}
                         color={
                           parcelle.synchronise === 1 ? "success" : "danger"
@@ -426,6 +391,7 @@ const Tab1: React.FC = () => {
                     >
                       <IonIcon
                         icon={map}
+                        className="mx-0"
                         color={
                           !parcelle.polygone || parcelle.polygone.length === 0
                             ? "danger"
@@ -441,10 +407,13 @@ const Tab1: React.FC = () => {
                   </IonCardSubtitle>
                 </IonCardHeader>
 
-                <IonCardContent>
+                <IonCardContent className="p-0">
                   <div className="scrollable-list">
                     {parcelle.demandeurs.map((demandeur) => (
-                      <DemandeurView key={`dem${demandeur.id}`} demandeur={demandeur} />
+                      <DemandeurView
+                        key={`dem${demandeur.id}`}
+                        demandeur={demandeur}
+                      />
                     ))}
                   </div>
                 </IonCardContent>
@@ -459,7 +428,7 @@ const Tab1: React.FC = () => {
         isOpen={showCreateModal}
         onDidDismiss={() => {
           setShowCreateModal(false);
-          setParcelle(Parcelle.init)
+          setParcelle(Parcelle.init);
         }}
       >
         <IonHeader>
@@ -699,11 +668,13 @@ const Tab1: React.FC = () => {
             <IonItem>
               <Photo
                 photos={parcelle.photos}
-                decomposed={decomposed} setDecomposed={setDecomposed}
+                decomposed={decomposed}
+                setDecomposed={setDecomposed}
                 takePhoto={takePhotoParcelle} // Pas de photo ici
-                clearPhotos={() => { setParcelle({ ...parcelle, photos: [] }); }}
+                clearPhotos={() => {
+                  setParcelle({ ...parcelle, photos: [] });
+                }}
                 name="Prendre une photo de groupe"
-
               />
             </IonItem>
 
@@ -806,23 +777,29 @@ const Tab1: React.FC = () => {
 
       {/** Modal de recharche de demandeur **/}
       <SeacrhModal
-        showSearchModal={showSearchDemandeurModal} setShowSearchModal={setShowSearchDemandeurModal}
+        showSearchModal={showSearchDemandeurModal}
+        setShowSearchModal={setShowSearchDemandeurModal}
         onSelect={(d) => {
-          setParcelle(prev => ({
+          setParcelle((prev) => ({
             ...prev,
-            demandeurs: [...prev.demandeurs, d]
+            demandeurs: [...prev.demandeurs, d],
           }));
         }}
       />
 
       {/**Modal creation demandeur*/}
       <ModalDemandeur
-        showCreateModal={showDemandeurModal} setShowCreateModal={setShowDemandeurModal}
-        demandeur={demandeur} setDemandeur={setDemandeur}
+        showCreateModal={showDemandeurModal}
+        setShowCreateModal={setShowDemandeurModal}
+        demandeur={demandeur}
+        setDemandeur={setDemandeur}
         addDemandeur={addDemandeur}
-        toastMessage={toastMessage} setToastMessage={setToastMessage}
-        isPhysique={isPhysique} setIsPhysique={setIsPhysique}
-        decomposed={decomposed} setDecomposed={setDecomposed}
+        toastMessage={toastMessage}
+        setToastMessage={setToastMessage}
+        isPhysique={isPhysique}
+        setIsPhysique={setIsPhysique}
+        decomposed={decomposed}
+        setDecomposed={setDecomposed}
       />
     </IonPage>
   );

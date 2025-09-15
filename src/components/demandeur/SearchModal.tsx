@@ -6,13 +6,13 @@ import {
   IonModal,
   IonSearchbar,
 } from "@ionic/react";
-import { arrowBack, close } from "ionicons/icons";
+import { arrowBack} from "ionicons/icons";
 import { useEffect, useState } from "react";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 
 import "./SearchModal.css"; // 👉 Import du CSS
 import DemandeurView from "./DemandeurView";
-import { Preferences } from "@capacitor/preferences";
+import { getAllDemandeurs } from "../../model/base/DbSchema";
 
 interface SearchModalProps {
   showSearchModal: boolean;
@@ -39,17 +39,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
     if (!showSearchModal) return; // évite de charger quand c'est fermé
 
     const load = async () => {
-      const result = await Preferences.get({ key: "demandeur" });
-      if (result.value) {
-        try {
-          const parsed = JSON.parse(result.value);
-          if (Array.isArray(parsed)) {
-            setLocalDemandeurs(parsed);
-          }
-        } catch (err) {
-          console.error("Erreur parsing JSON:", err);
-        }
-      }
+      setLocalDemandeurs(await getAllDemandeurs());
     };
 
     load();

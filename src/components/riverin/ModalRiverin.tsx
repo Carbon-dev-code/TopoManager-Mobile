@@ -28,6 +28,7 @@ import DemandeurView from "../demandeur/DemandeurView";
 import "./ModalRiverin.css";
 import ModalDemandeur from "../demandeur/ModalDemandeur";
 import { Preferences } from "@capacitor/preferences";
+import { insertDemandeur } from "../../model/base/DbSchema";
 
 interface ModalRiverinProps {
   showRiverin: boolean;
@@ -48,9 +49,10 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
   repereL,
   newRiverin,
   setNewRiverin,
-  demandeurs
+  demandeurs,
 }) => {
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
+    useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -82,9 +84,8 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
   });
 
   const addDemandeur = async () => {
-    const newList = [...demandeurList, demandeur];
     setNewRiverin({ ...newRiverin, demandeur: demandeur });
-    await Preferences.set({ key: "demandeur", value: JSON.stringify(newList) });
+    await insertDemandeur(demandeur);
     setDemandeur(Demandeur.init());
     setShowDemandeurModal(false);
   };
@@ -151,7 +152,9 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
                 <DemandeurView demandeur={newRiverin.demandeur} />
               </div>
             ) : (
-              <IonLabel className="demandeur-none">⚠️ Aucun demandeur sélectionné</IonLabel>
+              <IonLabel className="demandeur-none">
+                ⚠️ Aucun demandeur sélectionné
+              </IonLabel>
             )}
           </IonItem>
           <IonItem>
@@ -200,19 +203,25 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
           </IonItem>
         </IonList>
         <SeacrhModal
-          showSearchModal={showSearchDemandeurModal} setShowSearchModal={setShowSearchDemandeurModal}
+          showSearchModal={showSearchDemandeurModal}
+          setShowSearchModal={setShowSearchDemandeurModal}
           onSelect={(d) => {
             setNewRiverin({ ...newRiverin, demandeur: d });
           }}
         />
         {/**Modal creation demandeur*/}
         <ModalDemandeur
-          showCreateModal={showDemandeurModal} setShowCreateModal={setShowDemandeurModal}
-          demandeur={demandeur} setDemandeur={setDemandeur}
+          showCreateModal={showDemandeurModal}
+          setShowCreateModal={setShowDemandeurModal}
+          demandeur={demandeur}
+          setDemandeur={setDemandeur}
           addDemandeur={addDemandeur}
-          toastMessage={toastMessage} setToastMessage={setToastMessage}
-          isPhysique={isPhysique} setIsPhysique={setIsPhysique}
-          decomposed={decomposed} setDecomposed={setDecomposed}
+          toastMessage={toastMessage}
+          setToastMessage={setToastMessage}
+          isPhysique={isPhysique}
+          setIsPhysique={setIsPhysique}
+          decomposed={decomposed}
+          setDecomposed={setDecomposed}
         />
       </IonContent>
     </IonModal>
