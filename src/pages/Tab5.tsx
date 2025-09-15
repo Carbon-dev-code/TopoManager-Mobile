@@ -36,21 +36,28 @@ const Tab5: React.FC = () => {
 
   const loadDemandeurFromStorage = async (): Promise<Demandeur[]> => {
     const result = await Preferences.get({ key: "demandeur" });
+
     if (result.value) {
       try {
         const parsed = JSON.parse(result.value);
         if (Array.isArray(parsed)) {
           return parsed;
+        } else if (parsed && typeof parsed === "object") {
+          return [parsed]; // transformer l'objet unique en tableau
         }
       } catch (error) {
         console.error("Erreur parsing JSON:", error);
       }
     }
+
     return [];
   };
 
   const load = async () => {
-    setDemandeurList(await loadDemandeurFromStorage());
+    const demandeur = await loadDemandeurFromStorage();
+    //console.log(demandeur);
+
+    setDemandeurList(demandeur);
   };
 
   useIonViewWillEnter(() => {

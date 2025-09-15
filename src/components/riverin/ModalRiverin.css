@@ -3,3 +3,8 @@
     font-style: 'italic';
     margin-left: 10px;
 }
+
+.demandeur-list {
+    width: 100%;
+    padding: 8px;
+}

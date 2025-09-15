@@ -39,7 +39,7 @@ export class Parcelle {
         this.anneeOccup = anneeOccup
         this.demandeurs = demandeurs;
         this.parametreTerritoire = parametreterritoire,
-            this.categorie = categorie;
+        this.categorie = categorie;
         this.consistance = consistance;
         this.oppossition = opposition;
         this.revandication = revandication;

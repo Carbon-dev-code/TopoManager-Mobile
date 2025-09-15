@@ -5,37 +5,56 @@ import {
   IonIcon,
   IonModal,
   IonSearchbar,
-  IonList,
-  IonItem,
-  IonLabel,
 } from "@ionic/react";
 import { arrowBack, close } from "ionicons/icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 
 import "./SearchModal.css"; // 👉 Import du CSS
 import DemandeurView from "./DemandeurView";
+import { Preferences } from "@capacitor/preferences";
 
 interface SearchModalProps {
   showSearchModal: boolean;
   setShowSearchModal: (b: boolean) => void;
-  demandeurs: Demandeur[];
   onSelect: (d: Demandeur) => void;
 }
 
 const SearchModal: React.FC<SearchModalProps> = ({
   showSearchModal,
   setShowSearchModal,
-  demandeurs,
   onSelect,
 }) => {
   const [query, setQuery] = useState("");
+  const [localDemandeurs, setLocalDemandeurs] = useState<Demandeur[]>([]);
 
-  const filtered = demandeurs.filter((d) =>
+
+  const filtered = localDemandeurs.filter((d) =>
     `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}`
       .toLowerCase()
       .includes(query.toLowerCase())
   );
+
+  useEffect(() => {
+    if (!showSearchModal) return; // évite de charger quand c'est fermé
+
+    const load = async () => {
+      const result = await Preferences.get({ key: "demandeur" });
+      if (result.value) {
+        try {
+          const parsed = JSON.parse(result.value);
+          if (Array.isArray(parsed)) {
+            setLocalDemandeurs(parsed);
+          }
+        } catch (err) {
+          console.error("Erreur parsing JSON:", err);
+        }
+      }
+    };
+
+    load();
+  }, [showSearchModal]); // ⚡️ re-exécuté à chaque ouverture
+
 
   return (
     <IonModal

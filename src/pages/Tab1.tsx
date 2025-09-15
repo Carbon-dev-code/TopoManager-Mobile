@@ -25,7 +25,6 @@ import {
   IonRow,
   IonSegment,
   IonSegmentButton,
-  IonToast,
   IonCardSubtitle,
   IonCardContent,
   IonCardHeader,
@@ -59,6 +58,9 @@ import ModalRiverin from "../components/riverin/ModalRiverin";
 import Photo from "../components/photo/Photo";
 import SeacrhModal from "../components/demandeur/SearchModal";
 import DemandeurView from "../components/demandeur/DemandeurView";
+
+
+import { openRealm, ParcelleShema } from '../model/base/DbSchema';
 
 const Tab1: React.FC = () => {
   const STORAGE_KEY = "parcelles_data";
@@ -191,7 +193,8 @@ const Tab1: React.FC = () => {
 
   const addDemandeur = async () => {
     parcelle.demandeurs.push(demandeur);
-    await Preferences.set({ key: "demandeur", value: JSON.stringify(demandeur) });
+    const newList = [...demandeurList, demandeur];
+    await Preferences.set({ key: "demandeur", value: JSON.stringify(newList) });
     setDemandeur(Demandeur.init());
     setShowDemandeurModal(false);
   };
@@ -210,13 +213,6 @@ const Tab1: React.FC = () => {
     setRiverinMess("✅ Riverin ajouté");
   };
 
-  const handleSelectDemandeurForRiverin = (d: Demandeur) => {
-    setNewRiverin((prev) => ({
-      ...prev,
-      demandeur: d,
-    }));
-    setShowSearchDemandeurModal(false); // Ferme le modal après la sélection
-  };
   const removeParcelle = (code: string) => {
     setParcelles(parcelles.filter((p) => p.code !== code));
   };
@@ -231,6 +227,13 @@ const Tab1: React.FC = () => {
 
       parcelles.push(parcelle);
 
+      const realm = await openRealm();
+      realm.write(() => {
+        realm.create(ParcelleShema, parcelle);
+      });
+      realm.close();
+
+      //----------------------TAY MAFANA-------------------------
       const existing = await Preferences.get({ key: STORAGE_KEY });
       let oldParcelles: Parcelle[] = [];
       if (existing.value) {
@@ -241,6 +244,7 @@ const Tab1: React.FC = () => {
         key: STORAGE_KEY,
         value: JSON.stringify(allParcelles),
       });
+      //----------------------TAY MAFANA-------------------------
 
       // 6. Mettre à jour l'incrément seulement après succès
       await Preferences.set({
@@ -455,6 +459,7 @@ const Tab1: React.FC = () => {
         isOpen={showCreateModal}
         onDidDismiss={() => {
           setShowCreateModal(false);
+          setParcelle(Parcelle.init)
         }}
       >
         <IonHeader>
@@ -796,12 +801,12 @@ const Tab1: React.FC = () => {
         repereL={repereL}
         newRiverin={newRiverin}
         setNewRiverin={setNewRiverin}
+        demandeurs={demandeurList}
       />
 
       {/** Modal de recharche de demandeur **/}
       <SeacrhModal
         showSearchModal={showSearchDemandeurModal} setShowSearchModal={setShowSearchDemandeurModal}
-        demandeurs={demandeurList}
         onSelect={(d) => {
           setParcelle(prev => ({
             ...prev,

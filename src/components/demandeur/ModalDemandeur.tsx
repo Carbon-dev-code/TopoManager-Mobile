@@ -69,20 +69,18 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 
       if (!photo.dataUrl) throw new Error("Pas de photo");
 
-      setDemandeur((prev) => {
-        const newDemandeur = { ...prev };
-        newDemandeur.photos.push(photo.dataUrl);
-        setLastPhotoIndex(newDemandeur.photos.length - 1);
-        return newDemandeur;
-      });
+      setDemandeur((prev) => ({
+        ...prev,
+        photos: [...prev.photos, photo.dataUrl],
+      }));
 
-      setShowConfirmProfile(true); // Affiche le pop-up
+      setLastPhotoIndex(demandeur.photos.length); // index de la photo ajoutée
+      setShowConfirmProfile(true);
     } catch (err) {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
     }
   };
-  
   return (
     <IonModal
       isOpen={showCreateModal}
