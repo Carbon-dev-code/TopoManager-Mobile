@@ -171,7 +171,7 @@ ion-searchbar.custom-search {
 
 .parcelle-chips {
   display: flex;
-  gap: 10px;
+  gap: 0px;
   margin-top: 5px;
   overflow-x: auto;
   white-space: nowrap;

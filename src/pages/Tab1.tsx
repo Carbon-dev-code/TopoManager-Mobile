@@ -66,7 +66,6 @@ import {
 } from "../model/base/DbSchema";
 
 const Tab1: React.FC = () => {
-  const STORAGE_KEY = "parcelles_data";
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState<boolean>(false);
   const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
@@ -376,7 +375,7 @@ const Tab1: React.FC = () => {
                           parcelle.synchronise === 1 ? "success" : "danger"
                         }
                       />
-                      <IonLabel>
+                      <IonLabel className="mx-1">
                         {parcelle.synchronise === 1
                           ? "Parcelle sync"
                           : "Parcelle non sync"}
@@ -398,7 +397,7 @@ const Tab1: React.FC = () => {
                             : "success"
                         }
                       />
-                      <IonLabel>
+                      <IonLabel className="mx-1">
                         {!parcelle.polygone || parcelle.polygone.length === 0
                           ? "Pas de croquis"
                           : "Avec croquis"}
