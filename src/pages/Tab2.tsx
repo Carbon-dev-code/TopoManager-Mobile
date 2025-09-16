@@ -59,7 +59,7 @@ import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
-import { getAllParcelles } from "../model/base/DbSchema";
+import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -331,7 +331,7 @@ const Tab2: React.FC = () => {
     }
 
     if (drawPoints.length < 3) {
-      console.table(drawPoints);
+      //console.table(drawPoints);
       setToastMessage("Un polygone a besoin d'au moins 3 points.");
       return;
     }
@@ -366,10 +366,7 @@ const Tab2: React.FC = () => {
     setDrawPoints([]);
     setFabOpen(false);
 
-    await Preferences.set({
-      key: "parcelles_data",
-      value: JSON.stringify(updatedParcelles),
-    });
+    await insertParcelle(updatedParcelle)
 
     // 🔹 Ajouter seulement ce nouveau polygone au layer existant
     const vectorLayer = vectorLayerRef.current;
