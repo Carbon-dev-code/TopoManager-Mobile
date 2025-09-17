@@ -41,25 +41,24 @@ import {
 } from "ionicons/icons";
 import { Preferences } from "@capacitor/preferences";
 import { Parcelle } from "../model/parcelle/Parcelle";
+import VectorSource from "ol/source/Vector";
 import Polygon from "ol/geom/Polygon";
 import { Feature } from "ol";
+import VectorLayer from "ol/layer/Vector";
+import Style from "ol/style/Style";
+import Stroke from "ol/style/Stroke";
+import Fill from "ol/style/Fill";
 import Text from "ol/style/Text";
 import GeoJSON from "ol/format/GeoJSON";
 import { useLocation } from "react-router";
 import { Geolocation } from "@capacitor/geolocation";
+import { Polygone } from "../model/vecteur/Polygone";
+import { PointC } from "../model/vecteur/PointC";
 import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
-import { getAllParcelles } from "../model/base/DbSchema";
-import Draw from "ol/interaction/Draw";
-import { Vector as VectorLayer } from "ol/layer";
-import { Vector as VectorSource } from "ol/source";
-import { Fill, Stroke, Style } from "ol/style";
-import Modify from "ol/interaction/Modify";
-import Snap from "ol/interaction/Snap";
-import { Coordinate } from "ol/coordinate";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -69,6 +68,7 @@ proj4.defs(
 register(proj4);
 
 // ---- Constantes ----
+const STORAGE_KEY = "parcelles_data";
 const STORAGE_KEY_GEOJSON = "plofData";
 
 const layerOrder = [
@@ -122,6 +122,8 @@ const Tab2: React.FC = () => {
   const from = query.get("from");
   const action = query.get("action");
   const codeParcelle = query.get("code");
+  //Croquis polygone
+  const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   //message de retour var
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   // GPS
@@ -129,12 +131,6 @@ const Tab2: React.FC = () => {
   const watchId = useRef<string | number | null>(null);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsStatus, setGpsStatus] = useState<number>(0); // 0=arrêt,1=en cours,2=ok,3=erreur
-
-  const [drawPoints, setDrawPoints] = useState<Coordinate[]>([]);
-  const drawSourceRef = useRef<VectorSource>(new VectorSource());
-  const polygonPointsRef = useRef<Coordinate[]>([]);
-  // --- Ref pour stocker le point snapé ---
-  const drawSnapRef = useRef<Coordinate | null>(null);
 
   //load
   useIonViewDidEnter(() => {
@@ -176,7 +172,15 @@ const Tab2: React.FC = () => {
   const loadParcellesFromStorage = useCallback(async (): Promise<
     Parcelle[]
   > => {
-    return await getAllParcelles();
+    const result = await Preferences.get({ key: STORAGE_KEY });
+    if (!result.value) return [];
+    try {
+      const parsed = JSON.parse(result.value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      console.error(e);
+    }
+    return [];
   }, []);
 
   const loadGeoJsonFromStorage = useCallback(async (): Promise<any[]> => {
@@ -201,6 +205,22 @@ const Tab2: React.FC = () => {
       return [];
     }
   }, []);
+
+  //--- routeur du tab2 -------------------
+  useEffect(() => {
+    const load = async () => {
+      const savedParcelles = await loadParcellesFromStorage();
+      setParcelles(savedParcelles);
+      if (from === "tab1" && action === "croquis" && codeParcelle) {
+        const found = savedParcelles.find((p) => p.code === codeParcelle);
+        setCurrentParcelle(found || null);
+      } else {
+        setCurrentParcelle(null);
+        setFabOpen(false);
+      }
+    };
+    load();
+  }, [from, action, codeParcelle, loadParcellesFromStorage]);
   // ---- Style par type et zoom ----
 
   const styleByType = useCallback((feature: Feature): Style => {
@@ -313,6 +333,117 @@ const Tab2: React.FC = () => {
   }, []);
 
   /****Dessin du polygone ********/
+  const addPolygone = useCallback(async () => {
+    if (!currentParcelle) {
+      setToastMessage("Aucune parcelle sélectionnée !");
+      return;
+    }
+
+    if (drawPoints.length < 3) {
+      console.table(drawPoints);
+      setToastMessage("Un polygone a besoin d'au moins 3 points.");
+      return;
+    }
+
+    const first = drawPoints[0];
+    const last = drawPoints[drawPoints.length - 1];
+    const isClosed = first[0] === last[0] && first[1] === last[1];
+
+    const closedPoints = isClosed ? drawPoints : [...drawPoints, first];
+
+    const points = closedPoints.map(([x, y]) => {
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
+        number,
+        number
+      ];
+      return new PointC(tx, ty);
+    });
+
+    const newPolygone = new Polygone(points);
+
+    const updatedParcelle: Parcelle = {
+      ...currentParcelle,
+      polygone: [newPolygone],
+    };
+
+    const updatedParcelles = parcelles.map((p) =>
+      p.code === updatedParcelle.code ? updatedParcelle : p
+    );
+
+    setCurrentParcelle(updatedParcelle);
+    setParcelles(updatedParcelles);
+    setDrawPoints([]);
+    setFabOpen(false);
+
+    await Preferences.set({
+      key: "parcelles_data",
+      value: JSON.stringify(updatedParcelles),
+    });
+
+    // 🔹 Ajouter seulement ce nouveau polygone au layer existant
+    const vectorLayer = vectorLayerRef.current;
+    if (vectorLayer) {
+      const source = vectorLayer.getSource();
+
+      // Transformer points EPSG:29702 -> EPSG:3857
+      const featurePoints = points.map((p) =>
+        transform([p.x, p.y], "EPSG:29702", "EPSG:3857")
+      );
+
+      const polygon = new Polygon([featurePoints]);
+      const feature = new Feature(polygon);
+
+      feature.set("name", "parcelle"); // Indispensable pour styleByType
+      feature.set("code", updatedParcelle.code);
+
+      feature.setStyle(styleByType);
+      feature.set("code", updatedParcelle.code);
+      source.addFeature(feature);
+    }
+  }, [currentParcelle, drawPoints, parcelles, styleByType]);
+
+  // dessiner le polwgone du addPolygone
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const source = new VectorSource();
+
+    if (drawPoints.length > 2) {
+      const polygon = new Polygon([[...drawPoints, drawPoints[0]]]);
+      source.addFeature(new Feature(polygon));
+    }
+
+    drawPoints.forEach((pt) => {
+      source.addFeature(new Feature({ geometry: new Point(pt) }));
+    });
+
+    if (vectorLayerRef.current)
+      mapRef.current.removeLayer(vectorLayerRef.current);
+
+    const vectorLayer = new VectorLayer({
+      source,
+      style: (feature) => {
+        const geometry = feature.getGeometry();
+        if (geometry instanceof Point) {
+          return new Style({
+            image: new CircleStyle({
+              radius: 3,
+              fill: new Fill({ color: "#ff0000" }),
+              stroke: new Stroke({ color: "#fff", width: 1 }),
+            }),
+          });
+        } else if (geometry instanceof Polygon) {
+          return new Style({
+            stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
+            fill: new Fill({ color: "rgba(0, 0, 255, 0.1)" }),
+          });
+        }
+        return undefined;
+      },
+    });
+
+    vectorLayerRef.current = vectorLayer;
+    mapRef.current.addLayer(vectorLayer);
+  }, [drawPoints]);
 
   // ---- Load data depuis storage ----
   useEffect(() => {
@@ -391,19 +522,10 @@ const Tab2: React.FC = () => {
       updateWhileInteracting: false,
     });
     parcellesLayer.setZIndex(layerOrder.length + 1);
-
-    // Références
     parcellesSourceRef.current = parcellesSource;
     parcellesLayerRef.current = parcellesLayer;
 
-    // ✅ Ajouter Snap directement pour cette source
-    if (mapRef.current) {
-      mapRef.current.addInteraction(new Snap({ source: parcellesSource }));
-    }
-
     const layers: VectorLayer<any>[] = [parcellesLayer];
-
-    // Crée les couches dynamiques
     layerOrder.forEach((name, i) => {
       const src = new VectorSource();
       const layer = new VectorLayer({
@@ -414,18 +536,11 @@ const Tab2: React.FC = () => {
         updateWhileInteracting: false,
         visible: true,
       });
-
       geoJsonLayersRef.current[name] = layer;
       layers.push(layer);
-
-      // ✅ Snap sur chaque source
-      if (mapRef.current) {
-        mapRef.current.addInteraction(new Snap({ source: src }));
-      }
     });
-
     return layers;
-  }, [styleByType]);
+  }, [styleByType, layerOrder]);
 
   // --- 4. Hook principal ---
   useEffect(() => {
@@ -452,8 +567,8 @@ const Tab2: React.FC = () => {
     mapRef.current = map;
 
     // Crée les layers vecteurs
-    const lesVecteurs = createVectorLayers();
-    lesVecteurs.forEach((layer) => map.addLayer(layer));
+    const vectorLayers = createVectorLayers();
+    vectorLayers.forEach((layer) => map.addLayer(layer));
 
     // --- Gestion moveend pour coord projetées ---
     map.on("moveend", () => {
@@ -463,100 +578,7 @@ const Tab2: React.FC = () => {
     });
 
     setLoadingMap(false);
-  }, [createVectorLayers]);
-
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    const drawLayer = new VectorLayer({
-      source: drawSourceRef.current,
-      style: styleByType, // ton style global
-    });
-    drawLayer.setZIndex(9999);
-    mapRef.current.addLayer(drawLayer);
-
-    // --- Snap sur la source de dessin ---
-    mapRef.current.addInteraction(new Snap({ source: drawSourceRef.current }));
-
-    // --- Snap sur parcelles existantes ---
-    if (parcellesSourceRef.current) {
-      mapRef.current.addInteraction(
-        new Snap({ source: parcellesSourceRef.current })
-      );
-    }
-
-    // --- Snap sur les couches GeoJSON dynamiques ---
-    Object.values(geoJsonLayersRef.current).forEach((layer) => {
-      const src = layer.getSource();
-      if (src) {
-        mapRef.current?.addInteraction(new Snap({ source: src }));
-      }
-    });
   }, []);
-
-  // --- Snap et ajout d’un point au centre ---
-
-  useEffect(() => {
-    if (!mapRef.current || !fabOpen) return;
-
-    const map = mapRef.current;
-    const view = map.getView();
-
-    // --- Feature invisible au centre pour snap ---
-    const centerFeature = new Feature(new Point(view.getCenter()));
-    centerFeature.setStyle(new Style({})); // invisible
-    drawSourceRef.current!.addFeature(centerFeature);
-
-    // --- Snap automatique sur toutes tes sources ---
-    const snapInteractions: Snap[] = [];
-
-    const addSnap = (src?: VectorSource) => {
-      if (!src) return;
-      const snap = new Snap({ source: src, pixelTolerance: 25 });
-      map.addInteraction(snap);
-      snapInteractions.push(snap);
-    };
-
-    addSnap(drawSourceRef.current);
-    addSnap(parcellesSourceRef.current);
-    Object.values(geoJsonLayersRef.current).forEach((layer) =>
-      addSnap(layer.getSource())
-    );
-
-    // --- Met à jour la position du point central à chaque rendu ---
-    const postRenderListener = () => {
-      const center = view.getCenter();
-      if (center) {
-        (centerFeature.getGeometry() as Point).setCoordinates(center);
-      }
-    };
-    map.on("postrender", postRenderListener);
-
-    // --- Fonction pour ajouter un point réel à la position snapée ---
-    const addCenterPoint = () => {
-      const coords = (centerFeature.getGeometry() as Point).getCoordinates();
-      const newFeature = new Feature({
-        geometry: new Point(coords),
-        name: "parcelle",
-        code: currentParcelle?.code,
-      });
-      drawSourceRef.current!.addFeature(newFeature);
-    };
-
-  }, [fabOpen, currentParcelle]);
-
-  // --- Finaliser le polygone ---
-  const finalizePolygon = () => {
-    if (polygonPointsRef.current.length < 3) return; // minimum 3 points
-
-    const polyFeature = new Feature(new Polygon([polygonPointsRef.current]));
-    polyFeature.set("name", "parcelle");
-    drawSourceRef.current.addFeature(polyFeature);
-
-    // Clear temporaire
-    polygonPointsRef.current = [];
-    drawSourceRef.current.clear(); // si tu veux effacer les points temporaires
-  };
 
   // --- Hook séparé pour le fond MBTiles ---
   const addMbTilesLayer = useCallback(
@@ -612,7 +634,7 @@ const Tab2: React.FC = () => {
       }
     });
     console.log("✅ GeoJSON injecté dans les couches");
-  }, [geojsons]);
+  }, [geojsons, mapRef.current]);
 
   // ---- Draw Parcelles ----
   useEffect(() => {
@@ -1158,11 +1180,22 @@ const Tab2: React.FC = () => {
               <IonButton
                 className="glass-btn"
                 fill="clear"
-                onClick={finalizePolygon}
+                onClick={addPolygone}
               >
                 <IonIcon color="success" icon={checkmark} />
               </IonButton>
-              <IonButton className="glass-btn" fill="clear">
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                onClick={() => {
+                  const center = mapRef.current?.getView().getCenter();
+                  if (center)
+                    setDrawPoints((prev) => [
+                      ...prev,
+                      center as [number, number],
+                    ]);
+                }}
+              >
                 <IonIcon color="primary" icon={addOutline} />
               </IonButton>
               <IonButton
