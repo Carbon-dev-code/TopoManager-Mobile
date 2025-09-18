@@ -59,6 +59,7 @@ import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
+import { getAllParcelles } from "../model/base/DbSchema";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -169,18 +170,8 @@ const Tab2: React.FC = () => {
   });
 
   // ---- Load Parcelles & GeoJSON ----
-  const loadParcellesFromStorage = useCallback(async (): Promise<
-    Parcelle[]
-  > => {
-    const result = await Preferences.get({ key: STORAGE_KEY });
-    if (!result.value) return [];
-    try {
-      const parsed = JSON.parse(result.value);
-      if (Array.isArray(parsed)) return parsed;
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
+  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
+    return await getAllParcelles();
   }, []);
 
   const loadGeoJsonFromStorage = useCallback(async (): Promise<any[]> => {
@@ -1049,8 +1040,8 @@ const Tab2: React.FC = () => {
                           gpsAccuracy < 10
                             ? "green"
                             : gpsAccuracy < 50
-                            ? "orange"
-                            : "red",
+                              ? "orange"
+                              : "red",
                       }}
                     >
                       Précision GPS: {gpsAccuracy.toFixed(1)} m
