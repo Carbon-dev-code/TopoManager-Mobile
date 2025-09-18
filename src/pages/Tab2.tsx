@@ -13,7 +13,6 @@ import {
   IonLoading,
   useIonViewDidEnter,
   IonItem,
-  IonList,
   IonCheckbox,
   IonLabel,
 } from "@ionic/react";
@@ -66,17 +65,12 @@ import { useDb } from "../model/base/DbContextType";
 import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
 import Cube from "../components/utils/Cube";
 
-// ---- CRS Madagascar ----
 proj4.defs(
   "EPSG:29702",
   "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs"
 );
 register(proj4);
-
-// ---- Constantes ----
-const STORAGE_KEY = "parcelles_data";
 const STORAGE_KEY_GEOJSON = "plofData";
-
 const layerOrder = [
   "region",
   "district",
@@ -99,7 +93,7 @@ const Tab2: React.FC = () => {
   const mapRef = useRef<Map | null>(null);
   const mapElement = useRef<HTMLDivElement>(null);
   const { db, loadMBTiles } = useDb();
-  const [loadingMap, setLoadingMap] = useState(true); // état pour loader
+  const [loadingMap, setLoadingMap] = useState(true);
   const [showLocalTiles, setShowLocalTiles] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const localLayerRef = useRef<TileLayer | null>(null);
@@ -109,35 +103,26 @@ const Tab2: React.FC = () => {
   const styleCache = useRef<Record<string, Style>>({});
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
-    number[] | null
-  >(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const [geojsons, setGeojsons] = useState<any[]>([]);
   const intervalDuration = 10000;
-  //---Modal/Fab----------
   const [showCard, setShowCard] = useState(true);
   const [fabOpen, setFabOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showGPS, setShowGPS] = useState(false);
-  //---------Variable----------/
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
-  //---Routeur--------
   const query = useQuery();
   const from = query.get("from");
   const action = query.get("action");
   const codeParcelle = query.get("code");
-  //Croquis polygone
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
-  //message de retour var
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  // GPS
-  const [tracking, setTracking] = useState(false); // état actif / inactif
+  const [tracking, setTracking] = useState(false);
   const watchId = useRef<string | number | null>(null);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
-  const [gpsStatus, setGpsStatus] = useState<number>(0); // 0=arrêt,1=en cours,2=ok,3=erreur
-  // --- 1. State de visibilité des couches ---
+  const [gpsStatus, setGpsStatus] = useState<number>(0);
   const [layerVisibility, setLayerVisibility] = useState({
     fond: true,
     ipss: true,
@@ -148,14 +133,11 @@ const Tab2: React.FC = () => {
     certificat: true,
   });
 
-  //load
   useIonViewDidEnter(() => {
     const loadDataOnEnter = async () => {
       try {
-        setLoadingMap(true); // loader global
-
+        setLoadingMap(true);
         setGeojsons(await loadGeoJsonFromStorage());
-
         const loadedParcelles = await loadParcellesFromStorage();
         setParcelles(loadedParcelles);
 
@@ -181,7 +163,6 @@ const Tab2: React.FC = () => {
     loadDataOnEnter();
   });
 
-  // ---- Load Parcelles & GeoJSON ----
   const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     return await getAllParcelles();
   }, []);
@@ -209,7 +190,6 @@ const Tab2: React.FC = () => {
     }
   }, []);
 
-  //--- routeur du tab2 -------------------
   useEffect(() => {
     const load = async () => {
       const savedParcelles = await loadParcellesFromStorage();
@@ -224,42 +204,23 @@ const Tab2: React.FC = () => {
     };
     load();
   }, [from, action, codeParcelle, loadParcellesFromStorage]);
-  // ---- Style par type et zoom ----
 
-  const styleByType = useCallback((feature: Feature): Style => {
-    if (!mapRef.current) return new Style();
-    const zoom = mapRef.current.getView().getZoom() || 0;
+  const getLabelText = (feature: Feature, type: string | undefined): string => {
+    if (!type) return "";
+    
+    const labelMap: Record<string, string> = {
+      requisition: feature.get("num_requisition") || "",
+      certificat: feature.get("numerocertificat") || "",
+      ipss: feature.get("code_parcelle") || "",
+      demandecf: feature.get("numdemande") || "",
+      titre: feature.get("titres_req") || "",
+      parcelle: feature.get("code") || "",
+    };
+    
+    return labelMap[type] || feature.get("name") || "";
+  };
 
-    const type = feature.get("name")?.toLowerCase();
-    let labelText = "";
-    switch (type) {
-      case "requisition":
-        labelText = feature.get("num_requisition") || "";
-        break;
-      case "certificat":
-        labelText = feature.get("numerocertificat") || "";
-        break;
-      case "ipss":
-        labelText = feature.get("code_parcelle") || "";
-        break;
-      case "demandecf":
-        labelText = feature.get("numdemande") || "";
-        break;
-      case "titre":
-        labelText = feature.get("titres_req") || "";
-        break;
-      case "parcelle":
-        labelText = feature.get("code") || "";
-        break; // Parcelles custom
-      default:
-        labelText = feature.get("name") || "";
-    }
-
-    if (zoom < 15) labelText = "";
-
-    const cacheKey = `${type}_${labelText}_${zoom}`;
-    if (styleCache.current[cacheKey]) return styleCache.current[cacheKey];
-
+  const createStyle = (type: string | undefined, labelText: string, zoom: number): Style => {
     const styleMap: Record<string, Style> = {
       ipss: new Style({
         stroke: new Stroke({ color: "rgba(5, 59, 255,1)", width: 1.5 }),
@@ -311,31 +272,41 @@ const Tab2: React.FC = () => {
       }),
     };
 
-    const baseStyle =
-      styleMap[type]?.clone() ||
-      new Style({
-        stroke: new Stroke({ color: "#7f7f7f", width: 1 }),
-        fill: new Fill({ color: "rgba(127,127,127,0.2)" }),
-      });
+    const baseStyle = styleMap[type]?.clone() || new Style({
+      stroke: new Stroke({ color: "#7f7f7f", width: 1.5 }),
+      fill: new Fill({ color: "rgba(127,127,127,0.2)" }),
+    });
 
-    if (labelText) {
+    if (labelText && zoom > 10) {
       baseStyle.setText(
         new Text({
           text: labelText,
-          font: "20px Arial",
+          font: "16px Arial",
           fill: new Fill({ color: "#000" }),
           stroke: new Stroke({ color: "#fff", width: 3 }),
-          overflow: true,
-          placement: "point",
+          overflow: false,
+          placement: "polygon"
         })
       );
     }
 
-    styleCache.current[cacheKey] = baseStyle;
     return baseStyle;
+  };
+
+  const styleByType = useCallback((feature: Feature): Style => {
+    if (!mapRef.current) return new Style();
+    const zoom = mapRef.current.getView().getZoom() || 0;
+
+    const type = feature.get("name")?.toLowerCase();
+    const labelText = getLabelText(feature, type);
+    const cacheKey = `${type}_${labelText}_${zoom}`;
+    
+    if (styleCache.current[cacheKey]) return styleCache.current[cacheKey];
+
+    styleCache.current[cacheKey] = createStyle(type, labelText, zoom);
+    return styleCache.current[cacheKey];
   }, []);
 
-  /****Dessin du polygone ********/
   const addPolygone = useCallback(async () => {
     if (!currentParcelle) {
       setToastMessage("Aucune parcelle sélectionnée !");
@@ -343,7 +314,6 @@ const Tab2: React.FC = () => {
     }
 
     if (drawPoints.length < 3) {
-      console.table(drawPoints);
       setToastMessage("Un polygone a besoin d'au moins 3 points.");
       return;
     }
@@ -355,10 +325,7 @@ const Tab2: React.FC = () => {
     const closedPoints = isClosed ? drawPoints : [...drawPoints, first];
 
     const points = closedPoints.map(([x, y]) => {
-      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
-        number,
-        number
-      ];
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number, number];
       return new PointC(tx, ty);
     });
 
@@ -380,12 +347,9 @@ const Tab2: React.FC = () => {
 
     await insertParcelle(updatedParcelle);
 
-    // 🔹 Ajouter seulement ce nouveau polygone au layer existant
     const vectorLayer = vectorLayerRef.current;
     if (vectorLayer) {
       const source = vectorLayer.getSource();
-
-      // Transformer points EPSG:29702 -> EPSG:3857
       const featurePoints = points.map((p) =>
         transform([p.x, p.y], "EPSG:29702", "EPSG:3857")
       );
@@ -393,16 +357,13 @@ const Tab2: React.FC = () => {
       const polygon = new Polygon([featurePoints]);
       const feature = new Feature(polygon);
 
-      feature.set("name", "parcelle"); // Indispensable pour styleByType
+      feature.set("name", "parcelle");
       feature.set("code", updatedParcelle.code);
-
       feature.setStyle(styleByType);
-      feature.set("code", updatedParcelle.code);
       source.addFeature(feature);
     }
   }, [currentParcelle, drawPoints, parcelles, styleByType]);
 
-  // dessiner le polwgone du addPolygone
   useEffect(() => {
     if (!mapRef.current) return;
     const source = new VectorSource();
@@ -445,7 +406,6 @@ const Tab2: React.FC = () => {
     mapRef.current.addLayer(vectorLayer);
   }, [drawPoints]);
 
-  // ---- Snap crosshair vers vertex ----
   useEffect(() => {
     if (!mapRef.current || !fabOpen) return;
 
@@ -468,7 +428,6 @@ const Tab2: React.FC = () => {
       let snapPoint: number[] | null = null;
       let minDistPx = Infinity;
 
-      // --- Parcelles Layer ---
       const parcellesLayer = parcellesSourceRef.current;
       if (parcellesLayer && layerVisibility.parcelle) {
         parcellesLayer.getFeatures().forEach((f) => {
@@ -495,9 +454,8 @@ const Tab2: React.FC = () => {
         });
       }
 
-      // --- GeoJSON Layers ---
       Object.entries(geoJsonLayersRef.current).forEach(([name, layer]) => {
-        if (!layerVisibility[name as keyof typeof layerVisibility]) return; // ✅ skip if hidden
+        if (!layerVisibility[name as keyof typeof layerVisibility]) return;
 
         layer.getSource()?.getFeatures().forEach((f) => {
           const geom = f.getGeometry();
@@ -532,23 +490,18 @@ const Tab2: React.FC = () => {
     return () => map.un("moveend", snapToClosestFeature);
   }, [fabOpen, geojsons, layerVisibility]);
 
-  // ---- Load data depuis storage ----
   useEffect(() => {
     const loadData = async () => {
       setParcelles(await loadParcellesFromStorage());
-      setGeojsons(await loadGeoJsonFromStorage()); // 👉 stocke seulement
+      setGeojsons(await loadGeoJsonFromStorage());
     };
     loadData();
   }, [loadParcellesFromStorage, loadGeoJsonFromStorage]);
 
-  // ---- Init Map ----
-  // --- 1. Lire bounds depuis metadata ---
   const readBounds = useCallback((db: any): number[] => {
     let bounds: number[] = [];
     try {
-      const stmt = db.prepare(
-        "SELECT value FROM metadata WHERE name = 'bounds'"
-      );
+      const stmt = db.prepare("SELECT value FROM metadata WHERE name = 'bounds'");
       if (stmt.step()) {
         const value = stmt.getAsObject().value as string;
         const parts = value.split(",").map(parseFloat);
@@ -564,7 +517,6 @@ const Tab2: React.FC = () => {
     return bounds;
   }, []);
 
-  // --- 2. Création source MBTiles avec cache ---
   const createMbTilesSource = useCallback(
     (db: any) =>
       new XYZ({
@@ -572,7 +524,7 @@ const Tab2: React.FC = () => {
         minZoom: 0,
         maxZoom: 18,
         tileUrlFunction: (tileCoord) =>
-          `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`, // fake URL
+          `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`,
         tileLoadFunction: (imageTile, src) => {
           const tileCoord = imageTile.getTileCoord();
           if (!tileCoord) return;
@@ -599,7 +551,6 @@ const Tab2: React.FC = () => {
     []
   );
 
-  // --- 3. Création des couches vecteurs ---
   const createVectorLayers = useCallback(() => {
     const parcellesSource = new VectorSource();
     const parcellesLayer = new VectorLayer({
@@ -612,7 +563,6 @@ const Tab2: React.FC = () => {
     parcellesSourceRef.current = parcellesSource;
     parcellesLayer.set("name", "parcelle");
     parcellesLayerRef.current = parcellesLayer;
-
 
     const layers: VectorLayer<any>[] = [parcellesLayer];
     layerOrder.forEach((name, i) => {
@@ -633,16 +583,15 @@ const Tab2: React.FC = () => {
     return layers;
   }, [styleByType, layerOrder]);
 
-  // --- 4. Hook principal ---
   useEffect(() => {
-    if (!mapElement.current || mapRef.current) return; // On initialise la carte une seule fois
+    if (!mapElement.current || mapRef.current) return;
 
     setLoadingMap(true);
 
     const map = new Map({
       target: mapElement.current,
       view: new View({
-        center: fromLonLat([46.8, -18.8]), // Madagascar
+        center: fromLonLat([46.8, -18.8]),
         zoom: 6,
         maxZoom: 28,
       }),
@@ -653,15 +602,16 @@ const Tab2: React.FC = () => {
           className: "ol-rotate ol-custom-bottom-left",
         }),
       ],
+      loadTilesWhileAnimating: false,
+      loadTilesWhileInteracting: false,
+      moveTolerance: 5,
     });
 
     mapRef.current = map;
 
-    // Crée les layers vecteurs
     const vectorLayers = createVectorLayers();
     vectorLayers.forEach((layer) => map.addLayer(layer));
 
-    // --- Gestion moveend pour coord projetées ---
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center)
@@ -671,22 +621,19 @@ const Tab2: React.FC = () => {
     setLoadingMap(false);
   }, []);
 
-  // --- Hook séparé pour le fond MBTiles ---
   const addMbTilesLayer = useCallback(
     async (database: Database) => {
       if (!mapRef.current || !database) return;
-      setLoadingMap(true); // loader ON
+      setLoadingMap(true);
       try {
         const bounds = readBounds(database);
         const mbTilesSource = createMbTilesSource(database);
         const mbTilesLayer = new TileLayer({ source: mbTilesSource });
-        // 🔹 AJOUT DU NAME
         mbTilesLayer.set("name", "fond");
         localLayerRef.current = mbTilesLayer;
         mapRef.current.addLayer(mbTilesLayer);
         mbTilesSource.refresh();
 
-        // Recentrer la vue sur le bounds du fond
         mapRef.current
           .getView()
           .setCenter(
@@ -696,26 +643,21 @@ const Tab2: React.FC = () => {
             ])
           );
         mapRef.current.getView().setZoom(11);
-
-        console.log("✅ Fond MBTiles ajouté dynamiquement");
       } catch (err) {
         console.error("Erreur ajout MBTiles:", err);
       } finally {
-        setLoadingMap(false); // loader OFF
+        setLoadingMap(false);
       }
     },
     [readBounds, createMbTilesSource]
   );
 
-  // ---- Injecter les GeoJSON dans les layers quand map prête ----
   useEffect(() => {
     if (!mapRef.current || geojsons.length === 0) return;
     const format = new GeoJSON();
-    // Nettoyage des anciennes features
     Object.keys(geoJsonLayersRef.current).forEach((n) =>
       geoJsonLayersRef.current[n].getSource().clear()
     );
-    // Ajout des nouvelles features
     geojsons.forEach((g) => {
       const fts = format.readFeatures(g, { featureProjection: "EPSG:3857" });
       if (fts.length > 0) {
@@ -725,10 +667,8 @@ const Tab2: React.FC = () => {
         }
       }
     });
-    console.log("✅ GeoJSON injecté dans les couches");
   }, [geojsons, mapRef.current]);
 
-  // ---- Draw Parcelles ----
   useEffect(() => {
     if (!parcellesSourceRef.current) return;
     parcellesSourceRef.current.clear();
@@ -737,10 +677,7 @@ const Tab2: React.FC = () => {
       p.polygone?.forEach((pg) => {
         const pts = pg.points.map(
           (pt) =>
-            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857") as [
-              number,
-              number
-            ]
+            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857") as [number, number]
         );
         if (pts.length > 2) {
           const f = new Feature(new Polygon([pts]));
@@ -753,15 +690,11 @@ const Tab2: React.FC = () => {
     parcellesSourceRef.current.addFeatures(features);
   }, [parcelles]);
 
-  // --- 2. Fonction pour toggle une couche ---
   const toggleLayer = (keys: (keyof typeof layerVisibility) | (keyof typeof layerVisibility)[]) => {
     const keysArray = Array.isArray(keys) ? keys : [keys];
+    const newVisibility = !layerVisibility[keysArray[0]];
 
     setLayerVisibility(prev => {
-      // Déterminer la nouvelle visibilité à partir du premier key
-      const newVisibility = !prev[keysArray[0]];
-
-      // Mettre à jour les layers sur la carte
       mapRef.current?.getLayers().forEach((layer: any) => {
         const name = layer.get("name");
         if (name && keysArray.includes(name)) {
@@ -769,7 +702,6 @@ const Tab2: React.FC = () => {
         }
       });
 
-      // Mettre à jour l'état
       const updated = { ...prev };
       keysArray.forEach(k => {
         updated[k] = newVisibility;
@@ -778,7 +710,6 @@ const Tab2: React.FC = () => {
     });
   };
 
-  // --- seach zoom Coords
   const gpsCard = useCallback(() => setShowGPS((prev) => !prev), []);
 
   const searchGPS = useCallback(() => {
@@ -795,7 +726,6 @@ const Tab2: React.FC = () => {
     const map = mapRef.current;
     if (!map) return;
 
-    // Centrer et zoomer
     const view = map.getView();
     view.animate({
       center: coords3857,
@@ -803,7 +733,6 @@ const Tab2: React.FC = () => {
       duration: 1000,
     });
 
-    // Création du point vert
     const marker = new Feature({
       geometry: new Point(coords3857),
     });
@@ -826,19 +755,18 @@ const Tab2: React.FC = () => {
       });
 
       let visible = true;
-      marker.setStyle(markerStyle1); // Style initial
+      marker.setStyle(markerStyle1);
 
       const interval = setInterval(() => {
         visible = !visible;
         marker.setStyle(visible ? markerStyle1 : markerStyle2);
-      }, 500); // Changement toutes les 500ms
+      }, 500);
 
-      // Stop scintillement après 1 minute (60000ms)
       setTimeout(() => {
         clearInterval(interval);
       }, intervalDuration);
     }
-    // Source et couche temporaire
+
     const vectorSource = new VectorSource({
       features: [marker],
     });
@@ -846,25 +774,18 @@ const Tab2: React.FC = () => {
       source: vectorSource,
     });
     map.addLayer(markerLayer);
-    // Supprimer après 30 secondes
     setTimeout(() => {
       map.removeLayer(markerLayer);
-    }, intervalDuration); // 30 s
+    }, intervalDuration);
   }, [fabOpen, latitude, longitude]);
 
-  // recherche function, detail
   const stateSearch = useCallback(() => {
-    if (showSearch) {
-      setShowSearch(false);
-    } else {
-      setShowSearch(true);
-    }
-  }, [showSearch]);
+    setShowSearch(prev => !prev);
+  }, []);
 
   const blinkFeature = useCallback((feature: Feature) => {
     if (!mapRef.current) return;
 
-    // Supprimer ancien highlight
     if (highlightLayerRef.current) {
       mapRef.current.removeLayer(highlightLayerRef.current);
     }
@@ -896,13 +817,11 @@ const Tab2: React.FC = () => {
     mapRef.current.addLayer(vectorLayer);
     highlightLayerRef.current = vectorLayer;
 
-    // Intervalle clignotant
     const blinkInterval = setInterval(() => {
       visible = !visible;
       vectorLayer.setStyle(highlightStyle(visible));
-    }, 500); // 500ms ON/OFF
+    }, 500);
 
-    // Stop après 5 secondes
     setTimeout(() => {
       clearInterval(blinkInterval);
       if (mapRef.current && highlightLayerRef.current) {
@@ -919,7 +838,6 @@ const Tab2: React.FC = () => {
       const term = searchTerm.trim().toLowerCase();
       if (!term) return;
 
-      // 🔍 Parcourir toutes les couches GeoJSON
       const geoJsonLayers = Object.values(geoJsonLayersRef.current);
       let foundFeature: Feature | null = null;
 
@@ -945,7 +863,6 @@ const Tab2: React.FC = () => {
         if (foundFeature) break;
       }
 
-      // 🔍 Si non trouvé, essayer dans les parcelles
       if (!foundFeature && parcelles.length > 0) {
         parcelles.forEach((p) => {
           if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
@@ -958,7 +875,6 @@ const Tab2: React.FC = () => {
         });
       }
 
-      // 📌 Zoomer si trouvé
       if (foundFeature) {
         const extent = foundFeature.getGeometry()?.getExtent();
         if (extent) {
@@ -974,21 +890,19 @@ const Tab2: React.FC = () => {
     [blinkFeature, parcelles]
   );
 
-  // --- Toggle GPS Tracking ---
   const toggleTracking = async () => {
     if (!tracking) {
       try {
-        setGpsStatus(1); // acquisition en cours
+        setGpsStatus(1);
 
         if (Capacitor.getPlatform() === "web") {
-          // --- Web ---
           watchId.current = navigator.geolocation.watchPosition(
             (pos) => {
               const lon = pos.coords.longitude;
               const lat = pos.coords.latitude;
 
               setGpsAccuracy(pos.coords.accuracy);
-              setGpsStatus(2); // acquis ✅
+              setGpsStatus(2);
 
               if (mapRef.current) {
                 mapRef.current.getView().animate({
@@ -1002,22 +916,19 @@ const Tab2: React.FC = () => {
               console.error("Erreur GPS Web:", err);
 
               if (err.code === 2) {
-                // POSITION_UNAVAILABLE → garder en acquisition
                 setGpsStatus(1);
               } else {
-                // permission refusée ou autre
                 setGpsStatus(3);
                 setToastMessage("Erreur GPS : " + err.message);
               }
             },
             {
               enableHighAccuracy: true,
-              timeout: 10000, // 10s max
+              timeout: 10000,
               maximumAge: 0,
             }
           );
         } else {
-          // --- Mobile natif Capacitor ---
           const perm = await Geolocation.checkPermissions();
           if (perm.location !== "granted") {
             const request = await Geolocation.requestPermissions();
@@ -1031,14 +942,13 @@ const Tab2: React.FC = () => {
           watchId.current = await Geolocation.watchPosition(
             {
               enableHighAccuracy: true,
-              timeout: 10000, // 10s max
+              timeout: 10000,
               maximumAge: 0,
             },
             (pos, err) => {
               if (err) {
                 console.error("Erreur GPS mobile:", err);
 
-                // POSITION_UNAVAILABLE → rester en acquisition
                 if (err.code === 2) {
                   setGpsStatus(1);
                 } else {
@@ -1053,7 +963,7 @@ const Tab2: React.FC = () => {
                 const lat = pos.coords.latitude;
 
                 setGpsAccuracy(pos.coords.accuracy);
-                setGpsStatus(2); // acquis ✅
+                setGpsStatus(2);
 
                 mapRef.current.getView().animate({
                   center: fromLonLat([lon, lat]),
@@ -1072,7 +982,6 @@ const Tab2: React.FC = () => {
         setGpsStatus(3);
       }
     } else {
-      // --- Stop tracking ---
       if (watchId.current) {
         if (Capacitor.getPlatform() === "web") {
           navigator.geolocation.clearWatch(watchId.current as number);
@@ -1082,15 +991,12 @@ const Tab2: React.FC = () => {
         watchId.current = null;
       }
 
-      // reset states
       setGpsAccuracy(null);
       setGpsStatus(0);
       setTracking(false);
     }
   };
 
-
-  // --- Cleanup auto si le composant est démonté ---
   useEffect(() => {
     return () => {
       if (watchId.current) {
@@ -1134,13 +1040,11 @@ const Tab2: React.FC = () => {
 
             {centerCoordsProjected && (
               <div className="coord-display">
-                {/* Coordonnées */}
                 <div>
                   X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
                   {centerCoordsProjected[1].toFixed(6)}
                 </div>
 
-                {/* Affichage en fonction du gpsStatus */}
                 <div className="gps-status">
                   {gpsStatus === 1 && (
                     <div className="gps-loader">
@@ -1388,7 +1292,6 @@ const Tab2: React.FC = () => {
                 <Cube color="chartreuse" />
                 <IonLabel>Requisition</IonLabel>
               </IonItem>
-
 
               <IonItem className="glass-item" lines="none">
                 <IonCheckbox
