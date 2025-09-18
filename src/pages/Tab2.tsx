@@ -148,13 +148,6 @@ const Tab2: React.FC = () => {
         setGeojsons(geojsonData);
         setParcelles(savedParcelles);
 
-        if (from === "tab1" && action === "croquis" && codeParcelle) {
-          const found = savedParcelles.find((p) => p.code === codeParcelle);
-          setCurrentParcelle(found || null);
-        } else {
-          setCurrentParcelle(null);
-          setFabOpen(false);
-        }
         const database = await loadMBTiles();
         if (!localLayerRef.current) {
           await addMbTilesLayer(database);
@@ -166,7 +159,18 @@ const Tab2: React.FC = () => {
       }
     };
 
+    const tabVerification = () => {
+      if (from === "tab1" && action === "croquis" && codeParcelle) {
+        const found = parcelles.find((p) => p.code === codeParcelle);
+        setCurrentParcelle(found || null);
+      } else {
+        setCurrentParcelle(null);
+        setFabOpen(false);
+      }
+    }
+
     loadDataOnEnter();
+    tabVerification();
   });
 
   // ---- Load Parcelles & GeoJSON ----
