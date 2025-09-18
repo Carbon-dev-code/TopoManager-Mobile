@@ -153,7 +153,6 @@
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
 }
 
-/* Responsive : réduire taille sur mobile */
 @media (max-width: 480px) {
   .coord-display {
     font-size: 12px;
@@ -207,15 +206,11 @@
     font-size: 0.85rem;
     max-width: 60%;
     margin: 0 auto;
-    /* centre l'élément horizontalement */
     transform: none;
-    /* retire le translateX */
     text-align: center;
-    /* au cas où */
   }
 }
 
-/* dans Tab2.css */
 .glass-card-bottom {
   position: absolute;
   top: 70px;
