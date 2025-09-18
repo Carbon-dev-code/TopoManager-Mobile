@@ -64,6 +64,7 @@ import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
 import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
+import Cube from "../components/utils/Cube";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -273,8 +274,8 @@ const Tab2: React.FC = () => {
         fill: new Fill({ color: "rgba(148,52,211,0.3)" }),
       }),
       requisition: new Style({
-        stroke: new Stroke({ color: "rgba(148,52,211,1)", width: 1.5 }),
-        fill: new Fill({ color: "rgba(148,52,211,0.3)" }),
+        stroke: new Stroke({ color: "rgba(76, 211, 52, 1)", width: 1.5 }),
+        fill: new Fill({ color: "rgba(76, 211, 52,0.3)" }),
       }),
       titre: new Style({
         stroke: new Stroke({ color: "rgba(255,0,0,1)", width: 1.5 }),
@@ -1358,55 +1359,55 @@ const Tab2: React.FC = () => {
           </IonButton>
 
           {!showLocalTiles && (
-            <div className="glass">
-              <div className="d-flex">
-                <IonCheckbox
-                  checked={layerVisibility.fond}
-                  onIonChange={() => toggleLayer("fond")}
-                  className="me-2"
-                />
-                <IonLabel>Fond image</IonLabel>
-              </div>
-              <div className="d-flex border-bottom pb-2">
+            <div className="glass-panel">
+              <h4 className="glass-title">Couches visibles</h4>
+              <IonLabel className="glass-item border-bottom">
                 <IonCheckbox
                   checked={layerVisibility.ipss && layerVisibility.parcelle}
                   onIonChange={() => toggleLayer(["ipss", "parcelle"])}
-                  className="me-2"
                 />
-                <IonLabel>IPSS</IonLabel>
-              </div>
-              <div className="d-flex">
+                <Cube color="blue" /> IPSS
+              </IonLabel>
+
+              <IonLabel className="glass-item">
                 <IonCheckbox
                   checked={layerVisibility.titre}
                   onIonChange={() => toggleLayer("titre")}
-                  className="me-2"
                 />
-                <IonLabel>Titre</IonLabel>
-              </div>
-              <div className="d-flex border-bottom pb-2">
+                <Cube color="red" /> Titre
+              </IonLabel>
+
+              <IonLabel className="glass-item border-bottom">
                 <IonCheckbox
                   checked={layerVisibility.requisition}
                   onIonChange={() => toggleLayer("requisition")}
-                  className="me-2"
                 />
-                <IonLabel>Requisition</IonLabel>
-              </div>
-              <div className="d-flex">
+                <Cube color="chartreuse" /> Requisition
+              </IonLabel>
+
+              <IonLabel className="glass-item">
                 <IonCheckbox
                   checked={layerVisibility.demandecf}
                   onIonChange={() => toggleLayer("demandecf")}
-                  className="me-2"
                 />
-                <IonLabel>Demande CF</IonLabel>
-              </div>
-              <div className="d-flex">
+                <Cube color="purple" /> Demande CF
+              </IonLabel>
+
+              <IonLabel className="glass-item border-bottom">
                 <IonCheckbox
                   checked={layerVisibility.certificat}
                   onIonChange={() => toggleLayer("certificat")}
-                  className="me-2"
                 />
-                <IonLabel>Karatany</IonLabel>
-              </div>
+                <Cube color="yellow" /> Karatany
+              </IonLabel>
+
+              <IonLabel className="glass-item">
+                <IonCheckbox
+                  checked={layerVisibility.fond}
+                  onIonChange={() => toggleLayer("fond")}
+                />
+                Fond image
+              </IonLabel>
             </div>
           )}
 

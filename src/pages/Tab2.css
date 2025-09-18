@@ -34,24 +34,53 @@
   justify-content: center;
 }
 
-.glass {
-  width: max-content;
-  padding: 12px 16px; /* respiration interne */
-  background: rgba(255, 255, 255, 0.25); /* plus léger */
-  backdrop-filter: blur(15px) saturate(180%);
-  -webkit-backdrop-filter: blur(15px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+/* Glass panel global */
+.glass-panel {
   position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 8px; /* espace entre items */
-}
-
-.glass {
   bottom: 0px;
   right: 50px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 180px;
+  max-width: 240px;
+  font-family: 'Inter', sans-serif;
+}
+
+.glass-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  margin: 5px;
+  text-align: center;
+}
+
+.glass-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0 5px 0;
+  color: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+
+.glass-item.border-bottom {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Ajuste checkbox */
+ion-checkbox {
+  --background: #ffffff50; /* couleur fond non cochée */
+  --background-checked: #4fc3f7; /* couleur fond cochée */
+  --border-radius: 6px;
 }
 
 .search-glass {

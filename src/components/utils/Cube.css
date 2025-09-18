@@ -1,0 +1,8 @@
+.cube-custom {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  margin-right: 8px; /* espace entre cube et label */
+  flex-shrink: 0; /* ne pas réduire en taille dans flex */
+}
+
