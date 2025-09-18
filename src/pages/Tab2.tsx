@@ -155,9 +155,9 @@ const Tab2: React.FC = () => {
           setCurrentParcelle(null);
           setFabOpen(false);
         }
-        const database = await loadMBTiles(); // ⚡ retourne toujours DB
+        const database = await loadMBTiles();
         if (!localLayerRef.current) {
-          await addMbTilesLayer(database); // ajoute seulement une fois
+          await addMbTilesLayer(database);
         }
       } catch (err) {
         console.error("Erreur chargement Tab2 :", err);
@@ -1063,6 +1063,21 @@ const Tab2: React.FC = () => {
       setTracking(false);
     }
   };
+
+  const stopTracking = async () => {
+    if (watchId.current) {
+      if (Capacitor.getPlatform() === "web") {
+        navigator.geolocation.clearWatch(watchId.current as number);
+      } else {
+        await Geolocation.clearWatch({ id: watchId.current as string });
+      }
+      watchId.current = null;
+    }
+    setGpsAccuracy(null);
+    setGpsStatus(0);
+    setTracking(false);
+  };
+
 
   // --- Cleanup auto si le composant est démonté ---
   useEffect(() => {
