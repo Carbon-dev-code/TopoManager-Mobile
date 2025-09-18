@@ -34,6 +34,26 @@
   justify-content: center;
 }
 
+.glass {
+  width: max-content;
+  padding: 12px 16px; /* respiration interne */
+  background: rgba(255, 255, 255, 0.25); /* plus léger */
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* espace entre items */
+}
+
+.glass {
+  bottom: 0px;
+  right: 50px;
+}
+
 .search-glass {
   padding: 0px 20px 0px 20px;
   justify-content: center;

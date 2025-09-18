@@ -12,6 +12,10 @@ import {
   IonTitle,
   IonLoading,
   useIonViewDidEnter,
+  IonItem,
+  IonList,
+  IonCheckbox,
+  IonLabel,
 } from "@ionic/react";
 import "./Tab2.css";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -132,6 +136,16 @@ const Tab2: React.FC = () => {
   const watchId = useRef<string | number | null>(null);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsStatus, setGpsStatus] = useState<number>(0); // 0=arrêt,1=en cours,2=ok,3=erreur
+  // --- 1. State de visibilité des couches ---
+  const [layerVisibility, setLayerVisibility] = useState({
+    fond: true,
+    ipss: true,
+    parcelle: true,
+    titre: true,
+    requisition: true,
+    demandecf: true,
+    certificat: true,
+  });
 
   //load
   useIonViewDidEnter(() => {
@@ -139,14 +153,18 @@ const Tab2: React.FC = () => {
       try {
         setLoadingMap(true); // loader global
 
-        // 1️⃣ Parcelles & GeoJSON
-        const [geojsonData, savedParcelles] = await Promise.all([
-          loadGeoJsonFromStorage(),
-          loadParcellesFromStorage(),
-        ]);
+        setGeojsons(await loadGeoJsonFromStorage());
 
-        setGeojsons(geojsonData);
-        setParcelles(savedParcelles);
+        const loadedParcelles = await loadParcellesFromStorage();
+        setParcelles(loadedParcelles);
+
+        if (from === "tab1" && action === "croquis" && codeParcelle) {
+          const found = loadedParcelles.find(p => p.code === codeParcelle);
+          setCurrentParcelle(found || null);
+        } else {
+          setCurrentParcelle(null);
+          setFabOpen(false);
+        }
 
         const database = await loadMBTiles();
         if (!localLayerRef.current) {
@@ -159,18 +177,7 @@ const Tab2: React.FC = () => {
       }
     };
 
-    const tabVerification = () => {
-      if (from === "tab1" && action === "croquis" && codeParcelle) {
-        const found = parcelles.find((p) => p.code === codeParcelle);
-        setCurrentParcelle(found || null);
-      } else {
-        setCurrentParcelle(null);
-        setFabOpen(false);
-      }
-    }
-
     loadDataOnEnter();
-    tabVerification();
   });
 
   // ---- Load Parcelles & GeoJSON ----
@@ -437,7 +444,6 @@ const Tab2: React.FC = () => {
     mapRef.current.addLayer(vectorLayer);
   }, [drawPoints]);
 
-  //***SNAP */
   // ---- Snap crosshair vers vertex ----
   useEffect(() => {
     if (!mapRef.current || !fabOpen) return;
@@ -451,7 +457,6 @@ const Tab2: React.FC = () => {
       const styles = getComputedStyle(crosshairEl);
       const width = parseFloat(styles.width);
       const height = parseFloat(styles.height);
-      // On prend la moitié du plus grand côté pour rayon
       crosshairRadiusPx = Math.max(width, height) / 2;
     }
 
@@ -462,37 +467,37 @@ const Tab2: React.FC = () => {
       let snapPoint: number[] | null = null;
       let minDistPx = Infinity;
 
-      // Parcelles
-      parcellesSourceRef.current?.getFeatures().forEach((f) => {
-        const geom = f.getGeometry();
-        if (!geom) return;
+      // --- Parcelles Layer ---
+      const parcellesLayer = parcellesSourceRef.current;
+      if (parcellesLayer && layerVisibility.parcelle) {
+        parcellesLayer.getFeatures().forEach((f) => {
+          const geom = f.getGeometry();
+          if (!geom) return;
 
-        let candidate: number[] | null = null;
+          let candidate: number[] | null = null;
+          if (geom instanceof Point) candidate = geom.getCoordinates();
+          else if (geom instanceof Polygon) candidate = geom.getClosestPoint(center);
+          if (!candidate) return;
 
-        if (geom instanceof Point) {
-          candidate = geom.getCoordinates();
-        } else if (geom instanceof Polygon) {
-          candidate = geom.getClosestPoint(center); // vertex le plus proche
-        }
+          const pixelCandidate = map.getPixelFromCoordinate(candidate);
+          const pixelCenter = map.getPixelFromCoordinate(center);
+          if (!pixelCandidate || !pixelCenter) return;
 
-        if (!candidate) return;
+          const dx = pixelCandidate[0] - pixelCenter[0];
+          const dy = pixelCandidate[1] - pixelCenter[1];
+          const distPx = Math.sqrt(dx * dx + dy * dy);
 
-        const pixelCandidate = map.getPixelFromCoordinate(candidate);
-        const pixelCenter = map.getPixelFromCoordinate(center);
-        if (!pixelCandidate || !pixelCenter) return;
+          if (distPx <= crosshairRadiusPx && distPx < minDistPx) {
+            minDistPx = distPx;
+            snapPoint = candidate;
+          }
+        });
+      }
 
-        const dx = pixelCandidate[0] - pixelCenter[0];
-        const dy = pixelCandidate[1] - pixelCenter[1];
-        const distPx = Math.sqrt(dx * dx + dy * dy);
+      // --- GeoJSON Layers ---
+      Object.entries(geoJsonLayersRef.current).forEach(([name, layer]) => {
+        if (!layerVisibility[name as keyof typeof layerVisibility]) return; // ✅ skip if hidden
 
-        if (distPx <= crosshairRadiusPx && distPx < minDistPx) {
-          minDistPx = distPx;
-          snapPoint = candidate;
-        }
-      });
-
-      // GeoJSON layers (optionnel)
-      Object.values(geoJsonLayersRef.current).forEach((layer) => {
         layer.getSource()?.getFeatures().forEach((f) => {
           const geom = f.getGeometry();
           if (!geom) return;
@@ -522,15 +527,9 @@ const Tab2: React.FC = () => {
       }
     };
 
-    // Trigger à chaque déplacement de la carte
     map.on("moveend", snapToClosestFeature);
-
-    return () => {
-      map.un("moveend", snapToClosestFeature);
-    };
-  }, [fabOpen, parcellesSourceRef.current, geojsons]);
-
-
+    return () => map.un("moveend", snapToClosestFeature);
+  }, [fabOpen, geojsons, layerVisibility]);
 
   // ---- Load data depuis storage ----
   useEffect(() => {
@@ -610,7 +609,9 @@ const Tab2: React.FC = () => {
     });
     parcellesLayer.setZIndex(layerOrder.length + 1);
     parcellesSourceRef.current = parcellesSource;
+    parcellesLayer.set("name", "parcelle");
     parcellesLayerRef.current = parcellesLayer;
+
 
     const layers: VectorLayer<any>[] = [parcellesLayer];
     layerOrder.forEach((name, i) => {
@@ -623,6 +624,8 @@ const Tab2: React.FC = () => {
         updateWhileInteracting: false,
         visible: true,
       });
+      layer.set("name", name);
+
       geoJsonLayersRef.current[name] = layer;
       layers.push(layer);
     });
@@ -640,7 +643,7 @@ const Tab2: React.FC = () => {
       view: new View({
         center: fromLonLat([46.8, -18.8]), // Madagascar
         zoom: 6,
-        maxZoom: 21,
+        maxZoom: 28,
       }),
       controls: [
         new ScaleLine({ units: "metric", bar: true, steps: 1, text: true }),
@@ -676,7 +679,8 @@ const Tab2: React.FC = () => {
         const bounds = readBounds(database);
         const mbTilesSource = createMbTilesSource(database);
         const mbTilesLayer = new TileLayer({ source: mbTilesSource });
-
+        // 🔹 AJOUT DU NAME
+        mbTilesLayer.set("name", "fond");
         localLayerRef.current = mbTilesLayer;
         mapRef.current.addLayer(mbTilesLayer);
         mbTilesSource.refresh();
@@ -748,11 +752,31 @@ const Tab2: React.FC = () => {
     parcellesSourceRef.current.addFeatures(features);
   }, [parcelles]);
 
-  // ---- Toggle local tiles ----
-  const toggleLocalTiles = useCallback(
-    () => setShowLocalTiles((prev) => !prev),
-    []
-  );
+  // --- 2. Fonction pour toggle une couche ---
+  const toggleLayer = (keys: (keyof typeof layerVisibility) | (keyof typeof layerVisibility)[]) => {
+    const keysArray = Array.isArray(keys) ? keys : [keys];
+
+    setLayerVisibility(prev => {
+      // Déterminer la nouvelle visibilité à partir du premier key
+      const newVisibility = !prev[keysArray[0]];
+
+      // Mettre à jour les layers sur la carte
+      mapRef.current?.getLayers().forEach((layer: any) => {
+        const name = layer.get("name");
+        if (name && keysArray.includes(name)) {
+          layer.setVisible(newVisibility);
+        }
+      });
+
+      // Mettre à jour l'état
+      const updated = { ...prev };
+      keysArray.forEach(k => {
+        updated[k] = newVisibility;
+      });
+      return updated;
+    });
+  };
+
   // --- seach zoom Coords
   const gpsCard = useCallback(() => setShowGPS((prev) => !prev), []);
 
@@ -948,10 +972,6 @@ const Tab2: React.FC = () => {
     },
     [blinkFeature, parcelles]
   );
-
-  useEffect(() => {
-    if (localLayerRef.current) localLayerRef.current.setVisible(showLocalTiles);
-  }, [showLocalTiles]);
 
   // --- Toggle GPS Tracking ---
   const toggleTracking = async () => {
@@ -1336,10 +1356,64 @@ const Tab2: React.FC = () => {
           <IonButton className="glass-btn" fill="clear" onClick={gpsCard}>
             <IonIcon color="dark" icon={locateOutline} />
           </IonButton>
+
+          {!showLocalTiles && (
+            <div className="glass">
+              <div className="d-flex">
+                <IonCheckbox
+                  checked={layerVisibility.fond}
+                  onIonChange={() => toggleLayer("fond")}
+                  className="me-2"
+                />
+                <IonLabel>Fond image</IonLabel>
+              </div>
+              <div className="d-flex border-bottom pb-2">
+                <IonCheckbox
+                  checked={layerVisibility.ipss && layerVisibility.parcelle}
+                  onIonChange={() => toggleLayer(["ipss", "parcelle"])}
+                  className="me-2"
+                />
+                <IonLabel>IPSS</IonLabel>
+              </div>
+              <div className="d-flex">
+                <IonCheckbox
+                  checked={layerVisibility.titre}
+                  onIonChange={() => toggleLayer("titre")}
+                  className="me-2"
+                />
+                <IonLabel>Titre</IonLabel>
+              </div>
+              <div className="d-flex border-bottom pb-2">
+                <IonCheckbox
+                  checked={layerVisibility.requisition}
+                  onIonChange={() => toggleLayer("requisition")}
+                  className="me-2"
+                />
+                <IonLabel>Requisition</IonLabel>
+              </div>
+              <div className="d-flex">
+                <IonCheckbox
+                  checked={layerVisibility.demandecf}
+                  onIonChange={() => toggleLayer("demandecf")}
+                  className="me-2"
+                />
+                <IonLabel>Demande CF</IonLabel>
+              </div>
+              <div className="d-flex">
+                <IonCheckbox
+                  checked={layerVisibility.certificat}
+                  onIonChange={() => toggleLayer("certificat")}
+                  className="me-2"
+                />
+                <IonLabel>Karatany</IonLabel>
+              </div>
+            </div>
+          )}
+
           <IonButton
             fill="clear"
             className="glass-btn"
-            onClick={toggleLocalTiles}
+            onClick={() => setShowLocalTiles((prev) => !prev)}
           >
             <IonIcon
               color="dark"
