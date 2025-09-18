@@ -1064,20 +1064,6 @@ const Tab2: React.FC = () => {
     }
   };
 
-  const stopTracking = async () => {
-    if (watchId.current) {
-      if (Capacitor.getPlatform() === "web") {
-        navigator.geolocation.clearWatch(watchId.current as number);
-      } else {
-        await Geolocation.clearWatch({ id: watchId.current as string });
-      }
-      watchId.current = null;
-    }
-    setGpsAccuracy(null);
-    setGpsStatus(0);
-    setTracking(false);
-  };
-
 
   // --- Cleanup auto si le composant est démonté ---
   useEffect(() => {
