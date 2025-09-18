@@ -59,7 +59,7 @@ import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
-import { getAllParcelles } from "../model/base/DbSchema";
+import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
 
 // ---- CRS Madagascar ----
 proj4.defs(
@@ -366,10 +366,7 @@ const Tab2: React.FC = () => {
     setDrawPoints([]);
     setFabOpen(false);
 
-    await Preferences.set({
-      key: "parcelles_data",
-      value: JSON.stringify(updatedParcelles),
-    });
+    await insertParcelle(updatedParcelle);
 
     // 🔹 Ajouter seulement ce nouveau polygone au layer existant
     const vectorLayer = vectorLayerRef.current;
@@ -435,6 +432,101 @@ const Tab2: React.FC = () => {
     vectorLayerRef.current = vectorLayer;
     mapRef.current.addLayer(vectorLayer);
   }, [drawPoints]);
+
+  //***SNAP */
+  // ---- Snap crosshair vers vertex ----
+  useEffect(() => {
+    if (!mapRef.current || !fabOpen) return;
+
+    const map = mapRef.current;
+    const view = map.getView();
+
+    let crosshairRadiusPx = 20;
+    const crosshairEl = document.querySelector(".cross-symbol") as HTMLElement;
+    if (crosshairEl) {
+      const styles = getComputedStyle(crosshairEl);
+      const width = parseFloat(styles.width);
+      const height = parseFloat(styles.height);
+      // On prend la moitié du plus grand côté pour rayon
+      crosshairRadiusPx = Math.max(width, height) / 2;
+    }
+
+    const snapToClosestFeature = () => {
+      const center = view.getCenter();
+      if (!center) return;
+
+      let snapPoint: number[] | null = null;
+      let minDistPx = Infinity;
+
+      // Parcelles
+      parcellesSourceRef.current?.getFeatures().forEach((f) => {
+        const geom = f.getGeometry();
+        if (!geom) return;
+
+        let candidate: number[] | null = null;
+
+        if (geom instanceof Point) {
+          candidate = geom.getCoordinates();
+        } else if (geom instanceof Polygon) {
+          candidate = geom.getClosestPoint(center); // vertex le plus proche
+        }
+
+        if (!candidate) return;
+
+        const pixelCandidate = map.getPixelFromCoordinate(candidate);
+        const pixelCenter = map.getPixelFromCoordinate(center);
+        if (!pixelCandidate || !pixelCenter) return;
+
+        const dx = pixelCandidate[0] - pixelCenter[0];
+        const dy = pixelCandidate[1] - pixelCenter[1];
+        const distPx = Math.sqrt(dx * dx + dy * dy);
+
+        if (distPx <= crosshairRadiusPx && distPx < minDistPx) {
+          minDistPx = distPx;
+          snapPoint = candidate;
+        }
+      });
+
+      // GeoJSON layers (optionnel)
+      Object.values(geoJsonLayersRef.current).forEach((layer) => {
+        layer.getSource()?.getFeatures().forEach((f) => {
+          const geom = f.getGeometry();
+          if (!geom) return;
+
+          let candidate: number[] | null = null;
+          if (geom instanceof Point) candidate = geom.getCoordinates();
+          else if (geom instanceof Polygon) candidate = geom.getClosestPoint(center);
+          if (!candidate) return;
+
+          const pixelCandidate = map.getPixelFromCoordinate(candidate);
+          const pixelCenter = map.getPixelFromCoordinate(center);
+          if (!pixelCandidate || !pixelCenter) return;
+
+          const dx = pixelCandidate[0] - pixelCenter[0];
+          const dy = pixelCandidate[1] - pixelCenter[1];
+          const distPx = Math.sqrt(dx * dx + dy * dy);
+
+          if (distPx <= crosshairRadiusPx && distPx < minDistPx) {
+            minDistPx = distPx;
+            snapPoint = candidate;
+          }
+        });
+      });
+
+      if (snapPoint) {
+        view.animate({ center: snapPoint, duration: 160 });
+      }
+    };
+
+    // Trigger à chaque déplacement de la carte
+    map.on("moveend", snapToClosestFeature);
+
+    return () => {
+      map.un("moveend", snapToClosestFeature);
+    };
+  }, [fabOpen, parcellesSourceRef.current, geojsons]);
+
+
 
   // ---- Load data depuis storage ----
   useEffect(() => {
