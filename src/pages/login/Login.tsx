@@ -8,7 +8,7 @@ import {
   IonInput,
   IonRouterLink,
 } from "@ionic/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";
 
@@ -16,12 +16,12 @@ import "../../assets/dist/css/bootstrap.min.css";
 import "./Login.css";
 import logoTopoManager from "../../assets/image/BackGround/topomanager.png";
 
-const PASSWORD_ADMIN = "topo123";
+const PASSWORD_ADMIN = "Adm1N@TM";
 const USERNAME_ADMIN = "admin";
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const emailRef = useRef<HTMLIonInputElement>(null);
+  const passwordRef = useRef<HTMLIonInputElement>(null);
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -39,19 +39,18 @@ const Login: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-
-    if (trimmedPassword === PASSWORD_ADMIN && trimmedEmail === USERNAME_ADMIN) {
+    const emailValue = (emailRef.current?.value ?? "").toString().trim();
+    const passwordValue = (passwordRef.current?.value ?? "").toString().trim();
+    if (passwordValue === PASSWORD_ADMIN && emailValue === USERNAME_ADMIN) {
       await Preferences.set({ key: "is_logged_in", value: "true" });
       await Preferences.set({ key: "id_session", value: "0" });
       await Preferences.set({ key: "username", value: "Admin" });
-
       window.location.href = "/tab1";
     } else {
       setShowPasswordAlert(true);
     }
   };
+
 
   return (
     <IonPage>
@@ -72,7 +71,7 @@ const Login: React.FC = () => {
                 <IonInput
                   type="text"
                   placeholder="Identifiant"
-                  onIonChange={(e) => setEmail(e.detail.value!)}
+                  ref={emailRef}
                   required
                 />
               </IonItem>
@@ -81,7 +80,7 @@ const Login: React.FC = () => {
                 <IonInput
                   type={showPassword ? "text" : "password"}
                   placeholder="Mot de passe"
-                  onIonChange={(e) => setPassword(e.detail.value!)}
+                  ref={passwordRef}
                   required
                 />
                 <IonButton

@@ -188,7 +188,7 @@ ion-searchbar.custom-search {
 }
 
 /* Masquer le texte sur petits écrans */
-@media (max-width: 400px) {
+@media (max-width: 350px) {
   .parcelle-chips ion-chip ion-label {
     display: none;
   }
