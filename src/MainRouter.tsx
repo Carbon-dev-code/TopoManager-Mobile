@@ -2,9 +2,6 @@
 import {
   IonSplitPane,
   IonMenu,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
   IonList,
   IonMenuToggle,
@@ -15,7 +12,7 @@ import {
   IonRouterOutlet,
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
-import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline, logOutOutline } from 'ionicons/icons';
+import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline, logOutOutline, chevronForwardOutline, peopleOutline } from 'ionicons/icons';
 
 import Tab1 from './pages/Tab1';
 import Tab2 from './pages/Tab2';
@@ -26,10 +23,23 @@ import Login from './pages/login/Login';
 import Demandeur from './pages/Tab5';
 import { Preferences } from '@capacitor/preferences';
 import "./MainRouter.css";
+import { useEffect, useState } from 'react';
 
 const MainRouter: React.FC = () => {
   const location = useLocation();
   const hideMenu = location.pathname === '/accueil' || location.pathname === '/login';
+
+  const [username, setUsername] = useState<string>("");
+
+  useEffect(() => {
+    const loadUsername = async () => {
+      const result = await Preferences.get({ key: "username" });
+      if (result.value) setUsername(result.value);
+    };
+    loadUsername();
+  }, []);
+
+  const initial = username ? username.charAt(0).toUpperCase() : "?";
 
   if (hideMenu) {
     return (
@@ -46,43 +56,66 @@ const MainRouter: React.FC = () => {
   return (
     <IonSplitPane contentId="main-content" when={false}>
       <IonMenu contentId="main-content" type="push" side="start" swipeGesture={true}>
-        <IonHeader>
-          <IonToolbar color="primary">
-            <IonTitle className='text-start'>TopoManager Mobile</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent>
-          <IonList>
-            <IonMenuToggle autoHide={false}>
-              <IonItem routerLink="/tab1" routerDirection="none">
-                <IonIcon icon={documentOutline} slot="start" />
-                <IonLabel>Collecte de données</IonLabel>
-              </IonItem>
-            </IonMenuToggle>
-            <IonMenuToggle autoHide={false}>
-              <IonItem routerLink="/demandeur" routerDirection="none">
-                <IonIcon icon={personOutline} slot="start" />
-                <IonLabel>Demandeur</IonLabel>
-              </IonItem>
-            </IonMenuToggle>
-            <IonMenuToggle autoHide={false}>
-              <IonItem routerLink="/tab2" routerDirection="none">
-                <IonIcon icon={mapOutline} slot="start" />
-                <IonLabel>Carte</IonLabel>
-              </IonItem>
-            </IonMenuToggle>
-            <IonMenuToggle autoHide={false}>
-              <IonItem routerLink="/tab3" routerDirection="none">
-                <IonIcon icon={cloudUploadOutline} slot="start" />
-                <IonLabel>Upload</IonLabel>
-              </IonItem>
-            </IonMenuToggle>
-            <IonMenuToggle autoHide={false}>
-              <IonItem routerLink="/tab4" routerDirection="none">
-                <IonIcon icon={settings} slot="start" />
-                <IonLabel>Paramètrage</IonLabel>
-              </IonItem>
-            </IonMenuToggle>
+        <IonContent className='color-smoke'>
+          <IonLabel>Menu</IonLabel>
+          <IonList className='p-0'>
+            <div className="compact">
+              <IonMenuToggle autoHide={false}>
+                <IonItem routerLink="" routerDirection="none" className="user-item">
+                  <div className="avatar">{initial}</div>
+                  <div className="user-info">
+                    <IonLabel className="username">{username}</IonLabel>
+                    <IonLabel className="status">Connecté</IonLabel>
+                  </div>
+                </IonItem>
+              </IonMenuToggle>
+              <IonMenuToggle autoHide={false}>
+                <IonItem routerLink="" routerDirection="none" lines='none'>
+                  <IonIcon icon={personOutline} slot="start" />
+                  <IonLabel>Profil</IonLabel>
+                  <IonIcon icon={chevronForwardOutline} slot="end" />
+                </IonItem>
+              </IonMenuToggle>
+            </div>
+            <div className="compact">
+              <IonMenuToggle autoHide={false}>
+                <IonItem routerLink="/tab1" routerDirection="none">
+                  <IonIcon icon={documentOutline} slot="start" />
+                  <IonLabel>Collecte de données</IonLabel>
+                  <IonIcon icon={chevronForwardOutline} slot="end" />
+                </IonItem>
+              </IonMenuToggle>
+              <IonMenuToggle autoHide={false}>
+                <IonItem routerLink="/demandeur" routerDirection="none">
+                  <IonIcon icon={peopleOutline} slot="start" />
+                  <IonLabel>Demandeur</IonLabel>
+                  <IonIcon icon={chevronForwardOutline} slot="end" />
+                </IonItem>
+              </IonMenuToggle>
+              <IonMenuToggle autoHide={false}>
+                <IonItem routerLink="/tab2" routerDirection="none" lines='none'>
+                  <IonIcon icon={mapOutline} slot="start" />
+                  <IonLabel>Carte</IonLabel>
+                  <IonIcon icon={chevronForwardOutline} slot="end" />
+                </IonItem>
+              </IonMenuToggle>
+            </div>
+            <div className="compact">
+              <IonMenuToggle autoHide={false}>
+                <IonItem routerLink="/tab3" routerDirection="none">
+                  <IonIcon icon={cloudUploadOutline} slot="start" />
+                  <IonLabel>Upload</IonLabel>
+                  <IonIcon icon={chevronForwardOutline} slot="end" />
+                </IonItem>
+              </IonMenuToggle>
+              <IonMenuToggle autoHide={false}>
+                <IonItem routerLink="/tab4" routerDirection="none" lines='none'>
+                  <IonIcon icon={settings} slot="start" />
+                  <IonLabel>Paramètrage</IonLabel>
+                  <IonIcon icon={chevronForwardOutline} slot="end" />
+                </IonItem>
+              </IonMenuToggle>
+            </div>
           </IonList>
           {/* Déconnexion en bas */}
           <div style={{ position: 'absolute', bottom: 0, width: '100%' }}>

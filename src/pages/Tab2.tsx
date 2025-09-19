@@ -151,15 +151,6 @@ const Tab2: React.FC = () => {
         setGeojsons(await loadGeoJsonFromStorage());
         const loadedParcelles = await loadParcellesFromStorage();
         setParcelles(loadedParcelles);
-
-        if (from === "tab1" && action === "croquis" && codeParcelle) {
-          const found = loadedParcelles.find((p) => p.code === codeParcelle);
-          setCurrentParcelle(found || null);
-        } else {
-          setCurrentParcelle(null);
-          setFabOpen(false);
-        }
-
         const database = await loadMBTiles();
         if (!localLayerRef.current) {
           await addMbTilesLayer(database);
@@ -173,6 +164,16 @@ const Tab2: React.FC = () => {
 
     loadDataOnEnter();
   });
+
+  useEffect(() => {
+    if (from === "tab1" && action === "croquis" && codeParcelle && parcelles.length > 0) {
+      const found = parcelles.find((p) => p.code === codeParcelle);
+      setCurrentParcelle(found || null);
+    } else {
+      setCurrentParcelle(null);
+      setFabOpen(false);
+    }
+  }, [from, action, codeParcelle, parcelles]);
 
   const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     return await getAllParcelles();
@@ -1110,65 +1111,63 @@ const Tab2: React.FC = () => {
             <IonIcon color="dark" icon={locateOutline} />
           </IonButton>
 
-          {!showLocalTiles && (
-            <div className="glass-panel">
-              <h4 className="glass-title">Couches visibles</h4>
-              <IonItem className="glass-item border-bottom" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.ipss && layerVisibility.parcelle}
-                  onIonChange={() => toggleLayer(["ipss", "parcelle"])}
-                />
-                <Cube color="blue" /> IPSS
-              </IonItem>
+          <div className={`glass-panel ${!showLocalTiles ? "show" : "hide"}`}>
+            <h4 className="glass-title">Couches visibles</h4>
+            <IonItem className="glass-item border-bottom" lines="none">
+              <IonCheckbox
+                slot="start"
+                checked={layerVisibility.ipss && layerVisibility.parcelle}
+                onIonChange={() => toggleLayer(["ipss", "parcelle"])}
+              />
+              <Cube color="blue" /> IPSS
+            </IonItem>
 
-              <IonItem className="glass-item" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.titre}
-                  onIonChange={() => toggleLayer("titre")}
-                />
-                <Cube color="red" /> Titre
-              </IonItem>
+            <IonItem className="glass-item" lines="none">
+              <IonCheckbox
+                slot="start"
+                checked={layerVisibility.titre}
+                onIonChange={() => toggleLayer("titre")}
+              />
+              <Cube color="red" /> Titre
+            </IonItem>
 
-              <IonItem className="glass-item border-bottom" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.requisition}
-                  onIonChange={() => toggleLayer("requisition")}
-                />
-                <Cube color="chartreuse" />
-                <IonLabel>Requisition</IonLabel>
-              </IonItem>
+            <IonItem className="glass-item border-bottom" lines="none">
+              <IonCheckbox
+                slot="start"
+                checked={layerVisibility.requisition}
+                onIonChange={() => toggleLayer("requisition")}
+              />
+              <Cube color="chartreuse" />
+              <IonLabel>Requisition</IonLabel>
+            </IonItem>
 
-              <IonItem className="glass-item" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.demandecf}
-                  onIonChange={() => toggleLayer("demandecf")}
-                />
-                <Cube color="purple" /> Demande CF
-              </IonItem>
+            <IonItem className="glass-item" lines="none">
+              <IonCheckbox
+                slot="start"
+                checked={layerVisibility.demandecf}
+                onIonChange={() => toggleLayer("demandecf")}
+              />
+              <Cube color="purple" /> Demande CF
+            </IonItem>
 
-              <IonItem className="glass-item border-bottom" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.certificat}
-                  onIonChange={() => toggleLayer("certificat")}
-                />
-                <Cube color="yellow" /> Karatany
-              </IonItem>
+            <IonItem className="glass-item border-bottom" lines="none">
+              <IonCheckbox
+                slot="start"
+                checked={layerVisibility.certificat}
+                onIonChange={() => toggleLayer("certificat")}
+              />
+              <Cube color="yellow" /> Karatany
+            </IonItem>
 
-              <IonItem className="glass-item" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.fond}
-                  onIonChange={() => toggleLayer("fond")}
-                />
-                Fond image
-              </IonItem>
-            </div>
-          )}
+            <IonItem className="glass-item" lines="none">
+              <IonCheckbox
+                slot="start"
+                checked={layerVisibility.fond}
+                onIonChange={() => toggleLayer("fond")}
+              />
+              Fond image
+            </IonItem>
+          </div>
 
           <IonButton
             fill="clear"

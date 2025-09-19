@@ -45,6 +45,8 @@ const Login: React.FC = () => {
     if (trimmedPassword === PASSWORD_ADMIN && trimmedEmail === USERNAME_ADMIN) {
       await Preferences.set({ key: "is_logged_in", value: "true" });
       await Preferences.set({ key: "id_session", value: "0" });
+      await Preferences.set({ key: "username", value: "Admin" });
+
       window.location.href = "/tab1";
     } else {
       setShowPasswordAlert(true);
