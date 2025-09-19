@@ -64,6 +64,7 @@ import { Capacitor } from "@capacitor/core";
 import { useDb } from "../model/base/DbContextType";
 import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
 import Cube from "../components/utils/Cube";
+import MultiPoint from "ol/geom/MultiPoint";
 
 proj4.defs(
   "EPSG:29702",
@@ -288,7 +289,7 @@ const Tab2: React.FC = () => {
 
   const styleByType = useCallback((feature: Feature): Style => {
     if (!mapRef.current) return new Style();
-    const zoom = mapRef.current.getView().getZoom() || 0;
+    const zoom = Math.round(mapRef.current.getView().getZoom() || 0); // arrondi pour limiter les styles
 
     const type = feature.get("name")?.toLowerCase();
     const labelText = getLabelText(feature, type);
@@ -296,8 +297,9 @@ const Tab2: React.FC = () => {
 
     if (styleCache.current[cacheKey]) return styleCache.current[cacheKey];
 
-    styleCache.current[cacheKey] = createStyle(type, labelText, zoom);
-    return styleCache.current[cacheKey];
+    const newStyle = createStyle(type, labelText, zoom);
+    styleCache.current[cacheKey] = newStyle;
+    return newStyle;
   }, []);
 
   // ==================== VECTOR & DRAW ====================
@@ -348,45 +350,70 @@ const Tab2: React.FC = () => {
   // ==================== DRAW & LIVE DISPLAY ====================
   useEffect(() => {
     if (!mapRef.current) return;
-    const source = new VectorSource();
 
-    if (drawPoints.length > 2) {
-      const polygon = new Polygon([[...drawPoints, drawPoints[0]]]);
-      source.addFeature(new Feature(polygon));
-    }
-
-    drawPoints.forEach((pt) => {
-      source.addFeature(new Feature(new Point(pt)));
-    });
-
-    if (vectorLayerRef.current) {
-      mapRef.current.removeLayer(vectorLayerRef.current);
-    }
-
-    const vectorLayer = new VectorLayer({
-      source,
-      style: (feature) => {
-        const geometry = feature.getGeometry();
-        if (geometry instanceof Point) {
-          return new Style({
-            image: new CircleStyle({
-              radius: 3,
-              fill: new Fill({ color: "#ff0000" }),
-              stroke: new Stroke({ color: "#fff", width: 1 }),
-            }),
-          });
-        } else if (geometry instanceof Polygon) {
-          return new Style({
-            stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
-            fill: new Fill({ color: "rgba(0, 0, 255, 0.1)" }),
-          });
+    if (!vectorLayerRef.current) {
+      const source = new VectorSource();
+      const vectorLayer = new VectorLayer({
+        source,
+        zIndex: 6,
+        style: (feature) => {
+          const geom = feature.getGeometry();
+          if (geom instanceof Point) {
+            return new Style({
+              image: new CircleStyle({
+                radius: 3,
+                fill: new Fill({ color: "#ff0000" }),
+                stroke: new Stroke({ color: "#fff", width: 1 })
+              })
+            });
+          } else if (geom instanceof Polygon) {
+            return new Style({
+              stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
+              fill: new Fill({ color: "rgba(0,0,255,0.1)" })
+            });
+          } else if (geom instanceof MultiPoint) {
+            return new Style({
+              image: new CircleStyle({
+                radius: 3,
+                fill: new Fill({ color: "#ff0000" }),
+                stroke: new Stroke({ color: "#fff", width: 1 })
+              })
+            });
+          }
+          return undefined;
         }
-        return undefined;
-      },
-    });
+      });
+      mapRef.current.addLayer(vectorLayer);
+      vectorLayerRef.current = vectorLayer;
+    }
 
-    vectorLayerRef.current = vectorLayer;
-    mapRef.current.addLayer(vectorLayer);
+    const source = vectorLayerRef.current.getSource();
+    if (!source) return;
+
+    if (drawPoints.length > 0) {
+      let polygonFeature = source.getFeatures().find(f => f.get("type") === "polygon");
+      if (!polygonFeature) {
+        polygonFeature = new Feature(new Polygon([[]]));
+        polygonFeature.set("type", "polygon");
+        source.addFeature(polygonFeature);
+      }
+
+      if (drawPoints.length > 2) {
+        const coords = [...drawPoints, drawPoints[0]];
+        polygonFeature.setGeometry(new Polygon([coords]));
+      }
+
+      // points
+      let pointsFeature = source.getFeatures().find(f => f.get("type") === "points");
+      if (!pointsFeature) {
+        pointsFeature = new Feature(new MultiPoint([]));
+        pointsFeature.set("type", "points");
+        source.addFeature(pointsFeature);
+      }
+      pointsFeature.setGeometry(new MultiPoint(drawPoints));
+    } else {
+      source.clear(); // plus rien à afficher
+    }
   }, [drawPoints]);
 
   // ==================== SNAP TO FEATURES ====================
@@ -394,14 +421,12 @@ const Tab2: React.FC = () => {
     if (!mapRef.current || !fabOpen) return;
     const map = mapRef.current;
     const view = map.getView();
-    let crosshairRadiusPx = 20;
 
+    let crosshairRadiusPx = 20;
     const crosshairEl = document.querySelector(".cross-symbol") as HTMLElement;
     if (crosshairEl) {
       const styles = getComputedStyle(crosshairEl);
-      const width = parseFloat(styles.width);
-      const height = parseFloat(styles.height);
-      crosshairRadiusPx = Math.max(width, height) / 2;
+      crosshairRadiusPx = Math.max(parseFloat(styles.width), parseFloat(styles.height)) / 2;
     }
 
     const snapToClosestFeature = () => {
@@ -443,8 +468,18 @@ const Tab2: React.FC = () => {
       }
     };
 
-    map.on("moveend", snapToClosestFeature);
-    return () => map.un("moveend", snapToClosestFeature);
+    // ⚡ Throttle: limite l'exécution à 1 fois toutes les 300ms
+    let lastCall = 0;
+    const throttledSnap = () => {
+      const now = Date.now();
+      if (now - lastCall > 300) {
+        lastCall = now;
+        snapToClosestFeature();
+      }
+    };
+
+    map.on("moveend", throttledSnap);
+    return () => map.un("moveend", throttledSnap);
   }, [fabOpen, geojsons, layerVisibility]);
 
   const readBounds = useCallback((db: any): number[] => {
@@ -484,11 +519,14 @@ const Tab2: React.FC = () => {
         stmt.bind([z, x, y]);
         if (stmt.step()) {
           const blob = new Blob([stmt.getAsObject().tile_data], { type: "image/png" });
-          image.src = URL.createObjectURL(blob);
+          const url = URL.createObjectURL(blob);
+          image.onload = () => URL.revokeObjectURL(url); // ⚡ évite fuite mémoire
+          image.src = url;
         } else image.src = "";
         stmt.free();
       }
     }), []);
+
 
   const createVectorLayers = useCallback(() => {
     const parcellesSource = new VectorSource();
@@ -502,7 +540,6 @@ const Tab2: React.FC = () => {
     parcellesSourceRef.current = parcellesSource;
     parcellesLayer.set("name", "parcelle");
     parcellesLayerRef.current = parcellesLayer;
-
     const layers: VectorLayer<any>[] = [parcellesLayer];
     layerOrder.forEach((name, i) => {
       const src = new VectorSource();
@@ -521,11 +558,9 @@ const Tab2: React.FC = () => {
     return layers;
   }, [styleByType, layerOrder]);
 
-
   useEffect(() => {
     if (!mapElement.current || mapRef.current) return;
     setLoadingMap(true);
-
     const map = new Map({
       target: mapElement.current,
       view: new View({ center: fromLonLat([46.8, -18.8]), zoom: 6, maxZoom: 28 }),
@@ -550,7 +585,6 @@ const Tab2: React.FC = () => {
     setLoadingMap(false);
   }, []);
 
-
   const addMbTilesLayer = useCallback(
     async (database: Database) => {
       if (!mapRef.current || !database) return;
@@ -563,7 +597,6 @@ const Tab2: React.FC = () => {
         localLayerRef.current = mbTilesLayer;
         mapRef.current.addLayer(mbTilesLayer);
         mbTilesSource.refresh();
-
         mapRef.current
           .getView()
           .setCenter(
@@ -597,7 +630,7 @@ const Tab2: React.FC = () => {
         }
       }
     });
-  }, [geojsons, mapRef.current]);
+  }, [geojsons]);
 
   useEffect(() => {
     if (!parcellesSourceRef.current) return;
@@ -624,13 +657,11 @@ const Tab2: React.FC = () => {
     setLayerVisibility(prev => {
       const newVisibility = !prev[keysArray[0]];
       const updated = { ...prev };
-
       keysArray.forEach(k => {
         updated[k] = newVisibility;
         const layer = mapRef.current?.getLayers().getArray().find(l => l.get("name") === k);
         if (layer) layer.setVisible(newVisibility);
       });
-
       return updated;
     });
   };
@@ -641,28 +672,22 @@ const Tab2: React.FC = () => {
     const x = parseFloat(longitude);
     const y = parseFloat(latitude);
     if (isNaN(x) || isNaN(y)) return setToastMessage("Coordonnées invalides");
-
     const coords3857 = transform([x, y], "EPSG:29702", "EPSG:3857");
     const map = mapRef.current;
     if (!map) return;
-
     map.getView().animate({ center: coords3857, zoom: 17, duration: 1000 });
-
     const marker = new Feature({ geometry: new Point(coords3857) });
     if (!fabOpen) {
       const style1 = new Style({ image: new CircleStyle({ radius: 6, fill: new Fill({ color: "red" }), stroke: new Stroke({ color: "#fff", width: 2 }) }) });
       const style2 = new Style({ image: new CircleStyle({ radius: 6, fill: new Fill({ color: "rgba(30,255,0,1)" }), stroke: new Stroke({ color: "#fff", width: 2 }) }) });
       let visible = true;
       marker.setStyle(style1);
-
       const interval = setInterval(() => {
         visible = !visible;
         marker.setStyle(visible ? style1 : style2);
       }, 500);
-
       setTimeout(() => clearInterval(interval), intervalDuration);
     }
-
     const vectorSource = new VectorSource({ features: [marker] });
     const markerLayer = new VectorLayer({ source: vectorSource });
     map.addLayer(markerLayer);
@@ -671,12 +696,9 @@ const Tab2: React.FC = () => {
 
   const stateSearch = useCallback(() => setShowSearch(prev => !prev), []);
 
-
   const blinkFeature = useCallback((feature: Feature) => {
     if (!mapRef.current) return;
-
     if (highlightLayerRef.current) mapRef.current.removeLayer(highlightLayerRef.current);
-
     const highlightSource = new VectorSource({ features: [feature] });
     let visible = true;
     const highlightStyle = (visible: boolean) =>
@@ -689,21 +711,17 @@ const Tab2: React.FC = () => {
           color: visible ? "rgba(255, 255, 255, 1)" : "rgba(81, 255, 0, 0.63)",
         }),
       });
-
     const vectorLayer = new VectorLayer({
       source: highlightSource,
       style: highlightStyle(true),
       zIndex: 9999,
     });
-
     mapRef.current.addLayer(vectorLayer);
     highlightLayerRef.current = vectorLayer;
-
     const blinkInterval = setInterval(() => {
       visible = !visible;
       vectorLayer.setStyle(highlightStyle(visible));
     }, 500);
-
     setTimeout(() => {
       clearInterval(blinkInterval);
       if (mapRef.current && highlightLayerRef.current) {
@@ -712,21 +730,16 @@ const Tab2: React.FC = () => {
       }
     }, 5000);
   }, []);
-
   // ==================== SEARCH & ZOOM ====================
   const searchAndZoom = useCallback((searchTerm: string) => {
     if (!mapRef.current) return;
-
     const term = searchTerm.trim().toLowerCase();
     if (!term) return;
-
     let foundFeature: Feature | null = null;
-
     const geoJsonLayers = Object.values(geoJsonLayersRef.current);
     for (const layer of geoJsonLayers) {
       const source = layer.getSource();
       if (!source) continue;
-
       const features = source.getFeatures();
       for (const feature of features) {
         const props = feature.getProperties();
@@ -740,7 +753,6 @@ const Tab2: React.FC = () => {
       }
       if (foundFeature) break;
     }
-
     if (!foundFeature && parcelles.length > 0) {
       for (const p of parcelles) {
         if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
@@ -753,7 +765,6 @@ const Tab2: React.FC = () => {
         }
       }
     }
-
     if (foundFeature) {
       const extent = foundFeature.getGeometry()?.getExtent();
       if (extent) {
@@ -776,7 +787,6 @@ const Tab2: React.FC = () => {
               const { longitude: lon, latitude: lat, accuracy } = pos.coords;
               setGpsAccuracy(accuracy);
               setGpsStatus(2);
-
               mapRef.current?.getView().animate({ center: fromLonLat([lon, lat]), zoom: 21, duration: 1000 });
             },
             (err) => {
@@ -796,7 +806,6 @@ const Tab2: React.FC = () => {
               return;
             }
           }
-
           watchId.current = await Geolocation.watchPosition(
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
             (pos, err) => {
@@ -832,13 +841,11 @@ const Tab2: React.FC = () => {
       setTracking(false);
     }
   };
-
   useEffect(() => () => {
     if (!watchId.current) return;
     if (Capacitor.getPlatform() === "web") navigator.geolocation.clearWatch(watchId.current as number);
     else Geolocation.clearWatch({ id: watchId.current as string });
   }, []);
-
   return (
     <IonPage>
       <IonHeader className="custom-header">

@@ -41,7 +41,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           const reader = new FileReader();
           reader.onload = (event) => {
             const buffer = event.target?.result as ArrayBuffer;
-            const dbInstance = new SQL.Database(new Uint8Array(buffer));
+            const dbInstance = new SQL.Database(new Uint8Array(buffer), { useWorker: true });
             dbRef.current = dbInstance;
             resolve(dbInstance);
           };
