@@ -40,6 +40,8 @@ import {
   pencilOutline,
   removeOutline,
   search,
+  searchCircleOutline,
+  searchSharp,
   stopSharp,
 } from "ionicons/icons";
 import { Preferences } from "@capacitor/preferences";
@@ -105,7 +107,7 @@ const Tab2: React.FC = () => {
   const watchId = useRef<string | number | null>(null);
 
   // ==================== STATE ====================
-  const { db, loadMBTiles } = useDb();
+  const { loadMBTiles } = useDb();
   const [loadingMap, setLoadingMap] = useState(true);
   const [showLocalTiles, setShowLocalTiles] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
@@ -117,6 +119,7 @@ const Tab2: React.FC = () => {
   const [fabOpen, setFabOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showGPS, setShowGPS] = useState(false);
+  const [animateGPS, setAnimateGPS] = useState(false);
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -666,7 +669,15 @@ const Tab2: React.FC = () => {
     });
   };
 
-  const gpsCard = useCallback(() => setShowGPS((prev) => !prev), []);
+  const gpsCard = useCallback(() => {
+    if (!showGPS) {
+      setShowGPS(true);
+      setTimeout(() => setAnimateGPS(true), 20); // déclenche la transition
+    } else {
+      setAnimateGPS(false);
+      setTimeout(() => setShowGPS(false), 300); // attendre la fin de l’anim avant de retirer
+    }
+  }, [showGPS]);
 
   const searchGPS = useCallback(() => {
     const x = parseFloat(longitude);
@@ -987,7 +998,7 @@ const Tab2: React.FC = () => {
         )}
 
         {showGPS && (
-          <div className="gps-container">
+          <div className={`gps-container ${animateGPS ? "show" : ""}`}>
             <div className="gps-search">
               <IonInput
                 className="border"
@@ -1003,10 +1014,16 @@ const Tab2: React.FC = () => {
                 value={latitude}
                 onIonChange={(e) => setLatitude(e.detail.value!)}
               />
-              <IonButton expand="block" onClick={searchGPS}>
-                <IonIcon icon="search" />
+              <IonButton
+                className="glass-btn"
+                fill="clear"
+                size="small"
+                color="primary"
+                onClick={searchGPS}>
+                <IonIcon icon={searchSharp} style={{ fontSize: "20px" }} />
               </IonButton>
               <IonButton
+                className="glass-btn"
                 fill="clear"
                 size="small"
                 color="danger"
