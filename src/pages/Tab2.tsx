@@ -989,37 +989,31 @@ const Tab2: React.FC = () => {
         {showGPS && (
           <div className="gps-container">
             <div className="gps-search">
-              <div className="gps-header">
-                <label>Aller à (X, Y)</label>
-                <IonButton
-                  fill="clear"
-                  size="small"
-                  color="danger"
-                  onClick={() => setShowGPS(false)}
-                >
-                  <IonIcon icon={closeOutline} style={{ fontSize: "20px" }} />
-                </IonButton>
-              </div>
-
-              <div className="gps-glass-card">
-                <IonInput
-                  className="border"
-                  type="text"
-                  placeholder="X"
-                  value={longitude}
-                  onIonChange={(e) => setLongitude(e.detail.value!)}
-                />
-                <IonInput
-                  className="border"
-                  type="text"
-                  placeholder="Y"
-                  value={latitude}
-                  onIonChange={(e) => setLatitude(e.detail.value!)}
-                />
-                <IonButton expand="block" onClick={searchGPS}>
-                  Valider
-                </IonButton>
-              </div>
+              <IonInput
+                className="border"
+                type="text"
+                placeholder="X"
+                value={longitude}
+                onIonChange={(e) => setLongitude(e.detail.value!)}
+              />
+              <IonInput
+                className="border"
+                type="text"
+                placeholder="Y"
+                value={latitude}
+                onIonChange={(e) => setLatitude(e.detail.value!)}
+              />
+              <IonButton expand="block" onClick={searchGPS}>
+                <IonIcon icon="search" />
+              </IonButton>
+              <IonButton
+                fill="clear"
+                size="small"
+                color="danger"
+                onClick={() => setShowGPS(false)}
+              >
+                <IonIcon icon={closeOutline} style={{ fontSize: "20px" }} />
+              </IonButton>
             </div>
           </div>
         )}

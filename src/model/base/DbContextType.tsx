@@ -52,7 +52,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     } else {
       const response = await fetch("/mbtiles/amb.mbtiles");
       const buffer = await response.arrayBuffer();
-      loadedDb = new SQL.Database(new Uint8Array(buffer));
+      loadedDb = new SQL.Database(new Uint8Array(buffer), { useWorker: true });
       dbRef.current = loadedDb;
     }
 
