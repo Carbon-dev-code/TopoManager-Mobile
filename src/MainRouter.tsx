@@ -61,7 +61,7 @@ const MainRouter: React.FC = () => {
           <IonList className='p-0'>
             <div className="compact">
               <IonMenuToggle autoHide={false}>
-                <IonItem routerLink="" routerDirection="none" className="user-item">
+                <IonItem className="user-item">
                   <div className="avatar">{initial}</div>
                   <div className="user-info">
                     <IonLabel className="username">{username}</IonLabel>
@@ -70,7 +70,7 @@ const MainRouter: React.FC = () => {
                 </IonItem>
               </IonMenuToggle>
               <IonMenuToggle autoHide={false}>
-                <IonItem routerLink="" routerDirection="none" lines='none'>
+                <IonItem lines='none'>
                   <IonIcon icon={personOutline} slot="start" />
                   <IonLabel>Profil</IonLabel>
                   <IonIcon icon={chevronForwardOutline} slot="end" />

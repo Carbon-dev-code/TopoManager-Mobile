@@ -380,7 +380,7 @@ const Tab2: React.FC = () => {
               image: new CircleStyle({
                 radius: 3,
                 fill: new Fill({ color: "#ff0000" }),
-                stroke: new Stroke({ color: "#fff", width: 1 })
+                stroke: new Stroke({ color: "#fff", width: 1.5 })
               })
             });
           }
@@ -426,13 +426,16 @@ const Tab2: React.FC = () => {
     const map = mapRef.current;
     const view = map.getView();
 
+    // Taille du crosshair en px
     let crosshairRadiusPx = 20;
     const crosshairEl = document.querySelector(".cross-symbol") as HTMLElement;
     if (crosshairEl) {
       const styles = getComputedStyle(crosshairEl);
-      crosshairRadiusPx = Math.max(parseFloat(styles.width), parseFloat(styles.height)) / 2;
+      crosshairRadiusPx =
+        Math.max(parseFloat(styles.width), parseFloat(styles.height)) / 2;
     }
 
+    // Fonction principale de snap
     const snapToClosestFeature = () => {
       const center = view.getCenter();
       if (!center) return;
@@ -440,7 +443,11 @@ const Tab2: React.FC = () => {
       let snapPoint: number[] | null = null;
       let minDistPx = Infinity;
 
-      const snapLayers = [parcellesSourceRef.current, ...Object.values(geoJsonLayersRef.current)];
+      const snapLayers = [
+        parcellesSourceRef.current,
+        ...Object.values(geoJsonLayersRef.current),
+      ];
+
       snapLayers.forEach((layer: any) => {
         if (!layer || !layerVisibility[layer.get("name")]) return;
         layer.getSource()?.getFeatures().forEach((f: Feature) => {
@@ -450,6 +457,7 @@ const Tab2: React.FC = () => {
           let candidate: number[] | null = null;
           if (geom instanceof Point) candidate = geom.getCoordinates();
           else if (geom instanceof Polygon) candidate = geom.getClosestPoint(center);
+
           if (!candidate) return;
 
           const pixelCandidate = map.getPixelFromCoordinate(candidate);
@@ -472,18 +480,8 @@ const Tab2: React.FC = () => {
       }
     };
 
-    // ⚡ Throttle: limite l'exécution à 1 fois toutes les 300ms
-    let lastCall = 0;
-    const throttledSnap = () => {
-      const now = Date.now();
-      if (now - lastCall > 300) {
-        lastCall = now;
-        snapToClosestFeature();
-      }
-    };
-
-    map.on("moveend", throttledSnap);
-    return () => map.un("moveend", throttledSnap);
+    map.on("moveend", snapToClosestFeature);
+    return () => map.un("moveend", snapToClosestFeature);
   }, [fabOpen, geojsons, layerVisibility]);
 
   const readBounds = useCallback((db: any): number[] => {
