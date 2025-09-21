@@ -135,6 +135,7 @@ const Tab2: React.FC = () => {
     demandecf: true,
     certificat: true,
   });
+  const layerVisibilityRef = useRef(layerVisibility);
 
   const query = useQuery();
   const from = query.get("from");
@@ -164,6 +165,11 @@ const Tab2: React.FC = () => {
 
     loadDataOnEnter();
   });
+
+  // Mettre à jour la ref quand le state change
+  useEffect(() => {
+    layerVisibilityRef.current = layerVisibility;
+  }, [layerVisibility]);
 
   useEffect(() => {
     if (from === "tab1" && action === "croquis" && codeParcelle && parcelles.length > 0) {
@@ -275,7 +281,7 @@ const Tab2: React.FC = () => {
       fill: new Fill({ color: "rgba(127,127,127,0.2)" }),
     });
 
-    if (labelText && zoom > 10) {
+    if (labelText && zoom > 15) {
       baseStyle.setText(
         new Text({
           text: labelText,
@@ -283,7 +289,7 @@ const Tab2: React.FC = () => {
           fill: new Fill({ color: "#000" }),
           stroke: new Stroke({ color: "#fff", width: 3 }),
           overflow: false,
-          placement: "polygon",
+          placement: "point",
         })
       );
     }
@@ -435,7 +441,7 @@ const Tab2: React.FC = () => {
         Math.max(parseFloat(styles.width), parseFloat(styles.height)) / 2;
     }
 
-    // Fonction principale de snap
+    // Fonction de snap
     const snapToClosestFeature = () => {
       const center = view.getCenter();
       if (!center) return;
@@ -449,8 +455,19 @@ const Tab2: React.FC = () => {
       ];
 
       snapLayers.forEach((layer: any) => {
-        if (!layer || !layerVisibility[layer.get("name")]) return;
-        layer.getSource()?.getFeatures().forEach((f: Feature) => {
+        if (!layer) return;
+
+        const visible = layerVisibilityRef.current[layer.get("name")];
+        if (!visible) return;
+
+        const source = layer.getSource();
+        if (!source) return;
+
+        // On limite la recherche aux features visibles à l’écran
+        const extent = view.calculateExtent(map.getSize());
+        const features = source.getFeaturesInExtent(extent);
+
+        features.forEach((f: Feature) => {
           const geom = f.getGeometry();
           if (!geom) return;
 
@@ -480,9 +497,18 @@ const Tab2: React.FC = () => {
       }
     };
 
-    map.on("moveend", snapToClosestFeature);
-    return () => map.un("moveend", snapToClosestFeature);
-  }, [fabOpen, geojsons, layerVisibility]);
+    // --- Throttle (200ms) ---
+    let lastCall = 0;
+    const throttledSnap = () => {
+      const now = Date.now();
+      if (now - lastCall > 150) {
+        lastCall = now;
+        snapToClosestFeature();
+      }
+    };
+    map.on("moveend", throttledSnap);
+    return () => map.un("moveend", throttledSnap);
+  }, [fabOpen]);
 
   const readBounds = useCallback((db: any): number[] => {
     let bounds: number[] = [];
@@ -1109,7 +1135,7 @@ const Tab2: React.FC = () => {
             <IonIcon color="dark" icon={locateOutline} />
           </IonButton>
 
-          <div className={`glass-panel ${!showLocalTiles ? "show" : "hide"}`}>
+          {/* <div className={`glass-panel ${!showLocalTiles ? "show" : "hide"}`}>
             <h4 className="glass-title">Couches visibles</h4>
             <IonItem className="glass-item border-bottom" lines="none">
               <IonCheckbox
@@ -1165,7 +1191,7 @@ const Tab2: React.FC = () => {
               />
               Fond image
             </IonItem>
-          </div>
+          </div> */}
 
           <IonButton
             fill="clear"
