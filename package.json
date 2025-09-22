@@ -12,6 +12,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@awesome-cordova-plugins/core": "^8.1.0",
     "@awesome-cordova-plugins/file": "^8.1.0",
     "@capacitor-community/http": "^1.4.1",
     "@capacitor-community/sqlite": "^7.0.1",

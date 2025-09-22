@@ -641,8 +641,6 @@ const Tab2: React.FC = () => {
           className: "ol-rotate ol-custom-bottom-left",
         }),
       ],
-      loadTilesWhileAnimating: false,
-      loadTilesWhileInteracting: false,
       moveTolerance: 5,
     });
 
@@ -1001,8 +999,7 @@ const Tab2: React.FC = () => {
             {centerCoordsProjected && (
               <div className="coord-display">
                 <div>
-                  X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
-                  {centerCoordsProjected[1].toFixed(6)}
+                  X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}{centerCoordsProjected[1].toFixed(6)}
                 </div>
 
                 <div className="gps-status">
@@ -1224,7 +1221,7 @@ const Tab2: React.FC = () => {
           </IonButton>
 
           {!showLocalTiles && (
-            <div className={`glass-panel`}>
+            <div className="glass-panel">
               <h4 className="glass-title">Couches visibles</h4>
               <IonItem className="glass-item border-bottom" lines="none">
                 <IonCheckbox

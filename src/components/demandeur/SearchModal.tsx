@@ -6,11 +6,11 @@ import {
   IonModal,
   IonSearchbar,
 } from "@ionic/react";
-import { arrowBack} from "ionicons/icons";
+import { arrowBack } from "ionicons/icons";
 import { useEffect, useState } from "react";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 
-import "./SearchModal.css"; // 👉 Import du CSS
+import "./SearchModal.css";
 import DemandeurView from "./DemandeurView";
 import { getAllDemandeurs } from "../../model/base/DbSchema";
 
@@ -27,24 +27,45 @@ const SearchModal: React.FC<SearchModalProps> = ({
 }) => {
   const [query, setQuery] = useState("");
   const [localDemandeurs, setLocalDemandeurs] = useState<Demandeur[]>([]);
+  const [recentSearches, setRecentSearches] = useState<Demandeur[]>([]);
 
-
-  const filtered = localDemandeurs.filter((d) =>
-    `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}`
-      .toLowerCase()
-      .includes(query.toLowerCase())
-  );
-
+  // Charger les demandeurs à l'ouverture du modal
   useEffect(() => {
-    if (!showSearchModal) return; // évite de charger quand c'est fermé
+    if (!showSearchModal) return;
 
     const load = async () => {
       setLocalDemandeurs(await getAllDemandeurs());
     };
-
     load();
-  }, [showSearchModal]); // ⚡️ re-exécuté à chaque ouverture
+  }, [showSearchModal]);
 
+  // Charger les recherches récentes depuis localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("recentSearches");
+    if (saved) {
+      setRecentSearches(JSON.parse(saved));
+    }
+  }, []);
+
+  const filtered = query
+    ? localDemandeurs.filter((d) =>
+        `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}`
+          .toLowerCase()
+          .includes(query.toLowerCase())
+      )
+    : recentSearches;
+
+  const handleSelect = (d: Demandeur) => {
+    onSelect(d);
+    setShowSearchModal(false);
+
+    setRecentSearches((prev) => {
+      const filteredPrev = prev.filter((r) => r.id !== d.id); // éviter doublons
+      const updated = [d, ...filteredPrev].slice(0, 5); // max 5 derniers
+      localStorage.setItem("recentSearches", JSON.stringify(updated)); // sauvegarde persistante
+      return updated;
+    });
+  };
 
   return (
     <IonModal
@@ -52,7 +73,6 @@ const SearchModal: React.FC<SearchModalProps> = ({
       onDidDismiss={() => setShowSearchModal(false)}
     >
       <IonContent>
-        {/* Barre de recherche en haut */}
         <div className="search-header">
           <IonButtons slot="start">
             <IonButton onClick={() => setShowSearchModal(false)}>
@@ -69,17 +89,19 @@ const SearchModal: React.FC<SearchModalProps> = ({
           />
         </div>
 
-        {/* Liste filtrée avec ton composant */}
         <div className="search-results">
+          {query === "" && recentSearches.length > 0 && (
+            <div
+              className="recent-label"
+              style={{ padding: "10px", fontWeight: "bold", color: "#666" }}
+            >
+              Recherches récentes
+            </div>
+          )}
+
           {filtered.length > 0 ? (
             filtered.map((d, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  onSelect(d);
-                  setShowSearchModal(false);
-                }}
-              >
+              <div key={idx} onClick={() => handleSelect(d)}>
                 <DemandeurView demandeur={d} />
               </div>
             ))
