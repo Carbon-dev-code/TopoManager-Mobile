@@ -23,10 +23,7 @@ import {
   IonCardHeader,
   IonCardSubtitle,
   IonChip,
-  IonCardTitle,
-  useIonViewWillEnter,
-  IonRefresher,
-  IonRefresherContent,
+  IonCardTitle, useIonViewWillEnter, IonRefresher, IonRefresherContent,
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import { sync, checkmark, settings, wifi } from "ionicons/icons";
@@ -34,7 +31,7 @@ import "./Tab3.css";
 import { ConfigService } from "../model/ConfigService";
 import { Parcelle } from "../model/parcelle/Parcelle";
 import DemandeurView from "../components/demandeur/DemandeurView";
-import { getAllParcelles } from "../model/base/DbSchema";
+import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
 
 interface ApiResponse {
   success: boolean;
@@ -51,25 +48,19 @@ const Tab3: React.FC = () => {
   const [syncingAll, setSyncingAll] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">(
-    "success"
-  );
+  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">("success");
   const [serverIpPort, setServerIpPort] = useState(DEFAULT_IP_PORT);
   const [showServerModal, setShowServerModal] = useState(false);
   const [tempServerIpPort, setTempServerIpPort] = useState(DEFAULT_IP_PORT);
   const [testingConnection, setTestingConnection] = useState(false);
-  const [filtreParcelle, setFiltreParcelle] = useState<
-    "tous" | "sync" | "nosync" | "erreur"
-  >("tous");
+  const [filtreParcelle, setFiltreParcelle] = useState<"tous" | "sync" | "nosync" | "erreur">("tous");
   const [hasUnsynced, setHasUnsynced] = useState(false);
 
   const SERVER_URL_KEY = "server_url";
 
   const buildServerUrl = (ipPort: string) => `http://${ipPort}${API_BASE_PATH}`;
 
-  const loadParcellesFromStorage = useCallback(async (): Promise<
-    Parcelle[]
-  > => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     return await getAllParcelles();
   }, []);
 
@@ -127,19 +118,6 @@ const Tab3: React.FC = () => {
     }
   };
 
-  const saveParcelles = useCallback(async (updatedParcelles: Parcelle[]) => {
-    try {
-      await Preferences.set({
-        key: STORAGE_KEY,
-        value: JSON.stringify(updatedParcelles),
-      });
-      setParcelles(updatedParcelles);
-    } catch (e) {
-      console.error("Erreur de sauvegarde:", e);
-      showError("Erreur lors de la sauvegarde des données");
-    }
-  }, []);
-
   const showSuccess = useCallback((message: string) => {
     setToastMessage(message);
     setToastColor("success");
@@ -158,10 +136,8 @@ const Tab3: React.FC = () => {
         showError("Veuillez configurer l'adresse du serveur");
         return false;
       }
-
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000); // 8s max
-
       try {
         const endpoint = `${buildServerUrl(
           serverIpPort
@@ -172,170 +148,32 @@ const Tab3: React.FC = () => {
           body: JSON.stringify(parcelleData),
           signal: controller.signal,
         });
-
         clearTimeout(timeout);
-
         if (!response.ok) {
-          showError(`Erreur HTTP: ${response.status}`);
-          return false;
+          throw new Error(`Erreur HTTP: ${response.status}`);
         }
-
         const data: ApiResponse = await response.json();
-
         if (!data.success) {
-          showError(`Sync échouée: ${data.message ?? "Erreur inconnue"}`);
-          return false;
+          throw new Error(`Sync échouée: ${data.message ?? "Erreur inconnue"}`);
         }
-
         return true;
       } catch (error) {
         clearTimeout(timeout);
 
         if (error instanceof Error) {
           if (error.name === "AbortError") {
-            showError("Le serveur ne répond pas (timeout).");
-            return false;
+            throw new Error("Le serveur ne répond pas (timeout).");
           }
           if (error.message.includes("Failed to fetch")) {
-            showError("Serveur inaccessible. Vérifiez la connexion.");
-            return false;
+            throw new Error("Serveur inaccessible. Vérifiez la connexion.");
           }
-          showError(`Erreur: ${error.message}`);
-          return false;
+          throw new Error("`Erreur: ${error.message}`");
         }
-
         showError("Erreur inconnue lors de la synchronisation");
-        return false;
       }
     },
     [serverIpPort, showError]
   );
-
-  // ✅ Corrigé : dépendances explicites + pas de stale state
-  const synchroniserParcelle = useCallback(
-    async (parcelleId: string) => {
-      const parcelle = parcelles.find((p) => p.code === parcelleId);
-      if (!parcelle) return;
-
-      // marquer en cours
-      setParcelles((prev) =>
-        prev.map((p) => (p.code === parcelleId ? { ...p, syncing: true } : p))
-      );
-
-      try {
-        const success = await syncWithAPI(parcelle);
-
-        const updated = parcelles.map((p) =>
-          p.code === parcelleId
-            ? {
-                ...p,
-                synchronise: success ? 1 : 2,
-                syncError: success ? undefined : p.syncError,
-                lastSync: success ? new Date().toISOString() : p.lastSync,
-                syncing: false,
-              }
-            : p
-        );
-        await saveParcelles(updated);
-
-        if (success) {
-          showSuccess(`Parcelle ${parcelle.code} synchronisée!`);
-        }
-      } catch (error) {
-        const errorMsg =
-          error instanceof Error ? error.message : "Erreur inconnue";
-        const updated = parcelles.map((p) =>
-          p.code === parcelleId
-            ? {
-                ...p,
-                synchronise: 2,
-                syncError: errorMsg,
-                syncing: false,
-              }
-            : p
-        );
-        await saveParcelles(updated);
-        showError(`Échec de synchronisation: ${errorMsg}`);
-      }
-    },
-    [parcelles, syncWithAPI, saveParcelles, showSuccess, showError]
-  );
-
-  const synchroniserToutes = useCallback(async () => {
-    if (!serverIpPort) {
-      showError("Veuillez configurer l'adresse du serveur");
-      return;
-    }
-
-    const nonSyncParcelles = parcelles.filter((p) => p.synchronise !== 1);
-    if (nonSyncParcelles.length === 0) {
-      showSuccess("Toutes les parcelles sont déjà synchronisées.");
-      return;
-    }
-
-    setSyncingAll(true);
-
-    // marquer toutes les parcelles comme en cours
-    let updatedParcelles = parcelles.map((p) =>
-      nonSyncParcelles.some((n) => n.code === p.code)
-        ? { ...p, syncing: true }
-        : p
-    );
-    setParcelles(updatedParcelles);
-
-    let erreurs = 0;
-
-    // on boucle sur chaque parcelle
-    for (const parcelle of nonSyncParcelles) {
-      try {
-        const success = await syncWithAPI(parcelle);
-
-        updatedParcelles = updatedParcelles.map((p) =>
-          p.code === parcelle.code
-            ? {
-                ...p,
-                synchronise: success ? 1 : 2,
-                lastSync: success ? new Date().toISOString() : p.lastSync,
-                syncError: success ? undefined : "Erreur de synchronisation",
-                syncing: false,
-              }
-            : p
-        );
-
-        if (!success) erreurs += 1;
-
-        setParcelles(updatedParcelles);
-      } catch (err) {
-        // ne devrait pas arriver car syncWithAPI gère déjà toutes les erreurs
-        const errorMsg = err instanceof Error ? err.message : "Erreur inconnue";
-
-        updatedParcelles = updatedParcelles.map((p) =>
-          p.code === parcelle.code
-            ? { ...p, synchronise: 2, syncError: errorMsg, syncing: false }
-            : p
-        );
-        erreurs += 1;
-        setParcelles(updatedParcelles);
-      }
-    }
-
-    await saveParcelles(updatedParcelles);
-
-    if (erreurs === 0) {
-      showSuccess(`${nonSyncParcelles.length} parcelle(s) synchronisée(s)`);
-    } else {
-      showError(`${erreurs} parcelle(s) en erreur de synchronisation`);
-    }
-
-    setSyncingAll(false);
-  }, [
-    parcelles,
-    serverIpPort,
-    saveParcelles,
-    syncWithAPI,
-    showSuccess,
-    showError,
-  ]);
 
   const testerConnexion = useCallback(async () => {
     if (!serverIpPort) {
@@ -366,8 +204,8 @@ const Tab3: React.FC = () => {
         delayMs < 100
           ? "Ultra rapide 🚀"
           : delayMs < 200
-          ? "Rapide ✅"
-          : "Lent 🐢";
+            ? "Rapide ✅"
+            : "Lent 🐢";
       showSuccess(`Connexion réussie (${delayMs} ms) — ${speedText}`);
     } catch (error: unknown) {
       clearTimeout(timer);
@@ -394,6 +232,129 @@ const Tab3: React.FC = () => {
     },
     [load]
   );
+
+  const synchroniserParcelle = useCallback(
+    async (parcelleId: string) => {
+      const parcelle = parcelles.find((p) => p.code === parcelleId);
+      if (!parcelle) return;
+
+      setParcelles((prev) =>
+        prev.map((p) => (p.code === parcelleId ? { ...p, syncing: true } : p))
+      );
+
+      try {
+        const success = await syncWithAPI(parcelle);
+
+        const updatedParcelle = {
+          ...parcelle,
+          synchronise: success ? 1 : 2,
+          syncError: success ? undefined : parcelle.syncError,
+          lastSync: success ? new Date().toISOString() : parcelle.lastSync,
+          syncing: false,
+        };
+
+        await insertParcelle(updatedParcelle);
+
+        setParcelles((prev) =>
+          prev.map((p) => (p.code === parcelleId ? updatedParcelle : p))
+        );
+
+        if (success) showSuccess(`Parcelle ${parcelle.code} synchronisée!`);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Erreur inconnue";
+
+        const updatedParcelle = {
+          ...parcelle,
+          synchronise: 2,
+          syncError: errorMsg,
+          syncing: false,
+        };
+
+        await insertParcelle(updatedParcelle);
+        setParcelles((prev) =>
+          prev.map((p) => (p.code === parcelleId ? updatedParcelle : p))
+        );
+
+        showError(`Échec de synchronisation: ${errorMsg}`);
+      }
+    },
+    [parcelles, syncWithAPI, showSuccess, showError]
+  );
+
+  const synchroniserToutes = useCallback(async () => {
+    if (!serverIpPort) {
+      showError("Veuillez configurer l'adresse du serveur");
+      return;
+    }
+
+    const nonSyncParcelles = parcelles.filter((p) => p.synchronise !== 1);
+    if (nonSyncParcelles.length === 0) {
+      showSuccess("Toutes les parcelles sont déjà synchronisées.");
+      return;
+    }
+
+    setSyncingAll(true);
+
+    // marquer toutes les parcelles comme en cours
+    let updatedParcelles = parcelles.map((p) =>
+      nonSyncParcelles.some((n) => n.code === p.code)
+        ? { ...p, syncing: true }
+        : p
+    );
+    setParcelles(updatedParcelles);
+
+    let erreurs = 0;
+
+    for (const parcelle of nonSyncParcelles) {
+      try {
+        const success = await syncWithAPI(parcelle);
+
+        const updatedParcelle = {
+          ...parcelle,
+          synchronise: success ? 1 : 2,
+          lastSync: success ? new Date().toISOString() : parcelle.lastSync,
+          syncError: success ? undefined : "Erreur de synchronisation",
+          syncing: false,
+        };
+
+        // Persister via localforage
+        await insertParcelle(updatedParcelle);
+
+        updatedParcelles = updatedParcelles.map((p) =>
+          p.code === parcelle.code ? updatedParcelle : p
+        );
+
+        if (!success) erreurs += 1;
+
+        setParcelles(updatedParcelles);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Erreur inconnue";
+
+        const updatedParcelle = {
+          ...parcelle,
+          synchronise: 2,
+          syncError: errorMsg,
+          syncing: false,
+        };
+
+        await insertParcelle(updatedParcelle);
+        updatedParcelles = updatedParcelles.map((p) =>
+          p.code === parcelle.code ? updatedParcelle : p
+        );
+
+        erreurs += 1;
+        setParcelles(updatedParcelles);
+      }
+    }
+
+    if (erreurs === 0) {
+      showSuccess(`${nonSyncParcelles.length} parcelle(s) synchronisée(s)`);
+    } else {
+      showError(`${erreurs} parcelle(s) en erreur de synchronisation`);
+    }
+
+    setSyncingAll(false);
+  }, [parcelles, serverIpPort, syncWithAPI, showSuccess, showError]);
 
   return (
     <IonPage>
@@ -422,22 +383,23 @@ const Tab3: React.FC = () => {
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
 
-        {/* === Card info serveur === */}
-        <div className="server-info-card">
-          <IonLabel>Adresse serveur :</IonLabel>
-          <IonText color="primary">{serverIpPort}</IonText>
+        {/* === Card info serveur avec icône de test === */}
+        <div className="server mb-1">
+          <div className="server-info-card w-100">
+            <IonLabel>Adresse serveur :</IonLabel>
+            <IonText color="primary">{serverIpPort}</IonText>
+          </div>
+
+          <div className="icon-wrapper" onClick={testerConnexion}>
+            <IonIcon
+              icon={wifi}
+              className={testingConnection ? "blinking-steps" : "idle-icon"}
+              style={{ fontSize: "15px" }}
+            />
+          </div>
         </div>
 
         <div className="btn-group">
-          <IonButton
-            color="primary"
-            onClick={testerConnexion}
-            disabled={testingConnection}
-          >
-            <IonIcon icon={wifi} slot="start" />
-            {testingConnection ? "Test en cours..." : "Tester la connexion"}
-          </IonButton>
-
           {hasUnsynced && (
             <IonButton
               color="success"
@@ -464,7 +426,7 @@ const Tab3: React.FC = () => {
                 onChange={() => setFiltreParcelle("tous")}
               />
               <label
-                className="btn btn-outline-primary"
+                className="btn rounded btn-outline-primary"
                 htmlFor="tous-outlined"
               >
                 Tous
@@ -481,7 +443,7 @@ const Tab3: React.FC = () => {
                 onChange={() => setFiltreParcelle("sync")}
               />
               <label
-                className="btn btn-outline-primary"
+                className="btn rounded btn-outline-primary"
                 htmlFor="sync-outlined"
               >
                 Synchronisées
@@ -498,7 +460,7 @@ const Tab3: React.FC = () => {
                 onChange={() => setFiltreParcelle("nosync")}
               />
               <label
-                className="btn btn-outline-primary"
+                className="btn rounded btn-outline-primary"
                 htmlFor="nosync-outlined"
               >
                 Non synchronisées
@@ -515,7 +477,7 @@ const Tab3: React.FC = () => {
                 onChange={() => setFiltreParcelle("erreur")}
               />
               <label
-                className="btn btn-outline-primary"
+                className="btn rounded btn-outline-primary"
                 htmlFor="error-outlined"
               >
                 Avec erreurs
@@ -529,19 +491,17 @@ const Tab3: React.FC = () => {
             .filter((p) => {
               if (filtreParcelle === "tous") return true;
               if (filtreParcelle === "sync") return p.synchronise === 1;
-              if (filtreParcelle === "nosync")
-                return p.synchronise === 0 || p.synchronise === 2;
+              if (filtreParcelle === "nosync") return p.synchronise === 0 || p.synchronise === 2;
               if (filtreParcelle === "erreur") return p.synchronise === 2;
               return true;
             })
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
-                  className={`position-badge-custom-tab2 ion-color ${
-                    parcelle.synchronise === 1
-                      ? "ion-color-success"
-                      : "ion-color-danger"
-                  } ${parcelle.synchronise === 1 ? "disabled" : ""}`}
+                  className={`position-badge-custom-tab2 ion-color ${parcelle.synchronise === 1
+                    ? "ion-color-success"
+                    : "ion-color-danger"
+                    } ${parcelle.synchronise === 1 ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
                     if (parcelle.synchronise !== 1 && !parcelle.syncing) {
@@ -594,15 +554,15 @@ const Tab3: React.FC = () => {
                   </IonCardSubtitle>
                 </IonCardHeader>
 
-                <IonCardContent>
-                  <IonList className="scrollable-list">
+                <IonCardContent className="p-0">
+                  <div className="scrollable-list">
                     {(parcelle.demandeurs ?? []).map((demandeur) => (
                       <DemandeurView
                         key={`dem${demandeur.id}`}
                         demandeur={demandeur}
                       />
                     ))}
-                  </IonList>
+                  </div>
                 </IonCardContent>
               </IonCard>
             ))}
