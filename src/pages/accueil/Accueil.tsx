@@ -33,7 +33,7 @@ const Accueil: React.FC = () => {
             </section>
 
             <section id="features" className="features">
-              <h3 className="text-center mb-4">Nos principales fonctionnalités</h3>
+              <h3 className="text-center m-0 mb-4">Nos principales fonctionnalités</h3>
               <div className="row g-4">
                 <div className="col-md-6">
                   <div className="feature-card">

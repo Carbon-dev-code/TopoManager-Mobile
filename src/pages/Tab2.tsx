@@ -40,7 +40,6 @@ import {
   pencilOutline,
   removeOutline,
   search,
-  searchCircleOutline,
   searchSharp,
   stopSharp,
 } from "ionicons/icons";
@@ -107,13 +106,15 @@ const Tab2: React.FC = () => {
   const watchId = useRef<string | number | null>(null);
 
   // ==================== STATE ====================
-  const { loadMBTiles } = useDb();
+  const { db, loadMBTiles } = useDb();
   const [loadingMap, setLoadingMap] = useState(true);
   const [showLocalTiles, setShowLocalTiles] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [geojsons, setGeojsons] = useState<any[]>([]);
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
+    number[] | null
+  >(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const [showCard, setShowCard] = useState(true);
   const [fabOpen, setFabOpen] = useState(false);
@@ -151,7 +152,7 @@ const Tab2: React.FC = () => {
         setGeojsons(await loadGeoJsonFromStorage());
         const loadedParcelles = await loadParcellesFromStorage();
         setParcelles(loadedParcelles);
-        const database = await loadMBTiles();
+        const database = db || (await loadMBTiles());
         if (!localLayerRef.current) {
           await addMbTilesLayer(database);
         }
@@ -171,7 +172,12 @@ const Tab2: React.FC = () => {
   }, [layerVisibility]);
 
   useEffect(() => {
-    if (from === "tab1" && action === "croquis" && codeParcelle && parcelles.length > 0) {
+    if (
+      from === "tab1" &&
+      action === "croquis" &&
+      codeParcelle &&
+      parcelles.length > 0
+    ) {
       const found = parcelles.find((p) => p.code === codeParcelle);
       setCurrentParcelle(found || null);
     } else {
@@ -180,7 +186,9 @@ const Tab2: React.FC = () => {
     }
   }, [from, action, codeParcelle, parcelles]);
 
-  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<
+    Parcelle[]
+  > => {
     return await getAllParcelles();
   }, []);
 
@@ -223,7 +231,11 @@ const Tab2: React.FC = () => {
     return labelMap[type] || feature.get("name") || "";
   };
 
-  const createStyle = (type: string | undefined, labelText: string, zoom: number): Style => {
+  const createStyle = (
+    type: string | undefined,
+    labelText: string,
+    zoom: number
+  ): Style => {
     const styleMap: Record<string, Style> = {
       ipss: new Style({
         stroke: new Stroke({ color: "rgba(5, 59, 255,1)", width: 1.5 }),
@@ -275,10 +287,12 @@ const Tab2: React.FC = () => {
       }),
     };
 
-    const baseStyle = styleMap[type]?.clone() || new Style({
-      stroke: new Stroke({ color: "#7f7f7f", width: 1.5 }),
-      fill: new Fill({ color: "rgba(127,127,127,0.2)" }),
-    });
+    const baseStyle =
+      styleMap[type]?.clone() ||
+      new Style({
+        stroke: new Stroke({ color: "#7f7f7f", width: 1.5 }),
+        fill: new Fill({ color: "rgba(127,127,127,0.2)" }),
+      });
 
     if (labelText && zoom > 15) {
       baseStyle.setText(
@@ -325,16 +339,27 @@ const Tab2: React.FC = () => {
 
     const first = drawPoints[0];
     const last = drawPoints[drawPoints.length - 1];
-    const closedPoints = (first[0] === last[0] && first[1] === last[1]) ? drawPoints : [...drawPoints, first];
+    const closedPoints =
+      first[0] === last[0] && first[1] === last[1]
+        ? drawPoints
+        : [...drawPoints, first];
 
     const points = closedPoints.map(([x, y]) => {
-      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [number, number];
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
+        number,
+        number
+      ];
       return new PointC(tx, ty);
     });
 
     const newPolygone = new Polygone(points);
-    const updatedParcelle: Parcelle = { ...currentParcelle, polygone: [newPolygone] };
-    const updatedParcelles = parcelles.map((p) => p.code === updatedParcelle.code ? updatedParcelle : p);
+    const updatedParcelle: Parcelle = {
+      ...currentParcelle,
+      polygone: [newPolygone],
+    };
+    const updatedParcelles = parcelles.map((p) =>
+      p.code === updatedParcelle.code ? updatedParcelle : p
+    );
 
     setCurrentParcelle(updatedParcelle);
     setParcelles(updatedParcelles);
@@ -346,7 +371,9 @@ const Tab2: React.FC = () => {
     const vectorLayer = vectorLayerRef.current;
     if (vectorLayer) {
       const source = vectorLayer.getSource();
-      const featurePoints = points.map((p) => transform([p.x, p.y], "EPSG:29702", "EPSG:3857"));
+      const featurePoints = points.map((p) =>
+        transform([p.x, p.y], "EPSG:29702", "EPSG:3857")
+      );
       const polygon = new Polygon([featurePoints]);
       const feature = new Feature(polygon);
       feature.set("name", "parcelle");
@@ -372,25 +399,25 @@ const Tab2: React.FC = () => {
               image: new CircleStyle({
                 radius: 3,
                 fill: new Fill({ color: "#ff0000" }),
-                stroke: new Stroke({ color: "#fff", width: 1 })
-              })
+                stroke: new Stroke({ color: "#fff", width: 1 }),
+              }),
             });
           } else if (geom instanceof Polygon) {
             return new Style({
               stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
-              fill: new Fill({ color: "rgba(0,0,255,0.1)" })
+              fill: new Fill({ color: "rgba(0,0,255,0.1)" }),
             });
           } else if (geom instanceof MultiPoint) {
             return new Style({
               image: new CircleStyle({
                 radius: 3,
                 fill: new Fill({ color: "#ff0000" }),
-                stroke: new Stroke({ color: "#fff", width: 1.5 })
-              })
+                stroke: new Stroke({ color: "#fff", width: 1.5 }),
+              }),
             });
           }
           return undefined;
-        }
+        },
       });
       mapRef.current.addLayer(vectorLayer);
       vectorLayerRef.current = vectorLayer;
@@ -400,7 +427,9 @@ const Tab2: React.FC = () => {
     if (!source) return;
 
     if (drawPoints.length > 0) {
-      let polygonFeature = source.getFeatures().find(f => f.get("type") === "polygon");
+      let polygonFeature = source
+        .getFeatures()
+        .find((f) => f.get("type") === "polygon");
       if (!polygonFeature) {
         polygonFeature = new Feature(new Polygon([[]]));
         polygonFeature.set("type", "polygon");
@@ -413,7 +442,9 @@ const Tab2: React.FC = () => {
       }
 
       // points
-      let pointsFeature = source.getFeatures().find(f => f.get("type") === "points");
+      let pointsFeature = source
+        .getFeatures()
+        .find((f) => f.get("type") === "points");
       if (!pointsFeature) {
         pointsFeature = new Feature(new MultiPoint([]));
         pointsFeature.set("type", "points");
@@ -472,7 +503,8 @@ const Tab2: React.FC = () => {
 
           let candidate: number[] | null = null;
           if (geom instanceof Point) candidate = geom.getCoordinates();
-          else if (geom instanceof Polygon) candidate = geom.getClosestPoint(center);
+          else if (geom instanceof Polygon)
+            candidate = geom.getClosestPoint(center);
 
           if (!candidate) return;
 
@@ -530,30 +562,37 @@ const Tab2: React.FC = () => {
     return bounds;
   }, []);
 
-  const createMbTilesSource = useCallback((db: any) =>
-    new XYZ({
-      tileSize: 256,
-      minZoom: 0,
-      maxZoom: 18,
-      tileUrlFunction: (tileCoord) => `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`,
-      tileLoadFunction: (imageTile, src) => {
-        const tileCoord = imageTile.getTileCoord();
-        if (!tileCoord) return;
-        const [z, x, y_ol] = tileCoord;
-        const y = (1 << z) - 1 - y_ol;
-        const image = imageTile.getImage() as HTMLImageElement;
-        const stmt = db.prepare("SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?");
-        stmt.bind([z, x, y]);
-        if (stmt.step()) {
-          const blob = new Blob([stmt.getAsObject().tile_data], { type: "image/png" });
-          const url = URL.createObjectURL(blob);
-          image.onload = () => URL.revokeObjectURL(url); // ⚡ évite fuite mémoire
-          image.src = url;
-        } else image.src = "";
-        stmt.free();
-      }
-    }), []);
-
+  const createMbTilesSource = useCallback(
+    (db: any) =>
+      new XYZ({
+        tileSize: 256,
+        minZoom: 0,
+        maxZoom: 18,
+        tileUrlFunction: (tileCoord) =>
+          `mbtiles://${tileCoord[0]}/${tileCoord[1]}/${tileCoord[2]}`,
+        tileLoadFunction: (imageTile, src) => {
+          const tileCoord = imageTile.getTileCoord();
+          if (!tileCoord) return;
+          const [z, x, y_ol] = tileCoord;
+          const y = (1 << z) - 1 - y_ol;
+          const image = imageTile.getImage() as HTMLImageElement;
+          const stmt = db.prepare(
+            "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?"
+          );
+          stmt.bind([z, x, y]);
+          if (stmt.step()) {
+            const blob = new Blob([stmt.getAsObject().tile_data], {
+              type: "image/png",
+            });
+            const url = URL.createObjectURL(blob);
+            image.onload = () => URL.revokeObjectURL(url); // ⚡ évite fuite mémoire
+            image.src = url;
+          } else image.src = "";
+          stmt.free();
+        },
+      }),
+    []
+  );
 
   const createVectorLayers = useCallback(() => {
     const parcellesSource = new VectorSource();
@@ -590,23 +629,31 @@ const Tab2: React.FC = () => {
     setLoadingMap(true);
     const map = new Map({
       target: mapElement.current,
-      view: new View({ center: fromLonLat([46.8, -18.8]), zoom: 6, maxZoom: 28 }),
+      view: new View({
+        center: fromLonLat([46.8, -18.8]),
+        zoom: 6,
+        maxZoom: 28,
+      }),
       controls: [
         new ScaleLine({ units: "metric", bar: true, steps: 1, text: true }),
-        new Rotate({ autoHide: false, className: "ol-rotate ol-custom-bottom-left" })
+        new Rotate({
+          autoHide: false,
+          className: "ol-rotate ol-custom-bottom-left",
+        }),
       ],
       loadTilesWhileAnimating: false,
       loadTilesWhileInteracting: false,
-      moveTolerance: 5
+      moveTolerance: 5,
     });
 
     mapRef.current = map;
     const vectorLayers = createVectorLayers();
-    vectorLayers.forEach(layer => map.addLayer(layer));
+    vectorLayers.forEach((layer) => map.addLayer(layer));
 
     map.on("moveend", () => {
       const center = map.getView().getCenter();
-      if (center) setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
+      if (center)
+        setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
     });
 
     setLoadingMap(false);
@@ -679,14 +726,19 @@ const Tab2: React.FC = () => {
     parcellesSourceRef.current.addFeatures(features);
   }, [parcelles]);
 
-  const toggleLayer = (keys: (keyof typeof layerVisibility) | (keyof typeof layerVisibility)[]) => {
+  const toggleLayer = (
+    keys: keyof typeof layerVisibility | (keyof typeof layerVisibility)[]
+  ) => {
     const keysArray = Array.isArray(keys) ? keys : [keys];
-    setLayerVisibility(prev => {
+    setLayerVisibility((prev) => {
       const newVisibility = !prev[keysArray[0]];
       const updated = { ...prev };
-      keysArray.forEach(k => {
+      keysArray.forEach((k) => {
         updated[k] = newVisibility;
-        const layer = mapRef.current?.getLayers().getArray().find(l => l.get("name") === k);
+        const layer = mapRef.current
+          ?.getLayers()
+          .getArray()
+          .find((l) => l.get("name") === k);
         if (layer) layer.setVisible(newVisibility);
       });
       return updated;
@@ -697,7 +749,7 @@ const Tab2: React.FC = () => {
     if (!showGPS) {
       setShowGPS(true);
     } else {
-      setShowGPS(false)
+      setShowGPS(false);
     }
   }, [showGPS]);
 
@@ -711,8 +763,20 @@ const Tab2: React.FC = () => {
     map.getView().animate({ center: coords3857, zoom: 17, duration: 1000 });
     const marker = new Feature({ geometry: new Point(coords3857) });
     if (!fabOpen) {
-      const style1 = new Style({ image: new CircleStyle({ radius: 6, fill: new Fill({ color: "red" }), stroke: new Stroke({ color: "#fff", width: 2 }) }) });
-      const style2 = new Style({ image: new CircleStyle({ radius: 6, fill: new Fill({ color: "rgba(30,255,0,1)" }), stroke: new Stroke({ color: "#fff", width: 2 }) }) });
+      const style1 = new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: "red" }),
+          stroke: new Stroke({ color: "#fff", width: 2 }),
+        }),
+      });
+      const style2 = new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: "rgba(30,255,0,1)" }),
+          stroke: new Stroke({ color: "#fff", width: 2 }),
+        }),
+      });
       let visible = true;
       marker.setStyle(style1);
       const interval = setInterval(() => {
@@ -727,17 +791,20 @@ const Tab2: React.FC = () => {
     setTimeout(() => map.removeLayer(markerLayer), intervalDuration);
   }, [fabOpen, latitude, longitude]);
 
-  const stateSearch = useCallback(() => setShowSearch(prev => !prev), []);
+  const stateSearch = useCallback(() => setShowSearch((prev) => !prev), []);
 
   const blinkFeature = useCallback((feature: Feature) => {
     if (!mapRef.current) return;
-    if (highlightLayerRef.current) mapRef.current.removeLayer(highlightLayerRef.current);
+    if (highlightLayerRef.current)
+      mapRef.current.removeLayer(highlightLayerRef.current);
     const highlightSource = new VectorSource({ features: [feature] });
     let visible = true;
     const highlightStyle = (visible: boolean) =>
       new Style({
         stroke: new Stroke({
-          color: visible ? "rgba(81, 255, 0, 0.63)" : "rgba(255, 255, 255, 0.63)",
+          color: visible
+            ? "rgba(81, 255, 0, 0.63)"
+            : "rgba(255, 255, 255, 0.63)",
           width: 1.5,
         }),
         fill: new Fill({
@@ -764,50 +831,58 @@ const Tab2: React.FC = () => {
     }, 5000);
   }, []);
   // ==================== SEARCH & ZOOM ====================
-  const searchAndZoom = useCallback((searchTerm: string) => {
-    if (!mapRef.current) return;
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return;
-    let foundFeature: Feature | null = null;
-    const geoJsonLayers = Object.values(geoJsonLayersRef.current);
-    for (const layer of geoJsonLayers) {
-      const source = layer.getSource();
-      if (!source) continue;
-      const features = source.getFeatures();
-      for (const feature of features) {
-        const props = feature.getProperties();
-        for (const key in props) {
-          if (typeof props[key] === "string" && props[key].toLowerCase().includes(term)) {
-            foundFeature = feature;
-            break;
+  const searchAndZoom = useCallback(
+    (searchTerm: string) => {
+      if (!mapRef.current) return;
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) return;
+      let foundFeature: Feature | null = null;
+      const geoJsonLayers = Object.values(geoJsonLayersRef.current);
+      for (const layer of geoJsonLayers) {
+        const source = layer.getSource();
+        if (!source) continue;
+        const features = source.getFeatures();
+        for (const feature of features) {
+          const props = feature.getProperties();
+          for (const key in props) {
+            if (
+              typeof props[key] === "string" &&
+              props[key].toLowerCase().includes(term)
+            ) {
+              foundFeature = feature;
+              break;
+            }
           }
+          if (foundFeature) break;
         }
         if (foundFeature) break;
       }
-      if (foundFeature) break;
-    }
-    if (!foundFeature && parcelles.length > 0) {
-      for (const p of parcelles) {
-        if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
-          const points = p.polygone[0].points.map((pt) =>
-            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857")
-          );
-          const polygon = new Polygon([points]);
-          foundFeature = new Feature(polygon);
-          break;
+      if (!foundFeature && parcelles.length > 0) {
+        for (const p of parcelles) {
+          if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
+            const points = p.polygone[0].points.map((pt) =>
+              transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857")
+            );
+            const polygon = new Polygon([points]);
+            foundFeature = new Feature(polygon);
+            break;
+          }
         }
       }
-    }
-    if (foundFeature) {
-      const extent = foundFeature.getGeometry()?.getExtent();
-      if (extent) {
-        mapRef.current.getView().fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
-        blinkFeature(foundFeature);
+      if (foundFeature) {
+        const extent = foundFeature.getGeometry()?.getExtent();
+        if (extent) {
+          mapRef.current
+            .getView()
+            .fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
+          blinkFeature(foundFeature);
+        }
+      } else {
+        setToastMessage(`Aucune parcelle trouvée pour : ${searchTerm}`);
       }
-    } else {
-      setToastMessage(`Aucune parcelle trouvée pour : ${searchTerm}`);
-    }
-  }, [blinkFeature, parcelles]);
+    },
+    [blinkFeature, parcelles]
+  );
 
   // ==================== GPS & TRACKING ====================
   const toggleTracking = async () => {
@@ -820,12 +895,17 @@ const Tab2: React.FC = () => {
               const { longitude: lon, latitude: lat, accuracy } = pos.coords;
               setGpsAccuracy(accuracy);
               setGpsStatus(2);
-              mapRef.current?.getView().animate({ center: fromLonLat([lon, lat]), zoom: 21, duration: 1000 });
+              mapRef.current?.getView().animate({
+                center: fromLonLat([lon, lat]),
+                zoom: 21,
+                duration: 1000,
+              });
             },
             (err) => {
               console.error("Erreur GPS Web:", err);
               setGpsStatus(err.code === 2 ? 1 : 3);
-              if (err.code !== 2) setToastMessage("Erreur GPS : " + err.message);
+              if (err.code !== 2)
+                setToastMessage("Erreur GPS : " + err.message);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           );
@@ -845,14 +925,19 @@ const Tab2: React.FC = () => {
               if (err) {
                 console.error("Erreur GPS mobile:", err);
                 setGpsStatus(err.code === 2 ? 1 : 3);
-                if (err.code !== 2) setToastMessage("Erreur GPS : " + JSON.stringify(err));
+                if (err.code !== 2)
+                  setToastMessage("Erreur GPS : " + JSON.stringify(err));
                 return;
               }
               if (pos && mapRef.current) {
                 const { longitude: lon, latitude: lat, accuracy } = pos.coords;
                 setGpsAccuracy(accuracy);
                 setGpsStatus(2);
-                mapRef.current.getView().animate({ center: fromLonLat([lon, lat]), zoom: 21, duration: 1000 });
+                mapRef.current.getView().animate({
+                  center: fromLonLat([lon, lat]),
+                  zoom: 21,
+                  duration: 1000,
+                });
               }
             }
           );
@@ -865,7 +950,8 @@ const Tab2: React.FC = () => {
       }
     } else {
       if (watchId.current) {
-        if (Capacitor.getPlatform() === "web") navigator.geolocation.clearWatch(watchId.current as number);
+        if (Capacitor.getPlatform() === "web")
+          navigator.geolocation.clearWatch(watchId.current as number);
         else await Geolocation.clearWatch({ id: watchId.current as string });
         watchId.current = null;
       }
@@ -874,11 +960,15 @@ const Tab2: React.FC = () => {
       setTracking(false);
     }
   };
-  useEffect(() => () => {
-    if (!watchId.current) return;
-    if (Capacitor.getPlatform() === "web") navigator.geolocation.clearWatch(watchId.current as number);
-    else Geolocation.clearWatch({ id: watchId.current as string });
-  }, []);
+  useEffect(
+    () => () => {
+      if (!watchId.current) return;
+      if (Capacitor.getPlatform() === "web")
+        navigator.geolocation.clearWatch(watchId.current as number);
+      else Geolocation.clearWatch({ id: watchId.current as string });
+    },
+    []
+  );
   return (
     <IonPage>
       <IonHeader className="custom-header">
@@ -932,8 +1022,8 @@ const Tab2: React.FC = () => {
                           gpsAccuracy < 10
                             ? "green"
                             : gpsAccuracy < 50
-                              ? "orange"
-                              : "red",
+                            ? "orange"
+                            : "red",
                       }}
                     >
                       Précision GPS: {gpsAccuracy.toFixed(1)} m
@@ -1041,7 +1131,8 @@ const Tab2: React.FC = () => {
                 fill="clear"
                 size="small"
                 color="primary"
-                onClick={searchGPS}>
+                onClick={searchGPS}
+              >
                 <IonIcon icon={searchSharp} style={{ fontSize: "20px" }} />
               </IonButton>
               <IonButton

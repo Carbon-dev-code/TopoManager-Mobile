@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useRef, useState } from "react";
+import { createContext, useContext, ReactNode, useRef, useEffect, useState } from "react";
 import initSqlJs, { Database } from "sql.js";
 import { File } from "@awesome-cordova-plugins/file";
 import { Capacitor } from "@capacitor/core";
@@ -19,22 +19,21 @@ export const useDb = () => {
 
 export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const dbRef = useRef<Database | null>(null);
-  const [, setTick] = useState(0); // pour forcer rerender si besoin
+  const [ready, setReady] = useState(false);
 
   const resetMBTiles = () => {
     dbRef.current = null;
-    setTick((t) => t + 1); // optionnel : force rerender pour rafraîchir db dans le contexte
+    setReady(false);
   };
 
   const loadMBTiles = async (): Promise<Database> => {
     if (dbRef.current) return dbRef.current;
 
-    const SQL = await initSqlJs({ locateFile: (f: any) => `/sql-wasm/${f}` });
+    const SQL = await initSqlJs({ locateFile: (f: unknown) => `/sql-wasm/${f}` });
     let loadedDb: Database;
 
     if (Capacitor.isNativePlatform()) {
-      const filePath =
-        File.externalRootDirectory + "Documents/TopoManager/mbtiles/amb.mbtiles";
+      const filePath = File.externalRootDirectory + "Documents/TopoManager/mbtiles/amb.mbtiles";
       const fileEntry = (await File.resolveLocalFilesystemUrl(filePath)) as any;
       loadedDb = await new Promise((resolve, reject) => {
         fileEntry.file((file: any) => {
@@ -56,8 +55,21 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       dbRef.current = loadedDb;
     }
 
+    setReady(true);
     return loadedDb;
   };
+
+  // Préchargement immédiat au startup de l'app
+  useEffect(() => {
+    (async () => {
+      try {
+        await loadMBTiles();
+        console.log("MBTiles préchargé ✔️");
+      } catch (err) {
+        console.error("Erreur chargement MBTiles au startup:", err);
+      }
+    })();
+  }, []);
 
   return (
     <DbContext.Provider value={{ db: dbRef.current, loadMBTiles, resetMBTiles }}>
