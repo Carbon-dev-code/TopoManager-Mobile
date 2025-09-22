@@ -59,7 +59,7 @@
 
 .color-smoke {
   --background: white;
-  --ion-background-color: white;
+  --ion-background-color: #ffffff00;
   height: 100%;
   padding-top: 10px;
 }
