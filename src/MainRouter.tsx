@@ -12,24 +12,34 @@ import {
   IonRouterOutlet,
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
-import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline, logOutOutline, chevronForwardOutline, peopleOutline } from 'ionicons/icons';
+import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline, logOutOutline, chevronForwardOutline, peopleOutline, terminalOutline } from 'ionicons/icons';
 
 import Tab1 from './pages/Tab1';
 import Tab2 from './pages/Tab2';
 import Tab3 from './pages/Tab3';
 import Tab4 from './pages/Tab4';
+import Tab5 from './pages/Tab6';
 import Accueil from './pages/accueil/Accueil';
 import Login from './pages/login/Login';
 import Demandeur from './pages/Tab5';
 import { Preferences } from '@capacitor/preferences';
 import "./MainRouter.css";
 import { useEffect, useState } from 'react';
+import Tab6 from './pages/Tab6';
 
 const MainRouter: React.FC = () => {
   const location = useLocation();
   const hideMenu = location.pathname === '/accueil' || location.pathname === '/login';
-
   const [username, setUsername] = useState<string>("");
+  const [idSession, setIdSession] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const { value } = await Preferences.get({ key: 'id_session' });
+      setIdSession(value ? parseInt(value, 10) : null);
+    };
+    loadSession();
+  }, []);
 
   useEffect(() => {
     const loadUsername = async () => {
@@ -109,6 +119,17 @@ const MainRouter: React.FC = () => {
                 </IonItem>
               </IonMenuToggle>
             </div>
+            {idSession === 0 && (
+              <div className="compact">
+                <IonMenuToggle autoHide={false}>
+                  <IonItem routerLink="/tab6" routerDirection="none" lines="none">
+                    <IonIcon icon={terminalOutline} slot="start" />
+                    <IonLabel>Admin</IonLabel>
+                    <IonIcon icon={chevronForwardOutline} slot="end" />
+                  </IonItem>
+                </IonMenuToggle>
+              </div>
+            )}
           </IonList>
           {/* Déconnexion en bas */}
           <div style={{ position: 'absolute', bottom: 0, width: '100%' }}>
@@ -139,6 +160,7 @@ const MainRouter: React.FC = () => {
             <Route exact path="/tab2" component={Tab2} />
             <Route exact path="/tab3" component={Tab3} />
             <Route exact path="/tab4" component={Tab4} />
+            <Route exact path="/tab6" component={Tab6} />
             <Route exact path="/demandeur" component={Demandeur} />
             <Route exact path="/">
               <Redirect to="/accueil" />

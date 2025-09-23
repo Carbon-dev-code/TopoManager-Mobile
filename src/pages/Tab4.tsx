@@ -76,7 +76,7 @@ const Tab4 = () => {
     onCancel: () => void;
   } | null>(null);
   const { resetMBTiles } = useDb();
-
+  const [deviceId, setDeviceId] = useState<string>("");
 
   useIonViewWillEnter(() => {
     loadConfig().then(() => refreshCurrentParams());
@@ -84,16 +84,17 @@ const Tab4 = () => {
 
   const refreshCurrentParams = async () => {
     try {
-      const { value } = await Preferences.get({ key: "parametreActuel" });
-      if (value) {
-        const current = JSON.parse(value);
+      const { value: paramValue } = await Preferences.get({ key: "parametreActuel" });
+      const { value: devValue } = await Preferences.get({ key: "device_id" });
+
+      if (paramValue && devValue) {
+        const current = JSON.parse(paramValue);
+        const IdDevice = devValue; // pas besoin de JSON.parse si c’est une string
+
+        setDeviceId(IdDevice);
         setParametreActuel(current);
 
-        const codeComplet = `${current.region.coderegion}-${
-          current.district.codedistrict
-        }-${current.commune.codecommune}-${current.fokontany.codefokontany}-${
-          current.hameau.codehameau
-        }-${current.increment + 1}`;
+        const codeComplet = `${IdDevice}-${current.region.coderegion}-${current.district.codedistrict}-${current.commune.codecommune}-${current.fokontany.codefokontany}-${current.hameau.codehameau}-${current.increment + 1}`;
         setCurrentParcelleCode(codeComplet);
       }
     } catch (error) {
@@ -410,7 +411,7 @@ const Tab4 = () => {
           await deleteFile(relativePath);
           await resetMBTiles();
         }
-      } catch {}
+      } catch { }
 
       // 🔹 URI + conversion en file:// si besoin
       const { uri } = await Filesystem.getUri({
@@ -454,6 +455,9 @@ const Tab4 = () => {
         if (currentParam) {
           setParametreActuel(JSON.parse(currentParam));
         }
+        const { value } = await Preferences.get({ key: "device_id" });
+        if (value) setDeviceId(value);
+
       } catch (error) {
         console.error("Erreur lors du chargement des préférences:", error);
       }
@@ -592,13 +596,10 @@ const Tab4 = () => {
         value: JSON.stringify(nouveauParametre),
       });
 
-      const codeComplet = `${nouveauParametre.region.coderegion}-${
-        nouveauParametre.district.codedistrict
-      }-${nouveauParametre.commune.codecommune}-${
-        nouveauParametre.fokontany.codefokontany
-      }-${nouveauParametre.hameau.codehameau}-${
-        nouveauParametre.increment + 1
-      }`;
+      const codeComplet = `${deviceId}-${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
+        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany
+        }-${nouveauParametre.hameau.codehameau}-${nouveauParametre.increment + 1
+        }`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
@@ -615,11 +616,9 @@ const Tab4 = () => {
       });
       setParametreActuel(parametre);
 
-      const codeComplet = `${parametre.region.coderegion}-${
-        parametre.district.codedistrict
-      }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${
-        parametre.hameau.codehameau
-      }-${parametre.increment + 1}`;
+      const codeComplet = `${deviceId}-${parametre.region.coderegion}-${parametre.district.codedistrict
+        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
+        }-${parametre.increment + 1}`;
       setCurrentParcelleCode(codeComplet);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);
@@ -740,83 +739,69 @@ const Tab4 = () => {
 
             {parametreActuel ? (
               <div className="param-details">
-                <div className="row">
-                  <IonItem lines="none" className="param-item">
-                    <IonLabel>
-                      <IonText color="medium">
-                        (Code region-Code district-Code commune-Code
-                        fokontany-Code hameau-Numero auto increment)
-                      </IonText>
-                      <p>
-                        <b>{currentParcelleCode || "Aucun code disponible"}</b>
-                      </p>
-                    </IonLabel>
-                  </IonItem>
+                {/* === Code Parcelle === */}
+                <div className="param-card-LM">
+                  <IonLabel>
+                    <IonText color="medium" className="small-text">
+                      (Code tablette - Code region - Code district - Code commune - Code fokontany - Code hameau - Numéro auto increment)
+                    </IonText>
+                    <p className="highlight-text">
+                      <b>{currentParcelleCode || "Aucun code disponible"}</b>
+                    </p>
+                  </IonLabel>
                 </div>
-                <div className="row">
-                  <div className="col">
-                    <IonItem lines="none" className="param-item">
+
+                {/* === Ligne Région / District / Création === */}
+                <div className="param-row">
+                  <div className="param-col">
+                    <IonItem lines="none" className="param-card">
                       <IonLabel>
                         <IonText color="medium">Région</IonText>
-                        <p>
-                          <b>{parametreActuel.region.nomregion}</b>
-                        </p>
+                        <p className="highlight-text"><b>{parametreActuel.region.nomregion}</b></p>
                       </IonLabel>
                     </IonItem>
                   </div>
-                  <div className="col">
-                    <IonItem lines="none" className="param-item">
+                  <div className="param-col">
+                    <IonItem lines="none" className="param-card">
                       <IonLabel>
                         <IonText color="medium">District</IonText>
-                        <p>
-                          <b>{parametreActuel.district.nomdistrict}</b>
-                        </p>
+                        <p className="highlight-text"><b>{parametreActuel.district.nomdistrict}</b></p>
                       </IonLabel>
                     </IonItem>
                   </div>
-                  <div className="col">
-                    <IonItem lines="none" className="param-item">
+                  <div className="param-col">
+                    <IonItem lines="none" className="param-card">
                       <IonLabel>
                         <IonText color="medium">Création</IonText>
-                        <p>
-                          <b>
-                            {new Date(
-                              parametreActuel.dateSelection
-                            ).toLocaleString()}
-                          </b>
-                        </p>
+                        <p className="highlight-text"><b>{new Date(parametreActuel.dateSelection).toLocaleString()}</b></p>
                       </IonLabel>
                     </IonItem>
                   </div>
                 </div>
-                <div className="row">
-                  <div className="col">
-                    <IonItem lines="none" className="param-item">
+
+                {/* === Ligne Commune / Fokontany / Hameau === */}
+                <div className="param-row">
+                  <div className="param-col">
+                    <IonItem lines="none" className="param-card">
                       <IonLabel>
                         <IonText color="medium">Commune</IonText>
-                        <p>
-                          <b>{parametreActuel.commune.nomcommune}</b>
-                        </p>
+                        <p className="highlight-text"><b>{parametreActuel.commune.nomcommune}</b></p>
                       </IonLabel>
                     </IonItem>
                   </div>
-                  <div className="col">
-                    <IonItem lines="none" className="param-item">
+                  <div className="param-col">
+                    <IonItem lines="none" className="param-card">
                       <IonLabel>
                         <IonText color="medium">Fokontany</IonText>
-                        <p>
-                          <b>{parametreActuel.fokontany.nomfokontany}</b>
-                        </p>
+                        <p className="highlight-text"><b>{parametreActuel.fokontany.nomfokontany}</b></p>
                       </IonLabel>
                     </IonItem>
                   </div>
-                  <div className="col">
-                    <IonItem lines="none" className="param-item">
+                  <div className="param-col">
+                    <IonItem lines="none" className="param-card">
                       <IonLabel>
                         <IonText color="medium">Hameau</IonText>
-                        <p>
-                          <b>{parametreActuel.hameau.nomhameau}</b>
-                        </p>
+                        <p className="highlight-text"><b>{parametreActuel.hameau.nomhameau}</b></p>
                       </IonLabel>
                     </IonItem>
                   </div>
@@ -847,7 +832,7 @@ const Tab4 = () => {
         {parametres.length > 0 && (
           <IonCard color="white" className="saved-params-card">
             <IonCardContent>
-              <IonListHeader className="saved-params-header">
+              <IonListHeader>
                 <IonText color="dark">
                   <h3>Historique des Paramètres</h3>
                 </IonText>
@@ -864,11 +849,9 @@ const Tab4 = () => {
                   >
                     <IonLabel className="param-label">
                       <IonText>
-                        <h3>
-                          {param.region.nomregion} →{" "}
-                          {param.district.nomdistrict}
-                        </h3>
                         <p>
+                          {param.region.nomregion} →{" "}
+                          {param.district.nomdistrict} →{" "}
                           {param.commune.nomcommune} →{" "}
                           {param.fokontany.nomfokontany} →{" "}
                           {param.hameau.nomhameau}
