@@ -117,15 +117,15 @@ const Tab1: React.FC = () => {
   const nextCodeParcelle = async () => {
     try {
       const parametrePref = await Preferences.get({ key: "parametreActuel" });
+      const devicePref = await Preferences.get({ key: "device_id" });
 
-      if (parametrePref.value) {
+      if (parametrePref.value && devicePref.value) {
         const parametreActuel = JSON.parse(parametrePref.value);
+        const deviceId = JSON.parse(devicePref.value);
         const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${parametreActuel.region.coderegion}-${
-          parametreActuel.district.codedistrict
-        }-${parametreActuel.commune.codecommune}-${
-          parametreActuel.fokontany.codefokontany
-        }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
+        const code_parcelle_complet = `${deviceId}-${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
+          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
+          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
 
         setCurrentIncrement(newIncrement);
         setParametreTerritoire(parametreActuel);

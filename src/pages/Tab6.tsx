@@ -74,11 +74,11 @@ const Tab6: React.FC = () => {
                     </IonItem>
 
                     <IonButton expand="full" color="primary" onClick={saveDeviceId} className="ion-margin-top">
-                        💾 Sauvegarder
+                        Sauvegarder
                     </IonButton>
 
                     <IonButton expand="full" color="danger" onClick={resetPreferences} className="ion-margin-top">
-                        ⚠️ Réinitialiser toutes les préférences
+                        Réinitialiser toutes les données
                     </IonButton>
                 </div>
             </IonContent>

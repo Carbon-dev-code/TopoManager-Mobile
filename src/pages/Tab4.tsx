@@ -658,9 +658,7 @@ const Tab4 = () => {
           <IonButtons slot="start">
             <IonMenuButton />
           </IonButtons>
-
-          <IonTitle className="ion-text-center">Paramètrage</IonTitle>
-
+          <IonTitle>Paramètrage</IonTitle>
           <IonButtons slot="end">
             <IonButton id="dropdown-trigger">
               <IonIcon icon={ellipsisVertical} />
@@ -740,7 +738,7 @@ const Tab4 = () => {
             {parametreActuel ? (
               <div className="param-details">
                 {/* === Code Parcelle === */}
-                <div className="param-card-LM">
+                <div className="px-1">
                   <IonLabel>
                     <IonText color="medium" className="small-text">
                       (Code tablette - Code region - Code district - Code commune - Code fokontany - Code hameau - Numéro auto increment)
