@@ -32,9 +32,8 @@ import {
   addOutline,
   checkmark,
   closeOutline,
-  eyeOffOutline,
-  eyeOutline,
   information,
+  layersOutline,
   locateOutline,
   navigateSharp,
   pencilOutline,
@@ -66,6 +65,7 @@ import { useDb } from "../model/base/DbContextType";
 import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
 import Cube from "../components/utils/Cube";
 import MultiPoint from "ol/geom/MultiPoint";
+import CardGlass from "../components/card/CardGlass";
 
 proj4.defs(
   "EPSG:29702",
@@ -1019,8 +1019,8 @@ const Tab2: React.FC = () => {
                           gpsAccuracy < 10
                             ? "green"
                             : gpsAccuracy < 50
-                            ? "orange"
-                            : "red",
+                              ? "orange"
+                              : "red",
                       }}
                     >
                       Précision GPS: {gpsAccuracy.toFixed(1)} m
@@ -1065,45 +1065,12 @@ const Tab2: React.FC = () => {
           onDidDismiss={() => setToastMessage(null)}
         />
 
-        {currentParcelle && showCard && (
-          <div className="glass-card-bottom">
-            <div className="glass-card-header">
-              <h4 style={{ margin: 0 }}>
-                <label className="fs-6">{currentParcelle.code}</label>
-              </h4>
-              <IonButton
-                fill="clear"
-                size="small"
-                color="danger"
-                onClick={() => setShowCard(false)}
-              >
-                <IonIcon icon={closeOutline} style={{ fontSize: "20px" }} />
-              </IonButton>
-            </div>
+        {showCard && currentParcelle && (
+          <CardGlass
+            currentParcelle={currentParcelle}
+            setShowCard={setShowCard}
+          />
 
-            <div className="glass-card-content">
-              <p>
-                <label>Date de création :</label>{" "}
-                {currentParcelle.dateCreation || "N/A"}
-              </p>
-              <p>
-                <label>Consistance :</label>{" "}
-                {currentParcelle.consistance || "Aucune"}
-              </p>
-              <p>
-                <label>Opposition :</label>{" "}
-                {currentParcelle.oppossition ? "Oui" : "Non"}
-              </p>
-              <p>
-                <label>Revandication :</label>{" "}
-                {currentParcelle.revandication ? "Oui" : "Non"}
-              </p>
-              <p>
-                <label>Observation :</label>{" "}
-                {currentParcelle.observation || "Aucune"}
-              </p>
-            </div>
-          </div>
         )}
 
         {showGPS && (
@@ -1287,7 +1254,7 @@ const Tab2: React.FC = () => {
           >
             <IonIcon
               color="dark"
-              icon={showLocalTiles ? eyeOffOutline : eyeOutline}
+              icon={layersOutline}
             />
           </IonButton>
         </div>
