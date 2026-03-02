@@ -1,7 +1,7 @@
 // App.tsx
 import { IonApp, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import MainRouter from './MainRouter';
 
@@ -21,27 +21,47 @@ import { DbProvider } from './model/base/DbContextType';
 setupIonicReact();
 
 const App: React.FC = () => {
+  const [statusBarHeight, setStatusBarHeight] = useState(0);
+
   useEffect(() => {
     const configureStatusBar = async () => {
       try {
+        // On chevauche la webview pour éviter l'espace moche
+        await StatusBar.setOverlaysWebView({ overlay: true });
         await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setOverlaysWebView({ overlay: false });
-        await StatusBar.setBackgroundColor({ color: '#000000' });
+        await StatusBar.setBackgroundColor({ color: '#ffffff' });
+
+        // Récupère la hauteur exacte pour padding dynamique
+        const info = await StatusBar.getInfo();
+        setStatusBarHeight(info.statusBarHeight || 0);
       } catch (error) {
-        //console.warn('StatusBar not available in browser', error);
+        // StatusBar non disponible dans le browser
       }
     };
+
     configureStatusBar();
+
+    // Optionnel: si rotation ou resize
+    const handleResize = async () => {
+      const info = await StatusBar.getInfo();
+      setStatusBarHeight(info.statusBarHeight || 0);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
     <IonApp>
       <DbProvider>
         <IonReactRouter>
-          <MainRouter />
+          {/* On wrap le MainRouter pour ajouter un paddingTop dynamique */}
+          <div style={{ paddingTop: `${statusBarHeight}px` }}>
+            <MainRouter />
+          </div>
         </IonReactRouter>
       </DbProvider>
     </IonApp>
   );
 };
+
 export default App;

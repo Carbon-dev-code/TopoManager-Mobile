@@ -2,10 +2,24 @@
   background-color: #fff;
   padding: 15px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  margin-top: 20px;
+  box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.1);
 }
 
-.admin-card IonItem {
-  margin-bottom: 10px;
+.save-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background-color: #005eff;
+  color: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.input-tab-6-custom input:focus {
+  border: 2px solid #005eff;
+  outline: none;
+  padding: 8px 8px 8px 2px;
+  border-radius: 5px;
 }

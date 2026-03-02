@@ -1,0 +1,22 @@
+.selection-container {
+  width: 100%;
+}
+
+.selection-item {
+  margin-bottom: 16px;
+  --background: white;
+  --border-radius: 8px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+
+.selection-input {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.save-button-tab4 {
+  margin-top: 20px;
+  --border-radius: 25px;
+  font-weight: bold;
+}

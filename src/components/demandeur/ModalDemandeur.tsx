@@ -16,13 +16,15 @@ import {
   IonRadioGroup,
   IonAlert,
 } from "@ionic/react";
-import { close } from "ionicons/icons";
+import { close, createOutline } from "ionicons/icons";
 import "./ModalDemandeur.css";
 import Physique from "./Physique";
 import Moral from "./Moral";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import Photo from "../photo/Photo";
+
+type ModalMode = "create" | "view" | "edit";
 
 interface ModalDemandeurProps {
   showCreateModal: boolean;
@@ -36,7 +38,14 @@ interface ModalDemandeurProps {
   setIsPhysique: (d: number) => void;
   decomposed: boolean;
   setDecomposed: (d: boolean) => void;
+  mode?: ModalMode; // "create" par défaut
 }
+
+const TITLES: Record<ModalMode, string> = {
+  create: "Ajouter Demandeur",
+  view: "Détails Demandeur",
+  edit: "Modifier Demandeur",
+};
 
 const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   showCreateModal,
@@ -50,10 +59,13 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   setIsPhysique,
   decomposed,
   setDecomposed,
+  mode = "create",
 }) => {
   const [showConfirmProfile, setShowConfirmProfile] = useState(false);
   const [lastPhotoIndex, setLastPhotoIndex] = useState<number | null>(null);
-  // ⚡ takePhoto définie en interne
+
+  const isReadOnly = mode === "view";
+
   const takePhoto = async () => {
     try {
       if (demandeur.photos.length >= 5) {
@@ -74,19 +86,18 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         photos: [...prev.photos, photo.dataUrl],
       }));
 
-      setLastPhotoIndex(demandeur.photos.length); // index de la photo ajoutée
+      setLastPhotoIndex(demandeur.photos.length);
       setShowConfirmProfile(true);
     } catch (err) {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
     }
   };
+
   return (
     <IonModal
       isOpen={showCreateModal}
-      onDidDismiss={() => {
-        setShowCreateModal(false);
-      }}
+      onDidDismiss={() => setShowCreateModal(false)}
     >
       <IonHeader>
         <IonToolbar color="primary">
@@ -95,41 +106,53 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
               <IonIcon icon={close} />
             </IonButton>
           </IonButtons>
-          <IonTitle>Ajouter Demandeur</IonTitle>
+
+          <IonTitle>{TITLES[mode]}</IonTitle>
+
           <IonButtons slot="end">
-            <IonButton strong={true} onClick={addDemandeur}>
-              Ajouter
-            </IonButton>
+            {/* En mode view : bouton pour passer en edit */}
+            {mode === "view" && (
+              <IonButton onClick={() => {
+                // Signaler au parent de repasser en edit
+                // On ferme et le parent réouvre en edit
+                setShowCreateModal(false);
+              }}>
+                <IonIcon icon={createOutline} slot="icon-only" />
+              </IonButton>
+            )}
+
+            {/* En mode create ou edit : bouton valider */}
+            {mode !== "view" && (
+              <IonButton strong={true} onClick={addDemandeur}>
+                {mode === "edit" ? "Mettre à jour" : "Ajouter"}
+              </IonButton>
+            )}
           </IonButtons>
         </IonToolbar>
       </IonHeader>
 
       <IonContent className="ion-padding">
-        {/* ⚡️ Ici tu colles tout ton <IonList> ... <IonToast> ... <div> ... etc. */}
+        {/* Sélecteur de type — désactivé en view/edit */}
         <IonList>
           <IonItem>
             <IonLabel className="me-3 truncate">Type :</IonLabel>
             <IonRadioGroup
               value={isPhysique.toString()}
               onIonChange={(e) => {
+                if (isReadOnly) return;
                 const value = Number(e.detail.value);
                 setIsPhysique(value);
-                setDemandeur({
-                  ...demandeur,
-                  type: Number(value), // Si type doit être une string
-                });
+                setDemandeur({ ...demandeur, type: Number(value) });
               }}
             >
-              <div
-                style={{ display: "flex", gap: "1rem", alignItems: "center" }}
-              >
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
                 <IonItem lines="none">
-                  <IonRadio justify="end" value="0">
+                  <IonRadio justify="end" value="0" disabled={isReadOnly}>
                     Physique
                   </IonRadio>
                 </IonItem>
                 <IonItem lines="none">
-                  <IonRadio justify="end" value="1">
+                  <IonRadio justify="end" value="1" disabled={isReadOnly}>
                     Morale
                   </IonRadio>
                 </IonItem>
@@ -137,22 +160,33 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             </IonRadioGroup>
           </IonItem>
         </IonList>
+
+        {/* Formulaire selon le type */}
         {isPhysique === 0 ? (
-          <Physique demandeur={demandeur} setDemandeur={setDemandeur} />
+          <Physique
+            demandeur={demandeur}
+            setDemandeur={setDemandeur}
+            readonly={isReadOnly}
+          />
         ) : (
           <Moral
             demandeur={demandeur}
             setDemandeur={setDemandeur}
+            readonly={isReadOnly}
           />
         )}
-        <Photo
-          photos={demandeur.photos}
-          decomposed={decomposed}
-          setDecomposed={setDecomposed}
-          takePhoto={takePhoto}
-          clearPhotos={() => setDemandeur((prev) => ({ ...prev, photos: [] }))}
-          name="Prendre une photo du demandeur"
-        />
+
+        {/* Photos — masquées en mode view */}
+        {mode !== "view" && (
+          <Photo
+            photos={demandeur.photos}
+            decomposed={decomposed}
+            setDecomposed={setDecomposed}
+            takePhoto={takePhoto}
+            clearPhotos={() => setDemandeur((prev) => ({ ...prev, photos: [] }))}
+            name="Prendre une photo du demandeur"
+          />
+        )}
       </IonContent>
 
       <IonAlert
@@ -177,7 +211,6 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         ]}
       />
 
-
       {toastMessage && setToastMessage && (
         <IonToast
           isOpen={!!toastMessage}
@@ -191,4 +224,5 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
     </IonModal>
   );
 };
+
 export default ModalDemandeur;

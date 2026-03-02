@@ -47,25 +47,23 @@ const SearchModal: React.FC<SearchModalProps> = ({
     }
   }, []);
 
-  const filtered = query
-    ? localDemandeurs.filter((d) =>
-        `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}`
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      )
-    : recentSearches;
+  const filtered = query ? localDemandeurs.filter((d) => `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}` .toLowerCase() .includes(query.toLowerCase())) : recentSearches;
 
   const handleSelect = (d: Demandeur) => {
-    onSelect(d);
+    onSelect({ ...d });
     setShowSearchModal(false);
 
     setRecentSearches((prev) => {
-      const filteredPrev = prev.filter((r) => r.id !== d.id); // éviter doublons
-      const updated = [d, ...filteredPrev].slice(0, 5); // max 5 derniers
-      localStorage.setItem("recentSearches", JSON.stringify(updated)); // sauvegarde persistante
+      const exists = prev.find(r => r.id === d.id);
+      if (exists) return prev;
+
+      const updated = [d, ...prev].slice(0, 5);
+      localStorage.setItem("recentSearches", JSON.stringify(updated));
       return updated;
     });
+
   };
+
 
   return (
     <IonModal

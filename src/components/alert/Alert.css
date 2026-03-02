@@ -1,0 +1,61 @@
+.alert-overlay {
+     position: fixed;
+     inset: 0;
+     background: rgba(0, 0, 0, 0.55);
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+
+.alert-modal {
+     text-align: center;
+     background: white;
+     color: black;
+     padding: 17px;
+     border-radius: 12px;
+     width: 90%;
+     max-width: 365px;
+     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+     position: relative;
+}
+
+.danger{
+     background-color: #ce2f2f !important;
+     color: white !important;
+}
+
+.alert-modal h3 {
+     margin: 0 0 8px;
+     font-size: 18px;
+}
+
+.alert-modal p {
+     margin: 0 0 20px;
+     font-size: 14px;
+     opacity: 0.9;
+}
+
+.alert-actions {
+     display: flex;
+     justify-content: flex-end;
+     gap: 12px;
+     margin-top: 10px;
+}
+
+.btn {
+     padding: 8px 14px;
+     border-radius: 8px;
+     border: none;
+     cursor: pointer;
+     font-weight: 500;
+}
+
+.btn.cancel {
+     background: #ff0404;
+     color: #e5e7eb;
+}
+
+.btn.confirm {
+     background: #22c55e;
+     color: #022c22;
+}

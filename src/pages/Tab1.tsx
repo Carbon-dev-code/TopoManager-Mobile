@@ -1,47 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Preferences } from "@capacitor/preferences";
-import {
-  IonContent,
-  IonHeader,
-  IonPage,
-  IonTitle,
-  IonToolbar,
-  IonButtons,
-  IonMenuButton,
-  IonModal,
-  IonButton,
-  IonList,
-  IonItem,
-  IonLabel,
-  IonInput,
-  IonSelect,
-  IonSelectOption,
-  IonCheckbox,
-  IonTextarea,
-  IonIcon,
-  IonCard,
-  IonGrid,
-  IonCol,
-  IonRow,
-  IonSegment,
-  IonSegmentButton,
-  IonCardSubtitle,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
-  IonChip,
-  useIonViewWillEnter,
-  IonSearchbar,
-} from "@ionic/react";
-import {
-  trash,
-  close,
-  informationCircle,
-  create,
-  sync,
-  map,
-  searchSharp,
-} from "ionicons/icons";
+import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButtons, IonMenuButton, IonModal, IonButton, IonIcon, IonCard, IonCardSubtitle, IonCardContent, IonCardHeader, IonCardTitle, IonChip, IonLabel, useIonViewWillEnter, IonSearchbar, } from "@ionic/react";
+import { close, informationCircle, create, sync, map, searchSharp, menu, ellipsisVerticalOutline, } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
@@ -49,213 +9,270 @@ import { ParametreTerritoire } from "../model/ParametreTerritoire";
 import { Categorie } from "../model/Categorie";
 import { Status } from "../model/Status";
 import { Parcelle } from "../model/parcelle/Parcelle";
-import { Demandeur } from "../model/parcelle/Demandeur";
+import { checkDemandeur, Demandeur } from "../model/parcelle/Demandeur";
 import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import ModalRiverin from "../components/riverin/ModalRiverin";
-import Photo from "../components/photo/Photo";
 import SeacrhModal from "../components/demandeur/SearchModal";
 import DemandeurView from "../components/demandeur/DemandeurView";
-import {
-  getAllDemandeurs,
-  getAllParcelles,
-  insertDemandeur,
-  insertParcelle,
-} from "../model/base/DbSchema";
+import ParcelleForm from "../components/parcelle/ParcelleForm";
+import { deleteParcelle, getAllDemandeurs, getAllParcelles, insertParcelle, verifyDatabase, } from "../model/base/DbSchema";
+import Alert from "../components/alert/Alert";
+import DropDown from "../components/dropdown/DropDown";
 
-const Tab1: React.FC = () => {
-  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
-  const [showDemandeurModal, setShowDemandeurModal] = useState<boolean>(false);
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
-    useState<boolean>(false);
-  const [showRiverin, setShowRiverin] = useState<boolean>(false);
-  const [riverinMess, setRiverinMess] = useState<string>("Ajouter");
-  const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] =
-    useState<ParametreTerritoire | null>(null);
+// Hook personnalisé pour la gestion des données de référence
+const useReferenceData = () => {
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
   const [repereL, setRepere] = useState<Repere[]>([]);
-  const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
-  const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
-  const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
-  const [isPhysique, setIsPhysique] = useState(0);
-  const [parcelles, setParcelles] = useState<Parcelle[]>([]);
-  const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
-    "demandeur"
-  );
-  const [decomposed, setDecomposed] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const history = useHistory();
-  const [seacrh, setSearch] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState(""); // texte de recherche
 
-  const handleCardClick = (codeParcelle: string) => {
-    history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
-  };
+  const loadReferenceData = useCallback(async () => {
+    const [categorieData, statusData, repereData] = await Promise.all([
+      Preferences.get({ key: "categorieData" }),
+      Preferences.get({ key: "statusData" }),
+      Preferences.get({ key: "repereData" }),
+    ]);
 
-  const loadParcellesFromStorage = async (): Promise<Parcelle[]> => {
-    return await getAllParcelles();
-  };
+    if (categorieData.value) setCategorie(JSON.parse(categorieData.value));
+    if (statusData.value) setStatus(JSON.parse(statusData.value));
+    if (repereData.value) setRepere(JSON.parse(repereData.value));
+  }, []);
 
-  const loadDemandeurFromStorage = async (): Promise<Demandeur[]> => {
-    return await getAllDemandeurs();
-  };
+  return { categorie, setCategorie, status, repereL, loadReferenceData }
+};
 
-  const load = async () => {
-    setParcelles(await loadParcellesFromStorage());
-    setDemandeurList(await loadDemandeurFromStorage());
-  };
+// Hook personnalisé pour la génération du code parcelle
+const useParcelleCode = () => {
+  const [currentIncrement, setCurrentIncrement] = useState(0);
+  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
 
-  useIonViewWillEnter(() => {
-    load();
-  });
+  const generateNextCode = useCallback(async () => {
+    try {
+      const [parametrePref, devicePref] = await Promise.all([
+        Preferences.get({ key: "parametreActuel" }),
+        Preferences.get({ key: "device_id" }),
+      ]);
 
-  const nextCodeParcelle = async () => {
+      if (!parametrePref.value || !devicePref.value) return null;
+
+      const parametreActuel = JSON.parse(parametrePref.value);
+      const deviceId = JSON.parse(devicePref.value);
+      const newIncrement = (parametreActuel.increment || 0) + 1;
+
+      const { region, district, commune, fokontany, hameau } = parametreActuel;
+      const code = `${deviceId}-${region.coderegion}-${district.codedistrict}-${commune.codecommune}-${fokontany.codefokontany}-${hameau?.codehameau}-${newIncrement}`;
+
+      setCurrentIncrement(newIncrement);
+      setParametreTerritoire(parametreActuel);
+
+      const now = new Date();
+      const dateTime = now.toISOString().replace("T", " ").split(".")[0];
+
+      return {
+        code,
+        dateCreation: dateTime,
+        parametreTerritoire: parametreActuel,
+      };
+    } catch (error) {
+      console.error("Erreur génération code parcelle:", error);
+      return null;
+    }
+  }, []);
+
+  const saveIncrement = useCallback(async () => {
     try {
       const parametrePref = await Preferences.get({ key: "parametreActuel" });
-      const devicePref = await Preferences.get({ key: "device_id" });
+      if (!parametrePref.value) throw new Error("Paramètres non configurés");
 
-      if (parametrePref.value && devicePref.value) {
-        const parametreActuel = JSON.parse(parametrePref.value);
-        const deviceId = JSON.parse(devicePref.value);
-        const newIncrement = (parametreActuel.increment || 0) + 1;
-        const code_parcelle_complet = `${deviceId}-${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict
-          }-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany
-          }-${parametreActuel.hameau?.codehameau}-${newIncrement.toString()}`;
-
-        setCurrentIncrement(newIncrement);
-        setParametreTerritoire(parametreActuel);
-
-        setParcelle((prev) => ({
-          ...prev,
-          code: code_parcelle_complet,
-          dateCreation: new Date().toISOString().split("T")[0],
-          parametreTerritoire: parametreActuel,
-        }));
-      }
+      const parametreActuel = JSON.parse(parametrePref.value);
+      await Preferences.set({
+        key: "parametreActuel",
+        value: JSON.stringify({ ...parametreActuel, increment: currentIncrement }),
+      });
     } catch (error) {
-      console.error("Erreur dans nextCodeParcelle:", error);
+      console.error("Erreur sauvegarde incrément:", error);
+      throw error;
     }
-  };
+  }, [currentIncrement]);
 
-  const getCategorie = async () => {
-    const { value } = await Preferences.get({ key: "categorieData" });
-    if (value) {
-      setCategorie(JSON.parse(value));
+  return { parametreTerritoire, generateNextCode, saveIncrement };
+};
+
+const Tab1: React.FC = () => {
+  const history = useHistory();
+
+  // États UI
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDemandeurModal, setShowDemandeurModal] = useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
+  const [showRiverin, setShowRiverin] = useState(false);
+  const [searchMode, setSearchMode] = useState(false);
+  const [showAlertRemove, setShowAlertRemove] = useState(false);
+  const [showAlertVerif, setShowAlertVerif] = useState(false);
+  const [verifMessageError, setVerifMessageError] = useState<string | null>(null);
+  const [codeToRemove, setCodeToRemove] = useState<string | null>(null);
+  const [showTempAlert, setShowTempAlert] = useState(false);
+  const [tempAlertMessage, setTempAlertMessage] = useState("");
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [mode, setMode] = useState<"view" | "edit" | "create">("create");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur");
+  const [decomposed, setDecomposed] = useState(false);
+  const [isPhysique, setIsPhysique] = useState(0);
+
+  // États données
+  const [parcelles, setParcelles] = useState<Parcelle[]>([]);
+  const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
+  const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
+  const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
+  const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
+  const [riverinMess, setRiverinMess] = useState("Ajouter");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedParcelle, setSelectedParcelle] = useState<Parcelle | null>(null);
+
+
+  // Hooks personnalisés
+  const { categorie, setCategorie, status, repereL, loadReferenceData } = useReferenceData(); const { parametreTerritoire, generateNextCode, saveIncrement } = useParcelleCode();
+
+  // Chargement initial
+  const loadData = useCallback(async () => {
+    const [parcellesData, demandeursData] = await Promise.all([
+      getAllParcelles(),
+      getAllDemandeurs(),
+    ]);
+
+    setParcelles(parcellesData);
+    console.log(parcelles);
+
+    setDemandeurList(demandeursData);
+  }, []);
+
+  useIonViewWillEnter(() => {
+    loadData();
+  });
+
+  //Avant de cree une parcelle une verification de data s'impose
+  const verifyDataBeforeCreate = useCallback(async () => {
+    try {
+      await verifyDatabase();
+      setShowCreateModal(true);
+      setMode('create');
+      setShowAlertVerif(false);
+      setVerifMessageError(null);
+    } catch (error) {
+      setShowAlertVerif(true);
+      setVerifMessageError(error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur");
     }
-  };
+  }, []);
 
-  const getStatus = async () => {
-    const { value } = await Preferences.get({ key: "statusData" });
-
-    if (value) {
-      setStatus(JSON.parse(value));
-    }
-  };
-
-  const getRepere = async () => {
-    const { value } = await Preferences.get({ key: "repereData" });
-
-    if (value) {
-      setRepere(JSON.parse(value));
-    }
-  };
-
+  // Initialisation modal création
   useEffect(() => {
-    if (showCreateModal) {
-      nextCodeParcelle();
-      getCategorie();
-      getStatus();
-      getRepere();
+    if (showCreateModal && mode === "create") {
+      (async () => {
+        const codeData = await generateNextCode();
+        if (codeData) {
+          setParcelle((prev) => ({ ...prev, ...codeData }));
+        }
+        await loadReferenceData();
+      })();
     }
-  }, [showCreateModal]);
 
-  const addDemandeur = async () => {
-    parcelle.demandeurs.push(demandeur);
-    await insertDemandeur(demandeur);
-    setDemandeur(Demandeur.init());
-    setShowDemandeurModal(false);
-  };
+    if (showCreateModal && mode !== "create") {
+      loadReferenceData();
+    }
+  }, [showCreateModal, mode, generateNextCode, loadReferenceData]);
 
-  const addRiverin = () => {
-    if (newRiverin.repere == null || !newRiverin.observation.trim()) {
+
+  // Filtrage parcelles
+  const filteredParcelles = useMemo(() => {
+    if (!searchQuery) return parcelles;
+    const q = searchQuery.toLowerCase();
+    return parcelles.filter((p) =>
+      p.code?.toLowerCase().includes(q) ||
+      p.demandeurs.some((d) =>
+        d.nom?.toLowerCase().includes(q) || d.prenom?.toLowerCase().includes(q)
+      )
+    );
+  }, [searchQuery, parcelles]);
+
+  // Handlers
+  const handleCardClick = useCallback((codeParcelle: string) => {
+    history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
+  }, [history]);
+
+  const addDemandeur = useCallback(async () => {
+    try {
+      checkDemandeur(demandeur);
+      setParcelle((prev) => ({
+        ...prev,
+        demandeurs: [...prev.demandeurs, demandeur],
+      }));
+      setDemandeur(Demandeur.init());
+      setShowDemandeurModal(false);
+    } catch (error) {
+      setTempAlertMessage(error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur");
+      setShowTempAlert(true);
+    }
+  }, [demandeur]);
+
+  const addRiverin = useCallback(() => {
+    if (!newRiverin.repere || !newRiverin.observation.trim()) {
       setRiverinMess("‼️Vérifiez votre insertion");
       return;
     }
     setParcelle((prev) => ({
       ...prev,
-      riverin: [...prev.riverin, newRiverin], // ajout du riverain
+      riverin: [...prev.riverin, newRiverin],
     }));
-    setNewRiverin(Riverin.init()); // reset
+    setNewRiverin(Riverin.init());
     setRiverinMess("✅ Riverin ajouté");
-  };
+  }, [newRiverin]);
 
-  const removeParcelle = (code: string) => {
-    //mis zvtr tokn corrigena
-    setParcelles(parcelles.filter((p) => p.code !== code));
-  };
+  const removeParcelle = useCallback((code: string, synchronise?: number) => {
+    if (synchronise === 1) {
+      setTempAlertMessage("Cette parcelle est déjà synchronisée et ne peut pas être supprimée.");
+      setShowTempAlert(true);
+      return;
+    }
+    setCodeToRemove(code);
+    setShowAlertRemove(true);
+  }, []);
 
-  const createParcelle = async () => {
+  const createParcelle = useCallback(async () => {
     try {
-      const parametrePref = await Preferences.get({ key: "parametreActuel" });
-      if (!parametrePref.value) throw new Error("Paramètres non configurés");
-      const parametreActuel = JSON.parse(parametrePref.value);
-
-      console.log(parcelle); // visualisation
-
-      parcelles.push(parcelle);
       await insertParcelle(parcelle);
 
-      // 6. Mettre à jour l'incrément seulement après succès
-      await Preferences.set({
-        key: "parametreActuel",
-        value: JSON.stringify({
-          ...parametreActuel,
-          increment: currentIncrement, // On utilise l'incrément déjà calculé
-        }),
-      });
-
-      setParcelle(Parcelle.init);
-      setShowCreateModal(false);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error("Erreur création parcelle:", error.message);
-        alert(`Erreur création: ${error.message}`);
-      } else {
-        console.error("Erreur inconnue lors de la création");
-        alert("Erreur inconnue lors de la création");
+      if (mode === "create") {
+        await saveIncrement();
       }
-    }
-  };
 
-  // ⚡ On utilise useMemo pour retourner directement le tableau filtré
-  const filteredParcelles = useMemo(() => {
-    if (!searchQuery) return parcelles;
-    const q = searchQuery.toLowerCase();
-    return parcelles.filter((p) => {
-      // Cherche dans le code de la parcelle
-      if (p.code?.toLowerCase().includes(q)) return true;
-      // Cherche dans les demandeurs
-      if (
-        p.demandeurs.some(
-          (d) =>
-            d.nom?.toLowerCase().includes(q) ||
-            d.prenom?.toLowerCase().includes(q)
-        )
-      )
-        return true;
-      return false;
-    });
-  }, [searchQuery, parcelles]);
+      // Mise à jour de la liste selon le mode
+      if (mode === "edit") {
+        // Mode édition : remplacer la parcelle existante
+        setParcelles(prev =>
+          prev.map(p => p.code === parcelle.code ? parcelle : p)
+        );
+      } else {
+        // Mode création : ajouter la nouvelle parcelle
+        setParcelles(prev => [...prev, parcelle]);
+      }
+
+      setParcelle(Parcelle.init());
+      setShowCreateModal(false);
+
+    } catch (error) {
+      setTempAlertMessage(error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur");
+      setShowTempAlert(true);
+    }
+  }, [parcelle, saveIncrement, mode]);
 
   const takePhotoParcelle = useCallback(async () => {
     try {
-      if (parcelle.photos && parcelle.photos.length >= 1) {
-        setToastMessage?.("Vous ne pouvez pas ajouter plus de 5 photos");
+      if (parcelle.photos?.length >= 5) {
+        setToastMessage("Maximum 5 photos");
         return;
       }
 
@@ -267,152 +284,172 @@ const Tab1: React.FC = () => {
 
       if (!photo.dataUrl) throw new Error("Pas de photo");
 
-      setParcelle((prev) => {
-        const newParcelle = { ...prev };
-        newParcelle.photos.push(photo.dataUrl);
-        return newParcelle;
-      });
+      setParcelle((prev) => ({
+        ...prev,
+        photos: [...prev.photos, photo.dataUrl],
+      }));
     } catch (err) {
       console.error(err);
-      setToastMessage?.("Erreur lors de la capture");
+      setToastMessage("Erreur lors de la capture");
     }
   }, [parcelle.photos]);
+
+  const closeSearch = useCallback(() => {
+    setSearchMode(false);
+    setSearchQuery("");
+  }, []);
+
+  const closeCreateModal = useCallback(() => {
+    setShowCreateModal(false);
+    setMode("create");
+    setParcelle(Parcelle.init());
+  }, []);
 
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar color="primary">
-          <IonButtons slot="start">
-            <IonMenuButton />
-          </IonButtons>
-          <IonTitle>Collecte des données</IonTitle>
-          <IonButtons slot="end">
-            <IonButton aria-label="Rechercher" onClick={() => setSearch(true)}>
-              <IonIcon icon={searchSharp} slot="icon-only" />
-            </IonButton>
-            <IonButton
-              aria-label="Créer une nouvelle parcelle"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <IonIcon icon={create} slot="icon-only" />
-            </IonButton>
-          </IonButtons>
-        </IonToolbar>
+        {searchMode ? (
+          <IonToolbar className="transparent-toolbar">
+            <IonSearchbar
+              autoFocus
+              showCancelButton="focus"
+              className="custom-search"
+              placeholder="Recherche numéro ou demandeur"
+              value={searchQuery}
+              onIonInput={(e) => setSearchQuery(e.detail.value!)}
+            />
+            <IonButtons slot="end">
+              <IonButton fill="clear" size="large" onClick={closeSearch}>
+                <IonIcon icon={close} color="light" slot="icon-only" />
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        ) : (
+          <IonToolbar color="primary">
+            <IonButtons slot="start">
+              <IonMenuButton />
+            </IonButtons>
+            <IonTitle>Collecte des données</IonTitle>
+            <IonButtons slot="end">
+              <IonButton onClick={() => setSearchMode(true)}>
+                <IonIcon icon={searchSharp} slot="icon-only" />
+              </IonButton>
+              <IonButton onClick={() => verifyDataBeforeCreate()}>
+                <IonIcon icon={create} slot="icon-only" />
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        )}
       </IonHeader>
 
-      {seacrh && (
-        <IonToolbar className="transparent-toolbar">
-          <IonSearchbar
-            autoFocus
-            showCancelButton="focus"
-            className="custom-search"
-            placeholder="Recherche numéro ou demandeur"
-            value={searchQuery}
-            onIonInput={(e) => setSearchQuery(e.detail.value!)}
-          />
-          <IonButtons slot="end">
-            <IonButton
-              fill="clear"
-              size="large"
-              color="danger"
-              onClick={() => {
-                setSearch(false);
-                setSearchQuery(""); // réinitialise la recherche
-              }}
-            >
-              <IonIcon icon={close} slot="icon-only" />
-            </IonButton>
-          </IonButtons>
-        </IonToolbar>
-      )}
+      <Alert
+        show={showAlertRemove}
+        type={1}
+        title="Suppression"
+        message="Êtes-vous sûr de vouloir supprimer cette parcelle ?"
+        onCancel={() => {
+          setShowAlertRemove(false);
+          setCodeToRemove(null);
+        }}
+        onConfirm={() => {
+          if (codeToRemove) {
+            deleteParcelle(codeToRemove);
+            setParcelles(prev => prev.filter(p => p.code !== codeToRemove));
+          }
+          setShowAlertRemove(false);
+          setCodeToRemove(null);
+        }}
+        onClose={() => {
+          setShowAlertRemove(false);
+          setCodeToRemove(null);
+        }}
+      />
+
+      <Alert
+        show={showAlertVerif} type={0} title="Information" duration={5000}
+        message={verifMessageError || "Une erreur est survenue lors de la vérification des données. Veuillez vous adresser à l'administrateur."}
+        onClose={() => setShowAlertVerif(false)}
+      />
 
       <IonContent className="ion-padding">
         {parcelles.length === 0 ? (
           <div className="text-center py-5">
-            <IonIcon
-              icon={informationCircle}
-              size="large"
-              className="text-muted mb-3"
-            />
+            <IonIcon icon={informationCircle} size="large" className="text-muted mb-3" />
             <h4 className="text-muted">Aucune parcelle enregistrée</h4>
-            <IonButton onClick={() => setShowCreateModal(true)}>
+            <IonButton onClick={() => verifyDataBeforeCreate()}>
               Créer une première parcelle
             </IonButton>
           </div>
         ) : (
           <div className="cardContent">
-            {(searchQuery ? filteredParcelles : parcelles).map((parcelle) => (
-              <IonCard
-                key={parcelle.code}
-                className="custom-card"
-                button
-                onClick={() => handleCardClick(parcelle.code!)}
-              >
-                <span
-                  className="position-badge-custom-tab1"
-                  role="button"
-                  color="danger"
-                  onClick={(e) => {
-                    e.stopPropagation(); // pour ne pas déclencher le click sur la carte
-                    removeParcelle(parcelle.code!);
-                  }}
-                >
-                  <IonIcon icon={trash} />
-                </span>
-
+            {filteredParcelles.map((p) => (
+              <IonCard key={p.code} className="custom-card">
                 <IonCardHeader className="custom-header-card">
-                  <IonCardTitle>
-                    <strong>{parcelle.code}</strong>
+                  <IonCardTitle className="row g-0 d-flex align-items-center">
+                    <div className="col">
+                      <strong>{p.code}</strong>
+                    </div>
+                    <div
+                      id={`trigger-${p.code}`}
+                      className="col-auto three-point"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenDropdown(p.code!);
+                      }}
+                    >
+                      <IonIcon icon={ellipsisVerticalOutline} className="fs-4" />
+                    </div>
                   </IonCardTitle>
+
+                  <DropDown
+                    show={openDropdown === p.code}
+                    onClose={() => setOpenDropdown(null)}
+
+                    onView={() => {
+                      setOpenDropdown(null);
+                      setMode("view");
+                      setParcelle(p);
+
+                      setSelectedParcelle(p);
+                      setShowCreateModal(true);
+                    }}
+
+                    onEdit={() => {
+                      setOpenDropdown(null);
+                      setMode("edit");
+                      setParcelle(p);
+                      setSelectedParcelle(p);
+                      setShowCreateModal(true);
+                    }}
+
+                    onDelete={() => {
+                      setOpenDropdown(null);
+                      removeParcelle(p.code!, p.synchronise);
+                    }}
+
+                    onCroquis={() => {
+                      setOpenDropdown(null);
+                      handleCardClick(p.code!);
+                    }}
+                    triggerId={`trigger-${p.code}`}
+                  />
+
                   <IonCardSubtitle className="parcelle-chips">
-                    <IonChip
-                      color={parcelle.synchronise === 1 ? "success" : "danger"}
-                    >
-                      <IonIcon
-                        className="mx-0"
-                        icon={sync}
-                        color={
-                          parcelle.synchronise === 1 ? "success" : "danger"
-                        }
-                      />
-                      <IonLabel className="mx-1">
-                        {parcelle.synchronise === 1
-                          ? "Parcelle sync"
-                          : "Parcelle non sync"}
-                      </IonLabel>
+                    <IonChip color={p.synchronise === 1 ? "success" : "danger"}>
+                      <IonIcon icon={sync} />
+                      <IonLabel>{p.synchronise === 1 ? "Sync" : "Non sync."}</IonLabel>
                     </IonChip>
-                    <IonChip
-                      color={
-                        !parcelle.polygone || parcelle.polygone.length === 0
-                          ? "danger"
-                          : "success"
-                      }
-                    >
-                      <IonIcon
-                        icon={map}
-                        className="mx-0"
-                        color={
-                          !parcelle.polygone || parcelle.polygone.length === 0
-                            ? "danger"
-                            : "success"
-                        }
-                      />
-                      <IonLabel className="mx-1">
-                        {!parcelle.polygone || parcelle.polygone.length === 0
-                          ? "Pas de croquis"
-                          : "Avec croquis"}
-                      </IonLabel>
+                    <IonChip color={p.polygone?.length ? "success" : "danger"}>
+                      <IonIcon icon={map} />
+                      <IonLabel>{p.polygone?.length ? "Avec croquis" : "Pas de croquis"}</IonLabel>
                     </IonChip>
                   </IonCardSubtitle>
                 </IonCardHeader>
 
                 <IonCardContent className="p-0">
                   <div className="scrollable-list">
-                    {parcelle.demandeurs.map((demandeur) => (
-                      <DemandeurView
-                        key={`dem${demandeur.id}`}
-                        demandeur={demandeur}
-                      />
+                    {p.demandeurs.map((d) => (
+                      <DemandeurView key={`dem${d.id}`} demandeur={d} />
                     ))}
                   </div>
                 </IonCardContent>
@@ -422,386 +459,77 @@ const Tab1: React.FC = () => {
         )}
       </IonContent>
 
-      {/*Modal creation de parcelle*/}
-      <IonModal
-        isOpen={showCreateModal}
-        onDidDismiss={() => {
-          setShowCreateModal(false);
-          setParcelle(Parcelle.init);
-        }}
-      >
+      {/* Modal création parcelle */}
+      <IonModal isOpen={showCreateModal} onDidDismiss={closeCreateModal}>
         <IonHeader>
           <IonToolbar color="primary">
             <IonButtons slot="start">
-              <IonButton
-                onClick={() => {
-                  setShowCreateModal(false);
-                }}
-              >
+              <IonButton onClick={closeCreateModal}>
                 <IonIcon icon={close} />
               </IonButton>
             </IonButtons>
-            <IonTitle>Nouvelle parcelle</IonTitle>
+            <IonTitle>
+              {mode === "view" ? "Détail de la parcelle" : mode === "edit" ? "Modification de la parcelle" : "Nouvelle parcelle"}
+            </IonTitle>
           </IonToolbar>
         </IonHeader>
 
         <IonContent className="ion-padding">
-          <IonList>
-            <IonItem>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12">
-                    <IonInput
-                      labelPlacement="floating"
-                      type="date"
-                      value={parcelle.dateCreation}
-                      readonly={true}
-                    >
-                      <div slot="label">En date du</div>
-                    </IonInput>
-                  </IonCol>
-                  <IonCol size="12">
-                    <IonInput
-                      labelPlacement="floating"
-                      type="text"
-                      readonly={true}
-                      value={parcelle.code}
-                    >
-                      <div slot="label">Code parcelle</div>
-                    </IonInput>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-
-            <IonItem>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12" size-md="12">
-                    <IonSelect
-                      label="Status :"
-                      onIonChange={(e) =>
-                        setParcelle({
-                          ...parcelle,
-                          status: Number(e.detail.value),
-                        })
-                      }
-                      placeholder="Status de terre"
-                    >
-                      {status.map((stat, index) => (
-                        <IonSelectOption
-                          key={`status-${index}`}
-                          value={stat.id}
-                        >
-                          {stat.labelstatus}
-                        </IonSelectOption>
-                      ))}
-                    </IonSelect>
-                  </IonCol>
-                  <IonCol size="12" size-md="12">
-                    <IonInput
-                      label="Durée d'occupation :"
-                      type="number"
-                      onIonChange={(e) =>
-                        setParcelle({
-                          ...parcelle,
-                          anneeOccup: Number(e.detail.value),
-                        })
-                      }
-                      placeholder="Nombre d'année"
-                    ></IonInput>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-            <IonItem>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12" size-md="12">
-                    <IonSelect
-                      label="Catégorie :"
-                      onIonChange={(e) =>
-                        setParcelle({
-                          ...parcelle,
-                          categorie: Number(e.detail.value),
-                        })
-                      }
-                      placeholder="Catégorie de terre"
-                    >
-                      {categorie.map((cat, index) => (
-                        <IonSelectOption
-                          key={`categorie-${index}`}
-                          value={cat.idcategorie}
-                        >
-                          {cat.labelcategorie}
-                        </IonSelectOption>
-                      ))}
-                    </IonSelect>
-                  </IonCol>
-                  <IonCol size="12" size-md="12">
-                    <IonInput
-                      label="Consistance :"
-                      type="text"
-                      onIonChange={(e) =>
-                        setParcelle({
-                          ...parcelle,
-                          consistance: String(e.detail.value),
-                        })
-                      }
-                      placeholder="Consistance du terrain"
-                    ></IonInput>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-            <IonItem>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12" size-md="12">
-                    <IonCheckbox
-                      labelPlacement="start"
-                      onIonChange={(e) =>
-                        setParcelle({
-                          ...parcelle,
-                          oppossition: e.detail.checked,
-                        })
-                      }
-                    >
-                      Opposition
-                    </IonCheckbox>
-                  </IonCol>
-                  <IonCol size="12" size-md="12">
-                    <IonCheckbox
-                      labelPlacement="start"
-                      onIonChange={(e) =>
-                        setParcelle({
-                          ...parcelle,
-                          revandication: e.detail.checked,
-                        })
-                      }
-                    >
-                      Revendication
-                    </IonCheckbox>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-            <IonItem>
-              <IonGrid>
-                <IonRow className="justify-content-between text-center">
-                  <IonCol size="12" size-md="4">
-                    <IonButton
-                      expand="full"
-                      onClick={() => setShowDemandeurModal(true)}
-                    >
-                      Ajout demandeur
-                    </IonButton>
-                  </IonCol>
-                  <IonCol size="12" size-md="4">
-                    <IonButton
-                      expand="full"
-                      color="tertiary"
-                      onClick={() => setShowSearchDemandeurModal(true)}
-                    >
-                      Recherche demandeur
-                    </IonButton>
-                  </IonCol>
-                  <IonCol size="12" size-md="4">
-                    <IonButton
-                      expand="full"
-                      onClick={() => setShowRiverin(true)}
-                    >
-                      Ajout riverain
-                    </IonButton>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-            <div className="tabs-wrapper">
-              {/* Conteneur fixe pour le segment */}
-              <div className="tabs-header">
-                <IonSegment
-                  value={activeTab}
-                  onIonChange={(e) =>
-                    setActiveTab(e.detail.value as "demandeur" | "riverin")
-                  }
-                >
-                  <IonSegmentButton value="demandeur">
-                    <IonLabel>Demandeurs</IonLabel>
-                  </IonSegmentButton>
-                  <IonSegmentButton value="riverin">
-                    <IonLabel>Riverains</IonLabel>
-                  </IonSegmentButton>
-                </IonSegment>
-              </div>
-
-              {/* Contenu scrollable */}
-              <div className="tab-content-scroll">
-                {activeTab === "demandeur" && (
-                  <div className="demandeur-list">
-                    {parcelle.demandeurs.map((d, i) => (
-                      <div key={i} onClick={() => console.log("Clicked", d)}>
-                        <DemandeurView demandeur={d} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeTab === "riverin" && (
-                  <div className="riverin-list">
-                    {parcelle.riverin?.map((r, i) => (
-                      <IonItem key={i} lines="none" className="custom-item">
-                        <IonLabel>
-                          <h3 style={{ marginBottom: 4 }}>
-                            🧭 {["Nord", "Est", "Sud", "Ouest"][r.repere! - 1]}
-                          </h3>
-                          <p style={{ margin: 0 }}>📝 {r.observation}</p>
-                        </IonLabel>
-                      </IonItem>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <IonItem>
-              <Photo
-                photos={parcelle.photos}
-                decomposed={decomposed}
-                setDecomposed={setDecomposed}
-                takePhoto={takePhotoParcelle} // Pas de photo ici
-                clearPhotos={() => {
-                  setParcelle({ ...parcelle, photos: [] });
-                }}
-                name="Prendre une photo de groupe"
-              />
-            </IonItem>
-
-            <IonItem>
-              <IonGrid className="ion-margin-bottom">
-                <IonRow className="ion-wrap ion-gap">
-                  <IonCol size-md="4" size-lg="2">
-                    <div className="ion-text-wrap">
-                      <small className="ion-text-muted">Région</small>
-                      <div>
-                        <strong>{parametreTerritoire?.region.nomregion}</strong>
-                      </div>
-                    </div>
-                  </IonCol>
-
-                  <IonCol size-md="4" size-lg="2">
-                    <div className="ion-text-wrap">
-                      <small className="ion-text-muted">District</small>
-                      <div>
-                        <strong>
-                          {parametreTerritoire?.district.nomdistrict}
-                        </strong>
-                      </div>
-                    </div>
-                  </IonCol>
-
-                  <IonCol size-md="4" size-lg="2">
-                    <div className="ion-text-wrap">
-                      <small className="ion-text-muted">Commune</small>
-                      <div>
-                        <strong>
-                          {parametreTerritoire?.commune.nomcommune}
-                        </strong>
-                      </div>
-                    </div>
-                  </IonCol>
-
-                  <IonCol size-md="4" size-lg="2">
-                    <div className="ion-text-wrap">
-                      <small className="ion-text-muted">Fokontany</small>
-                      <div>
-                        <strong>
-                          {parametreTerritoire?.fokontany.nomfokontany}
-                        </strong>
-                      </div>
-                    </div>
-                  </IonCol>
-
-                  <IonCol size-md="4" size-lg="2">
-                    <div className="ion-text-wrap">
-                      <small className="ion-text-muted">Hameau</small>
-                      <div>
-                        <strong>{parametreTerritoire?.hameau.nomhameau}</strong>
-                      </div>
-                    </div>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-
-            <IonItem>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12" size-md="12">
-                    <IonTextarea
-                      label="Observation"
-                      onIonChange={(e) =>
-                        setParcelle({
-                          ...parcelle,
-                          observation: e.detail.value || "",
-                        })
-                      }
-                      labelPlacement="stacked"
-                      placeholder="Votre observation sur la parcelle"
-                    ></IonTextarea>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </IonItem>
-          </IonList>
-
-          <IonButton expand="full" onClick={createParcelle}>
-            Enregistrer la parcelle
-          </IonButton>
+          <ParcelleForm
+            mode={mode} parcelle={parcelle}
+            setParcelle={setParcelle}
+            categorie={categorie} status={status}
+            parametreTerritoire={mode !== "create" ? parcelle.parametreTerritoire : parametreTerritoire}
+            activeTab={activeTab} setActiveTab={setActiveTab}
+            decomposed={decomposed} setDecomposed={setDecomposed}
+            takePhotoParcelle={takePhotoParcelle}
+            onCreateParcelle={createParcelle}
+            onShowDemandeurModal={() => setShowDemandeurModal(true)}
+            onShowSearchModal={() => setShowSearchDemandeurModal(true)}
+            onShowRiverinModal={() => setShowRiverin(true)}
+            onCategoriesChange={(updatedList) => setCategorie(updatedList)}
+          />
         </IonContent>
       </IonModal>
 
-      {/**Modal riverin */}
+      <Alert
+        show={showTempAlert}
+        type={0}
+        title="Information"
+        message={tempAlertMessage}
+        onClose={() => setShowTempAlert(false)}
+      />
 
+      {/* Modals */}
       <ModalRiverin
-        showRiverin={showRiverin}
-        setShowRiverin={setShowRiverin}
-        addRiverin={addRiverin}
-        riverinMess={riverinMess}
-        repereL={repereL}
-        newRiverin={newRiverin}
+        showRiverin={showRiverin} setShowRiverin={setShowRiverin}
+        addRiverin={addRiverin} riverinMess={riverinMess}
+        repereL={repereL} newRiverin={newRiverin}
         setNewRiverin={setNewRiverin}
         demandeurs={demandeurList}
       />
 
-      {/** Modal de recharche de demandeur **/}
       <SeacrhModal
         showSearchModal={showSearchDemandeurModal}
         setShowSearchModal={setShowSearchDemandeurModal}
         onSelect={(d) => {
-          setParcelle((prev) => ({
-            ...prev,
-            demandeurs: [...prev.demandeurs, d],
-          }));
+          setParcelle((prev) => {
+            const exists = prev.demandeurs.find(r => r.id === d.id);
+            if (exists) return prev;
+            return { ...prev, demandeurs: [...prev.demandeurs, d] };
+          })
         }}
       />
 
-      {/**Modal creation demandeur*/}
       <ModalDemandeur
-        showCreateModal={showDemandeurModal}
-        setShowCreateModal={setShowDemandeurModal}
-        demandeur={demandeur}
-        setDemandeur={setDemandeur}
+        showCreateModal={showDemandeurModal} setShowCreateModal={setShowDemandeurModal}
+        demandeur={demandeur} setDemandeur={setDemandeur}
         addDemandeur={addDemandeur}
-        toastMessage={toastMessage}
-        setToastMessage={setToastMessage}
-        isPhysique={isPhysique}
-        setIsPhysique={setIsPhysique}
-        decomposed={decomposed}
-        setDecomposed={setDecomposed}
+        toastMessage={toastMessage} setToastMessage={setToastMessage}
+        isPhysique={isPhysique} setIsPhysique={setIsPhysique}
+        decomposed={decomposed} setDecomposed={setDecomposed}
       />
-    </IonPage>
+    </IonPage >
   );
 };
-
 export default Tab1;

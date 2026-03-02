@@ -1,90 +1,131 @@
-import {
-    IonButton,
-    IonButtons,
-    IonContent,
-    IonHeader,
-    IonIcon,
-    IonInput,
-    IonItem,
-    IonLabel,
-    IonMenuButton,
-    IonPage,
-    IonTitle,
-    IonToolbar,
-    useIonViewWillEnter,
-} from "@ionic/react";
-import { searchSharp } from "ionicons/icons";
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonMenuButton, IonPage, IonPopover, IonTitle, IonToolbar,useIonViewWillEnter,} from "@ionic/react";
+import { ellipsisVertical, refreshCircleOutline, saveSharp } from "ionicons/icons";
 import { useState } from "react";
 import { Preferences } from "@capacitor/preferences";
+import { clearDatabase } from "../model/base/DbSchema";
+
+// Components
+import Alert from "../components/alert/Alert";
+
+// CSS
 import "./Tab6.css";
 
 const Tab6: React.FC = () => {
-    const [deviceId, setDeviceId] = useState<string>("");
+  const [deviceId, setDeviceId] = useState<string>("");
+  const [showAlert, setShowAlert] = useState<boolean>(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isModified, setIsModified] = useState(false);
 
-    // Charger la valeur au montage
-    useIonViewWillEnter(() => {
-        const loadG = async () => {
-            const { value } = await Preferences.get({ key: "device_id" });
-            if (value) setDeviceId(value);
-        }
-        loadG();
-    });
-
-    // Sauvegarder le device_id
-    const saveDeviceId = async () => {
-        await Preferences.set({ key: "device_id", value: deviceId });
+  // Charger la valeur au montage
+  useIonViewWillEnter(() => {
+    const loadDeviceId = async () => {
+      const { value } = await Preferences.get({ key: "device_id" });
+      if (value) setDeviceId(value);
     };
+    loadDeviceId();
+  });
 
-    // Réinitialiser toutes les preferences sauf session_id
-    const resetPreferences = async () => {
-        const all = await Preferences.keys();
-        const keysToDelete = all.keys.filter((k) => k !== "session_id");
-        for (const key of keysToDelete) {
-            await Preferences.remove({ key });
-        }
-        alert("Préférences réinitialisées (session conservée) ✔️");
-        setDeviceId(""); // vider le champ
-    };
+  // Sauvegarder le device_id
+  const saveDeviceId = async () => {
+    if (!deviceId) return;
+    try {
+      await Preferences.set({ key: "device_id", value: deviceId });
+      console.log("Device ID sauvegardé:", deviceId);
+      setIsModified(false); // bouton save caché après sauvegarde
+    } catch (err) {
+      console.error("Erreur lors de la sauvegarde du device_id:", err);
+    }
+  };
 
-    return (
-        <IonPage>
-            <IonHeader>
-                <IonToolbar color="primary">
-                    <IonButtons slot="start">
-                        <IonMenuButton />
-                    </IonButtons>
-                    <IonTitle>Administrateur</IonTitle>
-                    <IonButtons slot="end">
-                        <IonButton aria-label="Rechercher">
-                            <IonIcon icon={searchSharp} slot="icon-only" />
-                        </IonButton>
-                    </IonButtons>
-                </IonToolbar>
-            </IonHeader>
+  // Réinitialiser toutes les preferences + DB
+  const resetPreferences = async () => {
+    try {
+      await Preferences.clear();
+      await clearDatabase();
+      setDeviceId("");
+      setTimeout(() => {
+        window.location.href = "/accueil";
+      }, 100); // petit délai pour s'assurer que tout est sauvegardé
+    } catch (err) {
+      console.error("Erreur lors du reset:", err);
+    }
+  };
 
-            <IonContent fullscreen className="ion-padding">
-                <div className="admin-card">
-                    <IonItem lines="none">
-                        <IonLabel position="stacked">ID du Device</IonLabel>
-                        <IonInput
-                            value={deviceId}
-                            placeholder="Entrez un numéro"
-                            onIonChange={(e) => setDeviceId(e.detail.value!)}
-                        />
-                    </IonItem>
+  return (
+    <IonPage>
+      <IonHeader>
+        <IonToolbar color="primary">
+          <IonButtons slot="start">
+            <IonMenuButton />
+          </IonButtons>
+          <IonTitle>Administrateur</IonTitle>
+          <IonButtons slot="end">
+            <IonButton aria-label="menu" id="dropdown-trigger-tab6">
+              <IonIcon icon={ellipsisVertical} slot="icon-only" />
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
 
-                    <IonButton expand="full" color="primary" onClick={saveDeviceId} className="ion-margin-top">
-                        Sauvegarder
-                    </IonButton>
+      <IonPopover trigger="dropdown-trigger-tab6" triggerAction="click">
+        <IonContent>
+          <IonList>
+            <IonItem button onClick={() => setShowAlert(true)} lines="none">
+              <IonIcon icon={refreshCircleOutline} slot="start" />
+              <IonLabel>Réinitialisation</IonLabel>
+            </IonItem>
+          </IonList>
+        </IonContent>
+      </IonPopover>
 
-                    <IonButton expand="full" color="danger" onClick={resetPreferences} className="ion-margin-top">
-                        Réinitialiser toutes les données
-                    </IonButton>
+      <IonContent fullscreen className="ion-padding">
+        <div className="admin-card">
+          <div className="row d-flex align-items-center">
+            <div className="col">
+              <div className="row d-flex align-items-center">
+                <div className="col-auto">ID du Device :</div>
+                <div className="col">
+                  <IonInput
+                    className="input-tab-6-custom"
+                    value={deviceId}
+                    placeholder="XXXXX"
+                    onIonChange={async (e) => {
+                      const val = e.detail.value ?? "";
+                      setDeviceId(val);
+                      setIsModified(true); // marque comme modifié
+                      await Preferences.set({ key: "device_id", value: val }); // sauvegarde auto
+                    }}
+                    onIonFocus={() => setIsFocused(true)}
+                    onIonBlur={() => setIsFocused(false)}
+                  />
                 </div>
-            </IonContent>
+              </div>
+            </div>
+            <div className="col-auto">
+              {(isFocused || isModified) && (
+                <div className="save-button" onClick={saveDeviceId}>
+                  <IonIcon icon={saveSharp} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </IonContent>
 
-        </IonPage>
-    );
+      <Alert
+        show={showAlert}
+        type={1}
+        title="Réinitialisation"
+        message="Êtes-vous sûr de vouloir supprimer toutes les données ?"
+        onCancel={() => setShowAlert(false)}
+        onConfirm={() => {
+          resetPreferences();
+          setShowAlert(false);
+        }}
+        onClose={() => setShowAlert(false)}
+      />
+    </IonPage>
+  );
 };
 
 export default Tab6;

@@ -1,12 +1,12 @@
 import { createContext, useContext, ReactNode, useRef, useEffect, useState } from "react";
 import initSqlJs, { Database } from "sql.js";
-import { File } from "@awesome-cordova-plugins/file";
 import { Capacitor } from "@capacitor/core";
+import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from "@capacitor-community/sqlite";
 
 interface DbContextProps {
-  db: Database | null;
-  loadMBTiles: () => Promise<Database>;
-  resetMBTiles: () => void;
+  db: Database | SQLiteDBConnection | null;
+  loadMBTiles: () => Promise<Database | SQLiteDBConnection>;
+  resetMBTiles: () => Promise<void>;
 }
 
 const DbContext = createContext<DbContextProps | undefined>(undefined);
@@ -18,45 +18,99 @@ export const useDb = () => {
 };
 
 export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const dbRef = useRef<Database | null>(null);
-  const dbPromiseRef = useRef<Promise<Database> | null>(null);
+  let sqlite: SQLiteConnection | null = null;
+  const dbRef = useRef<Database | SQLiteDBConnection | null>(null);
+  const dbPromiseRef = useRef<Promise<Database | SQLiteDBConnection> | null>(null);
   const [ready, setReady] = useState(false);
 
-  const resetMBTiles = () => {
+  const resetMBTiles = async () => {
+    if (dbRef.current) {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          // Fermer la connexion SQLite native
+          const db = dbRef.current as SQLiteDBConnection;
+          await db.close();
+          console.log("✅ Connexion SQLite native fermée");
+        } else {
+          // Fermer la base sql.js
+          const db = dbRef.current as Database;
+          db.close();
+          console.log("✅ Base sql.js fermée");
+        }
+      } catch (err) {
+        console.error("❌ Erreur lors de la fermeture de la DB:", err);
+      }
+    }
+
     dbRef.current = null;
     dbPromiseRef.current = null;
     setReady(false);
   };
 
-  const loadMBTiles = async (): Promise<Database> => {
+  const loadMBTiles = async (): Promise<Database | SQLiteDBConnection> => {
+    // Si la DB est déjà chargée, la retourner
     if (dbRef.current) return dbRef.current;
+
+    // Si un chargement est déjà en cours, attendre sa résolution
     if (dbPromiseRef.current) return dbPromiseRef.current;
 
     dbPromiseRef.current = (async () => {
-      const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
-      let loadedDb: Database;
+      let loadedDb: Database | SQLiteDBConnection;
 
       if (Capacitor.isNativePlatform()) {
-        const filePath = File.externalRootDirectory + "Documents/TopoManager/mbtiles/amb.mbtiles";
-        const fileEntry = (await File.resolveLocalFilesystemUrl(filePath)) as any;
-        loadedDb = await new Promise((resolve, reject) => {
-          fileEntry.file((file: any) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const buffer = event.target?.result as ArrayBuffer;
-              const dbInstance = new SQL.Database(new Uint8Array(buffer), { useWorker: true });
-              dbRef.current = dbInstance;
-              resolve(dbInstance);
-            };
-            reader.onerror = reject;
-            reader.readAsArrayBuffer(file);
-          });
-        });
+        // ====== Plateforme native: @capacitor-community/sqlite ======
+        try {
+          console.log("📦 Initialisation SQLite native...");
+
+          // attend deviceready si nécessaire
+          if (Capacitor.getPlatform() === "android" || Capacitor.getPlatform() === "ios") {
+            if (!window.cordova) {
+              console.warn("⚠️ Cordova deviceready pas encore dispo");
+            }
+          }
+
+          if (!sqlite) {
+            sqlite = new SQLiteConnection(CapacitorSQLite);
+          }
+
+          let db: SQLiteDBConnection;
+
+          const consistency = await sqlite.checkConnectionsConsistency();
+          const isConn = (await sqlite.isConnection("amb", false)).result;
+
+          if (consistency.result && isConn) {
+            db = await sqlite.retrieveConnection("amb", false);
+            console.log("♻️ Connexion récupérée");
+          } else {
+            db = await sqlite.createConnection("amb", false, "no-encryption", 1, false);
+            console.log("🆕 Connexion créée");
+          }
+
+          await db.open();
+          dbRef.current = db;
+          loadedDb = db;
+
+          console.log("✅ SQLite native initialisé");
+        } catch (err) {
+          console.error("❌ Erreur SQLite native:", err);
+          throw err;
+        }
       } else {
-        const response = await fetch("/mbtiles/amb.mbtiles");
-        const buffer = await response.arrayBuffer();
-        loadedDb = new SQL.Database(new Uint8Array(buffer), { useWorker: true });
-        dbRef.current = loadedDb;
+        // ====== Plateforme web: sql.js ======
+        try {
+          console.log("📦 Initialisation sql.js (web)...");
+          const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
+
+          const response = await fetch("/mbtiles/amb.mbtiles");
+          const buffer = await response.arrayBuffer();
+          loadedDb = new SQL.Database(new Uint8Array(buffer), { useWorker: true });
+
+          dbRef.current = loadedDb;
+          console.log("✅ sql.js initialisé");
+        } catch (err) {
+          console.error("❌ Erreur sql.js:", err);
+          throw err;
+        }
       }
 
       setReady(true);
@@ -68,14 +122,22 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   // Préchargement immédiat au startup de l'app
   useEffect(() => {
-    (async () => {
-      try {
+    const init = async () => {
+      if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
+        document.addEventListener('deviceready', async () => {
+          try {
+            await loadMBTiles();
+            console.log("MBTiles préchargé ✔️");
+          } catch (err) {
+            console.error("Erreur chargement MBTiles:", err);
+          }
+        });
+      } else {
+        // web
         await loadMBTiles();
-        console.log("MBTiles préchargé ✔️");
-      } catch (err) {
-        console.error("Erreur chargement MBTiles au startup:", err);
       }
-    })();
+    };
+    init();
   }, []);
 
   return (

@@ -14,10 +14,12 @@ import { Demandeur } from "../../model/parcelle/Demandeur";
 interface MoralProps {
   demandeur: Demandeur;
   setDemandeur: (value: Demandeur) => void;
+  readonly?: boolean; // optionnel, false par défaut
 }
 
-const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
+const Moral: React.FC<MoralProps> = ({ demandeur, setDemandeur, readonly = false }) => {
   const [typeMoral, setTypeMoral] = useState<TypeMoral[]>([]);
+
   useEffect(() => {
     const loadData = async () => {
       const { value } = await Preferences.get({ key: "typeMoralData" });
@@ -28,6 +30,7 @@ const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
 
     loadData();
   }, []);
+
   return (
     <IonList>
       <IonItem>
@@ -35,6 +38,7 @@ const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
           label="Type :"
           value={demandeur.typeMorale}
           placeholder="Type de personne morale"
+          disabled={readonly}
           onIonChange={(e) =>
             setDemandeur({
               ...demandeur,
@@ -49,11 +53,13 @@ const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
           ))}
         </IonSelect>
       </IonItem>
+
       <IonItem>
         <IonInput
           label="Dénomination :"
           type="text"
           value={demandeur.denomination}
+          readonly={readonly}
           onIonChange={(e) =>
             setDemandeur({
               ...demandeur,
@@ -61,13 +67,15 @@ const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
             })
           }
           placeholder="Dénomination"
-        ></IonInput>
+        />
       </IonItem>
+
       <IonItem>
         <IonInput
           label="Date de création :"
           type="date"
           value={demandeur.dateCreation}
+          readonly={readonly}
           onIonChange={(e) =>
             setDemandeur({
               ...demandeur,
@@ -75,13 +83,15 @@ const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
             })
           }
           placeholder="Date de creation"
-        ></IonInput>
+        />
       </IonItem>
+
       <IonItem>
         <IonInput
           label="Siège :"
           type="text"
           value={demandeur.siege}
+          readonly={readonly}
           onIonChange={(e) =>
             setDemandeur({
               ...demandeur,
@@ -89,14 +99,16 @@ const Moral: React.FC<MoralProps> = ({demandeur,setDemandeur,}) => {
             })
           }
           placeholder="Siège"
-        ></IonInput>
+        />
       </IonItem>
+
       <IonItem>
         <IonTextarea
           label="Observations"
           rows={4}
           placeholder="Saisir des remarques ou notes..."
           value={demandeur.observations}
+          readonly={readonly}
           onIonChange={(e) =>
             setDemandeur({
               ...demandeur,

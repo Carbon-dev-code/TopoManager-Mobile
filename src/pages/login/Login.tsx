@@ -16,8 +16,9 @@ import "../../assets/dist/css/bootstrap.min.css";
 import "./Login.css";
 import logoTopoManager from "../../assets/image/BackGround/topomanager.png";
 
-const PASSWORD_ADMIN = "Adm1N@TM";
-const USERNAME_ADMIN = "admin";
+const USERNAME_ADMIN = import.meta.env.VITE_ADMIN_USER;
+const PASSWORD_ADMIN = import.meta.env.VITE_ADMIN_PASSWORD;
+
 
 const Login: React.FC = () => {
   const emailRef = useRef<HTMLIonInputElement>(null);
@@ -25,30 +26,22 @@ const Login: React.FC = () => {
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const session = await Preferences.get({ key: "is_logged_in" });
-
-      if (session.value === "true") {
-        window.location.href = "/tab1";
-      }
-
-    };
-    checkSession();
-  }, []);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailValue = (emailRef.current?.value ?? "").toString().trim();
     const passwordValue = (passwordRef.current?.value ?? "").toString().trim();
     if (passwordValue === PASSWORD_ADMIN && emailValue === USERNAME_ADMIN) {
+      const SESSION_DURATION = 30 * 60 * 1000; // 30 min
+      const expirationTime = new Date().getTime() + SESSION_DURATION;
       await Preferences.set({ key: "is_logged_in", value: "true" });
       await Preferences.set({ key: "id_session", value: "0" });
       await Preferences.set({ key: "username", value: "Admin" });
+      await Preferences.set({ key: "session_expiration", value: expirationTime.toString() });
       window.location.href = "/tab1";
     } else {
       setShowPasswordAlert(true);
     }
+
   };
 
 

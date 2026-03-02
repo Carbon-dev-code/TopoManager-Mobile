@@ -1,43 +1,16 @@
 import {
-  IonPage,
-  IonContent,
-  IonButton,
-  IonLoading,
-  IonAlert,
-  IonHeader,
-  IonButtons,
-  IonIcon,
-  IonMenuButton,
-  IonTitle,
-  IonToolbar,
-  IonCard,
-  IonLabel,
-  IonCardContent,
-  IonList,
-  IonItem,
-  IonModal,
-  IonListHeader,
-  IonSelect,
-  IonSelectOption,
-  IonText,
-  IonProgressBar,
-  useIonViewWillEnter,
-  IonPopover,
+  IonPage, IonContent, IonButton, IonLoading, IonAlert, IonHeader, IonButtons, IonIcon,
+  IonMenuButton, IonTitle, IonToolbar, IonCard, IonLabel, IonCardContent, IonList, IonItem,
+  IonModal, IonText, IonProgressBar,
+  useIonViewWillEnter, IonPopover
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ConfigService } from "../model/ConfigService";
 import { Buffer } from "buffer";
 import { FileTransfer } from "@capacitor/file-transfer";
-import {
-  close,
-  settingsOutline,
-  sync,
-  ellipsisVertical,
-  map,
-  layersOutline,
-} from "ionicons/icons";
+import { close, settingsOutline, sync, ellipsisVertical, map, layersOutline, serverOutline } from "ionicons/icons";
 import "./Tab4.css";
 import { Territoire } from "../model/Territoire";
 import { ParametreTerritoire } from "../model/ParametreTerritoire";
@@ -46,338 +19,222 @@ import { Commune } from "../model/limite/Commune";
 import { Fokontany } from "../model/limite/Fokontany";
 import { Hameau } from "../model/limite/Hameau";
 import { useDb } from "../model/base/DbContextType";
+import { verifIDDevice } from "../model/base/DbSchema";
+import TerritorialSelector from "../components/territoire/Territorialselector";
+import ServerModal from "../components/server/ServerModal";
+import { PluginListenerHandle } from "@capacitor/core";
 
 const Tab4 = () => {
+  // États de base
   const [territoire, setTerritoire] = useState<Territoire[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [allLoader, setAllLoader] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [parametres, setParametres] = useState<ParametreTerritoire[]>([]);
+  const [parametreActuel, setParametreActuel] = useState<ParametreTerritoire | null>(null);
+  const [deviceId, setDeviceId] = useState<string>("");
   const [serverUrl, setServerUrl] = useState<string>("");
+  const [modalServerOpen, setModalServerOpen] = useState(false);
+
+  // États UI
   const [showModal, setShowModal] = useState(false);
   const [showModalCarte, setShowModalCarte] = useState(false);
+  const [showModalConfirmation, setShowModalConfirmation] = useState<{ message: string; onConfirm: () => void; onCancel: () => void } | null>(null);
+
+  // États de chargement
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isDownloadingTiles, setIsDownloadingTiles] = useState(false);
+  const [progression, setProgression] = useState<number>(0);
+
+  // États messages
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Sélections pour paramètres
   const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
   const [selectedCommune, setSelectedCommune] = useState<number | null>(null);
-  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(
-    null
-  );
+  const [selectedFokontany, setSelectedFokontany] = useState<number | null>(null);
   const [selectedHameau, setSelectedHameau] = useState<number | null>(null);
-  const [parametres, setParametres] = useState<ParametreTerritoire[]>([]);
-  const [parametreActuel, setParametreActuel] =
-    useState<ParametreTerritoire | null>(null);
-  const [currentParcelleCode, setCurrentParcelleCode] = useState<string>("");
-  const [progression, setProgression] = useState<number>(0);
-  const [isSyncing, setIsSyncing] = useState(false); // Pour fetchData
-  const [isDownloadingTiles, setIsDownloadingTiles] = useState(false); // Pour fetchCarte
-  const [showModalConfirmation, setShowModalConfirmation] = useState<{
-    message: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-  } | null>(null);
-  const { resetMBTiles } = useDb();
-  const [deviceId, setDeviceId] = useState<string>("");
+
+  const { resetMBTiles, loadMBTiles } = useDb();
+
+  // ==================== HOOKS UTILITAIRES ====================
 
   useIonViewWillEnter(() => {
-    loadConfig().then(() => refreshCurrentParams());
+    loadSavedData();
   });
 
-  const refreshCurrentParams = async () => {
+  useEffect(() => {
+    let listenerHandle: PluginListenerHandle | null = null;
+
+    const setupListener = async () => {
+      listenerHandle = await FileTransfer.addListener("progress", (p) => {
+        if (p.contentLength > 0) setProgression(p.bytes / p.contentLength);
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      listenerHandle?.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (parametres.length > 0) {
+      Preferences.set({ key: "parametres", value: JSON.stringify(parametres) });
+    }
+  }, [parametres]);
+
+  useEffect(() => {
+    if (parametreActuel) {
+      Preferences.set({ key: "parametreActuel", value: JSON.stringify(parametreActuel) });
+    }
+  }, [parametreActuel]);
+
+  const handleServerSaved = async () => {
+    setServerUrl(await ConfigService.getServerIpPort());
+  };
+
+  // ==================== FONCTIONS DE CHARGEMENT ====================
+  const loadSavedData = async () => {
     try {
-      const { value: paramValue } = await Preferences.get({ key: "parametreActuel" });
-      const { value: devValue } = await Preferences.get({ key: "device_id" });
+      setServerUrl(await ConfigService.getServerIpPort());
 
-      if (paramValue && devValue) {
-        const current = JSON.parse(paramValue);
-        const IdDevice = devValue; // pas besoin de JSON.parse si c’est une string
+      const [savedParams, currentParam, device, territoireDataParams] = await Promise.all([
+        Preferences.get({ key: "parametres" }),
+        Preferences.get({ key: "parametreActuel" }),
+        Preferences.get({ key: "device_id" }),
+        Preferences.get({ key: "territoireData" })
+      ]);
 
-        setDeviceId(IdDevice);
-        setParametreActuel(current);
-
-        const codeComplet = `${IdDevice}-${current.region.coderegion}-${current.district.codedistrict}-${current.commune.codecommune}-${current.fokontany.codefokontany}-${current.hameau.codehameau}-${current.increment + 1}`;
-        setCurrentParcelleCode(codeComplet);
-      }
+      if (savedParams.value) setParametres(JSON.parse(savedParams.value));
+      if (currentParam.value) setParametreActuel(JSON.parse(currentParam.value));
+      if (device.value) setDeviceId(device.value);
+      if (territoireDataParams.value) setTerritoire(JSON.parse(territoireDataParams.value));
     } catch (error) {
-      console.error("Erreur rafraîchissement paramètres:", error);
+      console.error("Erreur chargement:", error);
     }
   };
 
-  const loadConfig = async () => {
+  // ==================== SYNCHRONISATION DONNÉES ====================
+
+  const fetchData = async () => {
+    setError(null);
+
     try {
-      const url = await ConfigService.getServerBaseUrl();
-      setServerUrl(url); // Mise à jour de l'état
-      const { value } = await Preferences.get({ key: "territoireData" });
-      if (value) {
-        setTerritoire(JSON.parse(value));
-      }
-      return url; // Important pour le .then()
-    } catch (error) {
-      setError("Configurez l'URL du serveur d'abord");
-      throw error; // Propage l'erreur
+      const currentServerUrl = await ConfigService.getServerBaseUrl();
+      await ConfigService.verifyServerConnection(500); //500ms
+
+      const endpoints = ["getTerritoire", "getCategorie", "getStatus", "getRepere", "getTypeMoral"];
+      setIsSyncing(true);
+      const responses = await Promise.all(
+        endpoints.map(endpoint => fetch(`${currentServerUrl}/${endpoint}`))
+      );
+
+      // Vérification des erreurs
+      responses.forEach((response, index) => {
+        if (!response.ok) throw new Error(`Erreur ${endpoints[index]}: ${response.status}`);
+      });
+
+      const [territoireData, categorieData, statusData, repereData, typeMoralData] =
+        await Promise.all(responses.map(r => r.json()));
+
+      // Sauvegarde parallèle
+      await Promise.all([
+        Preferences.set({ key: "territoireData", value: JSON.stringify(territoireData.data) }),
+        Preferences.set({ key: "categorieData", value: JSON.stringify(categorieData.data) }),
+        Preferences.set({ key: "statusData", value: JSON.stringify(statusData.data) }),
+        Preferences.set({ key: "repereData", value: JSON.stringify(repereData.data) }),
+        Preferences.set({ key: "typeMoralData", value: JSON.stringify(typeMoralData.data) })
+      ]);
+
+      setTerritoire(territoireData.data);
+      setShowModal(true);
+    } catch (err: unknown) {
+      setError(`Échec de la synchronisation: ${err instanceof Error ? err.message : "Erreur inconnue"}`);
+    } finally {
+      setIsSyncing(false);
     }
   };
+
+  // ==================== TÉLÉCHARGEMENT PLOF ====================
 
   const fetchPlof = async () => {
-    setAllLoader(true);
+    setIsLoading(true);
     setError(null);
-    setSuccess(null);
 
     try {
       const currentServerIp = await ConfigService.getServerIp();
       if (!currentServerIp) throw new Error("Configuration serveur manquante");
 
       const workspace = "H-topo";
-      const authHeader =
-        "Basic " + Buffer.from("admin:geoserver").toString("base64");
+      const authHeader = "Basic " + Buffer.from("admin:geoserver").toString("base64");
+      const baseUrl = `http://${currentServerIp}:8080`;
 
-      const protocol = "http";
-      const port = 8080;
-      const baseUrl = `${protocol}://${currentServerIp}:${port}`;
-
-      // 1. Lister tous les datastores
-      const dsUrl = `${baseUrl}/geoserver/rest/workspaces/${workspace}/datastores.json`;
-      const dsResp = await fetch(dsUrl, {
-        headers: {
-          Accept: "application/json",
-          Authorization: authHeader,
-        },
+      // Récupération datastores
+      const dsResp = await fetch(`${baseUrl}/geoserver/rest/workspaces/${workspace}/datastores.json`, {
+        headers: { Accept: "application/json", Authorization: authHeader }
       });
-      if (!dsResp.ok)
-        throw new Error(`Erreur récupération datastores: ${dsResp.status}`);
+      if (!dsResp.ok) throw new Error(`Erreur datastores: ${dsResp.status}`);
+
       const dsData = await dsResp.json();
       const datastores = dsData.dataStores.dataStore.map((ds: any) => ds.name);
 
-      const structure = {
-        workspace,
-        datastores: [],
-      };
+      const structure = { workspace, datastores: [] as any[] };
 
-      // 2. Pour chaque datastore, lister les couches vecteur
       for (const dsName of datastores) {
-        const ftUrl = `${baseUrl}/geoserver/rest/workspaces/${workspace}/datastores/${dsName}/featuretypes.json`;
-        const ftResp = await fetch(ftUrl, {
-          headers: {
-            Accept: "application/json",
-            Authorization: authHeader,
-          },
-        });
-        if (!ftResp.ok) {
-          console.warn(`Erreur sur datastore ${dsName}`);
-          continue;
-        }
+        const ftResp = await fetch(
+          `${baseUrl}/geoserver/rest/workspaces/${workspace}/datastores/${dsName}/featuretypes.json`,
+          { headers: { Accept: "application/json", Authorization: authHeader } }
+        );
+
+        if (!ftResp.ok) continue;
+
         const ftData = await ftResp.json();
         const layers = ftData.featureTypes.featureType.map((f: any) => f.name);
-
         const savedLayers = [];
 
-        // 3. Télécharger chaque couche en GeoJSON (WFS)
         for (const layerName of layers) {
-          const wfsUrl = `${baseUrl}/geoserver/${workspace}/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${workspace}:${layerName}&outputFormat=application/json`;
+          const wfsResp = await fetch(
+            `${baseUrl}/geoserver/${workspace}/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=${workspace}:${layerName}&outputFormat=application/json`,
+            { headers: { Accept: "application/json", Authorization: authHeader } }
+          );
 
-          const wfsResp = await fetch(wfsUrl, {
-            headers: {
-              Accept: "application/json",
-              Authorization: authHeader,
-            },
-          });
-
-          if (!wfsResp.ok) {
-            console.warn(`Erreur téléchargement couche ${layerName}`);
-            continue;
-          }
+          if (!wfsResp.ok) continue;
 
           const geojson = await wfsResp.json();
-
-          // Ajout dynamique d'un attribut "name" dans chaque feature
-          if (geojson.features && Array.isArray(geojson.features)) {
+          if (geojson.features) {
             geojson.features = geojson.features.map((feature: any) => ({
               ...feature,
-              properties: {
-                ...feature.properties,
-                name: layerName,
-              },
+              properties: { ...feature.properties, name: layerName }
             }));
           }
 
-          // 4. Enregistrer localement
           const localPath = `plof/${dsName}/${layerName}.geojson`;
           await Filesystem.writeFile({
             path: localPath,
             data: JSON.stringify(geojson),
             directory: Directory.Data,
             encoding: Encoding.UTF8,
-            recursive: true,
+            recursive: true
           });
 
-          savedLayers.push({
-            name: layerName,
-            path: localPath,
-          });
+          savedLayers.push({ name: layerName, path: localPath });
         }
 
-        // Ajouter au tableau global
-        structure.datastores.push({
-          name: dsName,
-          layers: savedLayers,
-        });
+        structure.datastores.push({ name: dsName, layers: savedLayers });
       }
 
-      // 5. Sauvegarder la structure dans Preferences
-      await Preferences.set({
-        key: "plofData",
-        value: JSON.stringify(structure),
-      });
-
+      await Preferences.set({ key: "plofData", value: JSON.stringify(structure) });
       setSuccess("Téléchargement PLOF terminé");
     } catch (err) {
-      console.error(err);
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
-      setAllLoader(false);
+      setIsLoading(false);
     }
   };
 
-  const fetchData = async () => {
-    setIsSyncing(true);
-    setError(null);
-
-    try {
-      // 1. Récupérer l'URL du serveur
-      const currentServerUrl = await ConfigService.getServerBaseUrl();
-      setServerUrl(currentServerUrl);
-
-      // 2. Vérification de l'URL
-      if (!currentServerUrl) {
-        throw new Error("Configuration serveur manquante");
-      }
-
-      // 3. Fetch des données territoire
-      const [
-        territoireResponse,
-        categorieResponse,
-        statusResponse,
-        repereResponse,
-        typeMoralResponse,
-      ] = await Promise.all([
-        fetch(`${currentServerUrl}/getTerritoire`),
-        fetch(`${currentServerUrl}/getCategorie`),
-        fetch(`${currentServerUrl}/getStatus`),
-        fetch(`${currentServerUrl}/getRepere`),
-        fetch(`${currentServerUrl}/getTypeMoral`),
-      ]);
-
-      if (!territoireResponse.ok) {
-        throw new Error(`Erreur territoire: ${territoireResponse.status}`);
-      }
-
-      if (!categorieResponse.ok) {
-        throw new Error(`Erreur categorie: ${categorieResponse.status}`);
-      }
-
-      if (!statusResponse.ok) {
-        throw new Error(`Erreur categorie: ${statusResponse.status}`);
-      }
-
-      if (!repereResponse.ok) {
-        throw new Error(`Erreur repere: ${repereResponse.status}`);
-      }
-
-      if (!typeMoralResponse.ok) {
-        throw new Error(
-          `Erreur type de personne moral: ${typeMoralResponse.status}`
-        );
-      }
-
-      const territoireData = await territoireResponse.json();
-      const categorieData = await categorieResponse.json();
-      const statusData = await statusResponse.json();
-      const repereData = await repereResponse.json();
-      const typeMoralData = await typeMoralResponse.json();
-
-      // 4. Sauvegarder dans les préférences
-      await Preferences.set({
-        key: "territoireData",
-        value: JSON.stringify(territoireData.data),
-      });
-
-      await Preferences.set({
-        key: "categorieData",
-        value: JSON.stringify(categorieData.data),
-      });
-
-      await Preferences.set({
-        key: "statusData",
-        value: JSON.stringify(statusData.data),
-      });
-
-      await Preferences.set({
-        key: "repereData",
-        value: JSON.stringify(repereData.data),
-      });
-
-      await Preferences.set({
-        key: "typeMoralData",
-        value: JSON.stringify(typeMoralData.data),
-      });
-
-      // 5. Mettre à jour l'état local
-      setTerritoire(territoireData.data);
-      setShowModal(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erreur inconnue";
-      setError(`Échec de la synchronisation: ${message}`);
-      console.error(err);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const ensureMbtilesDir = async () => {
-    try {
-      // Vérifie si le dossier TopoManager/mbtiles existe
-      await Filesystem.stat({
-        directory: Directory.Documents,
-        path: "TopoManager/mbtiles",
-      });
-      console.log("📂 Le dossier TopoManager/mbtiles existe déjà");
-    } catch (err) {
-      // Si erreur → le dossier n’existe pas → on le crée
-      console.log(
-        "📂 Le dossier TopoManager/mbtiles n’existe pas, création..."
-      );
-      await Filesystem.mkdir({
-        directory: Directory.Documents,
-        path: "TopoManager/mbtiles",
-        recursive: true, // très important pour créer tous les sous-dossiers
-      });
-      console.log("✅ Dossier TopoManager/mbtiles créé !");
-    }
-  };
-
-  const deleteFile = async (path: string) => {
-    try {
-      await Filesystem.deleteFile({
-        directory: Directory.Documents, // ou Directory.Data selon où le fichier est
-        path: path, // ex: "mbtiles/amb.mbtiles"
-      });
-      console.log("✅ Fichier supprimé !");
-    } catch (err) {
-      console.error("❌ Erreur suppression fichier:", err);
-    }
-  };
-
-  useEffect(() => {
-    const listener = FileTransfer.addListener("progress", (p) => {
-      if (p.contentLength > 0) {
-        setProgression(p.bytes / p.contentLength);
-      }
-    });
-
-    // Nettoyage pour éviter fuite mémoire
-    return () => {
-      listener.remove();
-    };
-  }, []);
+  // ==================== TÉLÉCHARGEMENT CARTE ====================
 
   const fetchCarte = async () => {
     setShowModalCarte(false);
@@ -389,470 +246,267 @@ const Tab4 = () => {
       const serverUrl = await ConfigService.getServerBaseUrl();
       if (!serverUrl) throw new Error("Configuration serveur manquante");
 
-      const relativePath = "TopoManager/mbtiles/amb.mbtiles";
+      const mbtilesPath = "TopoManager/mbtiles/amb.mbtiles";
+      const dbName = "ambSQLite.db";
 
-      await ensureMbtilesDir();
+      await resetMBTiles();
 
-      let overwrite = true;
+      // Créer dossier
       try {
-        await Filesystem.stat({
-          directory: Directory.Documents,
-          path: relativePath,
-        });
+        await Filesystem.mkdir({ directory: Directory.Documents, path: "TopoManager/mbtiles", recursive: true });
+      } catch { /* exists */ }
 
-        overwrite = await new Promise<boolean>((resolve) => {
+      // Vérifier fichier existant
+      try {
+        await Filesystem.stat({ directory: Directory.Documents, path: mbtilesPath });
+        const overwrite = await new Promise<boolean>((resolve) => {
           setShowModalConfirmation({
-            message: "Le fichier existe déjà. Voulez-vous l’écraser ?",
+            message: "Une carte existe déjà. Mettre à jour ?",
             onConfirm: () => resolve(true),
-            onCancel: () => resolve(false),
+            onCancel: () => resolve(false)
           });
         });
-        if (overwrite) {
-          await deleteFile(relativePath);
-          await resetMBTiles();
+        if (!overwrite) {
+          setIsDownloadingTiles(false);
+          return;
         }
-      } catch { }
+        await Filesystem.deleteFile({ directory: Directory.Documents, path: mbtilesPath });
+      } catch { /* n'existe pas */ }
 
-      // 🔹 URI + conversion en file:// si besoin
-      const { uri } = await Filesystem.getUri({
-        directory: Directory.Documents,
-        path: relativePath,
-      });
+      // Téléchargement
+      const { uri } = await Filesystem.getUri({ directory: Directory.Documents, path: mbtilesPath });
       const filePathAbs = uri.startsWith("file://") ? uri : `file://${uri}`;
 
-      // 🔹 Download (progress listener géré dans useEffect)
       await FileTransfer.downloadFile({
         url: `${serverUrl}/getCarte`,
         path: filePathAbs,
         method: "GET",
-        progress: true,
+        progress: true
       });
 
       setProgression(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Vérification
+      const statSource = await Filesystem.stat({ path: mbtilesPath, directory: Directory.Documents });
+      if (statSource.size === 0) throw new Error("Fichier téléchargé vide");
+
+      // Installation
+      const { uri: dataUri } = await Filesystem.getUri({ directory: Directory.Data, path: "" });
+      const databasesPath = dataUri.replace("file://", "").replace("/files", "") + "/databases";
+
+      await Filesystem.mkdir({ path: databasesPath, directory: undefined, recursive: true }).catch(() => { });
+
+      try {
+        await Filesystem.deleteFile({ path: `${databasesPath}/${dbName}`, directory: undefined });
+      } catch { /* pas d'ancienne DB */ }
+
+      const { uri: sourceUri } = await Filesystem.getUri({ directory: Directory.Documents, path: mbtilesPath });
+      await Filesystem.copy({
+        from: sourceUri.replace("file://", ""),
+        directory: undefined,
+        to: `${databasesPath}/${dbName}`,
+        toDirectory: undefined
+      });
+
+      await Filesystem.deleteFile({ path: mbtilesPath, directory: Directory.Documents }).catch(() => { });
+
+      if (loadMBTiles) await loadMBTiles();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erreur inconnue";
-      setError(message);
-      console.error("fetchCarte error:", err);
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setIsDownloadingTiles(false);
       setTimeout(() => setProgression(0), 500);
     }
   };
 
-  useEffect(() => {
-    const loadSavedData = async () => {
-      try {
-        const { value: savedParams } = await Preferences.get({
-          key: "parametres",
-        });
-        if (savedParams) {
-          setParametres(JSON.parse(savedParams));
-        }
-
-        const { value: currentParam } = await Preferences.get({
-          key: "parametreActuel",
-        });
-        if (currentParam) {
-          setParametreActuel(JSON.parse(currentParam));
-        }
-        const { value } = await Preferences.get({ key: "device_id" });
-        if (value) setDeviceId(value);
-
-      } catch (error) {
-        console.error("Erreur lors du chargement des préférences:", error);
-      }
-    };
-
-    loadSavedData();
-  }, []);
-
-  useEffect(() => {
-    const saveParams = async () => {
-      if (parametres.length > 0) {
-        try {
-          await Preferences.set({
-            key: "parametres",
-            value: JSON.stringify(parametres),
-          });
-        } catch (error) {
-          console.error("Erreur lors de la sauvegarde des paramètres:", error);
-        }
-      }
-    };
-
-    saveParams();
-  }, [parametres]);
-
-  useEffect(() => {
-    const saveCurrentParam = async () => {
-      if (parametreActuel) {
-        try {
-          await Preferences.set({
-            key: "parametreActuel",
-            value: JSON.stringify(parametreActuel),
-          });
-        } catch (error) {
-          console.error(
-            "Erreur lors de la sauvegarde du paramètre actuel:",
-            error
-          );
-        }
-      }
-    };
-
-    saveCurrentParam();
-  }, [parametreActuel]);
-
-  const migrateParams = async () => {
-    const { value } = await Preferences.get({ key: "parametres" });
-    if (value) {
-      const params = JSON.parse(value);
-      const migrated = params.map((p) => ({
-        ...p,
-        id: p.id || `param-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      }));
-      await Preferences.set({
-        key: "parametres",
-        value: JSON.stringify(migrated),
-      });
-      setParametres(migrated);
+  // ==================== GESTION PARAMÈTRES ====================
+  const verifParametresComplets = () => {
+    if (!selectedRegion || !selectedDistrict || !selectedCommune || !selectedFokontany || !selectedHameau) {
+      throw new Error("Veuillez sélectionner tous les niveaux territoriaux");
     }
   };
 
-  useEffect(() => {
-    migrateParams();
-  }, []);
-
-  const enregistrerParametres = async () => {
-    if (
-      !selectedRegion ||
-      !selectedDistrict ||
-      !selectedCommune ||
-      !selectedFokontany ||
-      !selectedHameau
-    ) {
-      setError("Veuillez sélectionner tous les niveaux territoriaux");
-      return;
-    }
-
-    const region = territoire.find((r) => r.idregion === selectedRegion);
-    const district = region?.districts.find(
-      (d) => d.iddistrict === selectedDistrict
-    );
-    const commune = district?.communes.find(
-      (c) => c.idcommune === selectedCommune
-    );
-    const fokontany = commune?.fokontany.find(
-      (f) => f.idfokontany === selectedFokontany
-    );
-    const hameau = fokontany?.hameaux.find(
-      (h) => h.idhameau === selectedHameau
-    );
-
-    if (!region || !district || !commune || !fokontany || !hameau) {
-      setError("Données territoriales incomplètes");
-      return;
-    }
-
-    const nouveauParametre = new ParametreTerritoire({
-      id: `param-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      region: new Territoire(
-        region.idregion,
-        region.coderegion,
-        region.nomregion
-      ),
-      district: new District(
-        district.iddistrict,
-        district.codedistrict,
-        district.nomdistrict
-      ),
-      commune: new Commune(
-        commune.idcommune,
-        commune.codecommune,
-        commune.nomcommune
-      ),
-      fokontany: new Fokontany(
-        fokontany.idfokontany,
-        fokontany.codefokontany,
-        fokontany.nomfokontany
-      ),
-      hameau: new Hameau(hameau.idhameau, hameau.codehameau, hameau.nomhameau),
-      code_parcelle: 0,
-      increment: 0,
-      dateSelection: new Date().toISOString(),
-    });
-
-    const updatedParams = [...parametres, nouveauParametre];
-    setParametres(updatedParams);
-    setParametreActuel(nouveauParametre);
-
+  const enregistrerParametres = useCallback(async () => {
     try {
-      await Preferences.set({
-        key: "parametres",
-        value: JSON.stringify(updatedParams),
-      });
-      await Preferences.set({
-        key: "parametreActuel",
-        value: JSON.stringify(nouveauParametre),
+      // Vérification device
+      await verifIDDevice();
+
+      // Vérification sélection complète
+      verifParametresComplets();
+
+      // Récupération hiérarchique sécurisée
+      const region = territoire.find(r => r.idregion === selectedRegion);
+      if (!region) throw new Error("Région introuvable");
+
+      const district = region.districts?.find(d => d.iddistrict === selectedDistrict);
+      if (!district) throw new Error("District introuvable");
+
+      const commune = district.communes?.find(c => c.idcommune === selectedCommune);
+      if (!commune) throw new Error("Commune introuvable");
+
+      const fokontany = commune.fokontany?.find(f => f.idfokontany === selectedFokontany);
+      if (!fokontany) throw new Error("Fokontany introuvable");
+
+      const hameau = fokontany.hameaux?.find(h => h.idhameau === selectedHameau);
+      if (!hameau) throw new Error("Hameau introuvable");
+
+      // Création nouveau paramètre
+      const nouveauParametre = new ParametreTerritoire({
+        id: `param-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        region: new Territoire(region.idregion, region.coderegion, region.nomregion),
+        district: new District(district.iddistrict, district.codedistrict, district.nomdistrict),
+        commune: new Commune(commune.idcommune, commune.codecommune, commune.nomcommune),
+        fokontany: new Fokontany(fokontany.idfokontany, fokontany.codefokontany, fokontany.nomfokontany),
+        hameau: new Hameau(hameau.idhameau, hameau.codehameau, hameau.nomhameau),
+        code_parcelle: 0,
+        increment: 0,
+        dateSelection: new Date().toISOString(),
       });
 
-      const codeComplet = `${deviceId}-${nouveauParametre.region.coderegion}-${nouveauParametre.district.codedistrict
-        }-${nouveauParametre.commune.codecommune}-${nouveauParametre.fokontany.codefokontany
-        }-${nouveauParametre.hameau.codehameau}-${nouveauParametre.increment + 1
-        }`;
-      setCurrentParcelleCode(codeComplet);
+      // Mise à jour du state
+      setParametres(prev => [...prev, nouveauParametre]);
+      setParametreActuel(nouveauParametre);
+      setShowModal(false);
+
     } catch (error) {
-      console.error("Erreur lors de la sauvegarde:", error);
+      setError(error instanceof Error ? error.message : "Erreur inconnue, contactez l'administrateur");
     }
+  }, [selectedRegion, selectedDistrict, selectedCommune, selectedFokontany, selectedHameau, territoire]);
 
-    setShowModal(false);
-  };
+  const currentParcelleCode = parametreActuel ? `${deviceId}-${parametreActuel.region.coderegion}-${parametreActuel.district.codedistrict}-${parametreActuel.commune.codecommune}-${parametreActuel.fokontany.codefokontany}-${parametreActuel.hameau.codehameau}-${parametreActuel.increment + 1}` : "";
 
-  const definirCommeActuel = async (parametre: ParametreTerritoire) => {
-    try {
-      await Preferences.set({
-        key: "parametreActuel",
-        value: JSON.stringify(parametre),
-      });
-      setParametreActuel(parametre);
-
-      const codeComplet = `${deviceId}-${parametre.region.coderegion}-${parametre.district.codedistrict
-        }-${parametre.commune.codecommune}-${parametre.fokontany.codefokontany}-${parametre.hameau.codehameau
-        }-${parametre.increment + 1}`;
-      setCurrentParcelleCode(codeComplet);
-    } catch (error) {
-      console.error("Erreur lors de la sauvegarde du paramètre actuel:", error);
-    }
-  };
-
-  const resetDistrict = () => {
-    setSelectedDistrict(null);
-    setSelectedCommune(null);
-    setSelectedFokontany(null);
-    setSelectedHameau(null);
-  };
-
-  const resetCommune = () => {
-    setSelectedCommune(null);
-    setSelectedFokontany(null);
-    setSelectedHameau(null);
-  };
-
-  const resetFokontany = () => {
-    setSelectedFokontany(null);
-    setSelectedHameau(null);
-  };
-
-  const getServerAddress = () => {
-    if (!serverUrl) return "Non configuré";
-
-    // Extrait http://ip:port ou https://ip:port
-    const matches = serverUrl.match(/^https?:\/\/([^\\/]+)/);
-    return matches ? matches[1] : serverUrl;
-  };
+  // ==================== RENDER ====================
 
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar color="primary">
-          <IonButtons slot="start">
-            <IonMenuButton />
-          </IonButtons>
+          <IonButtons slot="start"><IonMenuButton /></IonButtons>
           <IonTitle>Paramètrage</IonTitle>
           <IonButtons slot="end">
             <IonButton id="dropdown-trigger">
               <IonIcon icon={ellipsisVertical} />
             </IonButton>
           </IonButtons>
-
-          <IonPopover trigger="dropdown-trigger" triggerAction="click">
-            <IonContent>
-              <IonList>
-                <IonItem button onClick={fetchData} disabled={isLoading}>
-                  <IonIcon icon={sync} slot="start" />
-                  <IonLabel>Maj. locale</IonLabel>
-                </IonItem>
-                <IonItem
-                  button
-                  onClick={() => setShowModalCarte(true)}
-                  disabled={isLoading}
-                >
-                  <IonIcon icon={map} slot="start" />
-                  <IonLabel>Ajouter une carte</IonLabel>
-                </IonItem>
-                <IonItem button onClick={fetchPlof} disabled={isLoading}>
-                  <IonIcon icon={layersOutline} slot="start" />
-                  <IonLabel>Maj. plof local</IonLabel>
-                </IonItem>
-              </IonList>
-            </IonContent>
-          </IonPopover>
         </IonToolbar>
       </IonHeader>
+      <IonPopover trigger="dropdown-trigger" triggerAction="click">
+        <IonContent>
+          <IonList>
+            <IonItem button onClick={() => setModalServerOpen(true)} disabled={isLoading}>
+              <IonIcon icon={serverOutline} slot="start" />
+              <IonLabel>Adresse du Serveur</IonLabel>
+            </IonItem>
+            <IonItem button onClick={fetchData} disabled={isLoading}>
+              <IonIcon icon={sync} slot="start" />
+              <IonLabel>Maj. locale</IonLabel>
+            </IonItem>
+            <IonItem button onClick={() => setShowModalCarte(true)} disabled={isLoading}>
+              <IonIcon icon={map} slot="start" />
+              <IonLabel>Ajouter une carte</IonLabel>
+            </IonItem>
+            <IonItem button onClick={fetchPlof} disabled={isLoading} lines="none">
+              <IonIcon icon={layersOutline} slot="start" />
+              <IonLabel>Maj. plof local</IonLabel>
+            </IonItem>
+          </IonList>
+        </IonContent>
+      </IonPopover>
 
       <IonContent className="ion-padding" color="light">
         {/* Carte du paramètre actuel */}
         <IonCard color="white" className="current-param-card">
           <IonCardContent>
-            <div
-              className="ion-text-center ion-margin-bottom"
-              style={{ alignItems: "center", justifyContent: "center" }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div
-                  className="mx-1"
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "center",
-                  }}
-                >
-                  <IonIcon
-                    icon={settingsOutline}
-                    style={{ fontSize: "2.5rem", color: "#3880ff" }}
-                  />
-                </div>
-                <div className="mx-1">
-                  <div>
-                    <IonLabel
-                      style={{ fontSize: "1.2rem", fontWeight: "bold" }}
-                    >
-                      Paramétrage Actuel
-                    </IonLabel>
-                  </div>
-                  <div>
-                    <IonText color="medium" className="mx-2">
-                      Serveur: {getServerAddress()}
-                    </IonText>
-                  </div>
+            <div className="ion-text-center ion-margin-bottom">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <IonIcon icon={settingsOutline} style={{ fontSize: "2.5rem", color: "#3880ff", marginRight: "10px" }} />
+                <div>
+                  <IonLabel style={{ fontSize: "1.2rem", fontWeight: "bold" }}>Paramétrage Actuel</IonLabel>
+                  <div><IonText color="medium">Serveur: {serverUrl}</IonText></div>
                 </div>
               </div>
             </div>
 
             {parametreActuel ? (
               <div className="param-details">
-                {/* === Code Parcelle === */}
                 <div className="px-1">
                   <IonLabel>
                     <IonText color="medium" className="small-text">
-                      (Code tablette - Code region - Code district - Code commune - Code fokontany - Code hameau - Numéro auto increment)
+                      (Code tablette - Code région - Code district - Code commune - Code fokontany - Code hameau - Numéro auto increment)
                     </IonText>
-                    <p className="highlight-text">
-                      <b>{currentParcelleCode || "Aucun code disponible"}</b>
-                    </p>
+                    <p className="highlight-text"><b>{currentParcelleCode || "Aucun code disponible"}</b></p>
                   </IonLabel>
                 </div>
 
-                {/* === Ligne Région / District / Création === */}
                 <div className="param-row">
-                  <div className="param-col">
-                    <IonItem lines="none" className="param-card">
-                      <IonLabel>
-                        <IonText color="medium">Région</IonText>
-                        <p className="highlight-text"><b>{parametreActuel.region.nomregion}</b></p>
-                      </IonLabel>
-                    </IonItem>
-                  </div>
-                  <div className="param-col">
-                    <IonItem lines="none" className="param-card">
-                      <IonLabel>
-                        <IonText color="medium">District</IonText>
-                        <p className="highlight-text"><b>{parametreActuel.district.nomdistrict}</b></p>
-                      </IonLabel>
-                    </IonItem>
-                  </div>
-                  <div className="param-col">
-                    <IonItem lines="none" className="param-card">
-                      <IonLabel>
-                        <IonText color="medium">Création</IonText>
-                        <p className="highlight-text"><b>{new Date(parametreActuel.dateSelection).toLocaleString()}</b></p>
-                      </IonLabel>
-                    </IonItem>
-                  </div>
+                  {[
+                    { label: "Région", value: parametreActuel.region.nomregion },
+                    { label: "District", value: parametreActuel.district.nomdistrict },
+                    { label: "Création", value: new Date(parametreActuel.dateSelection).toLocaleString() }
+                  ].map((item, i) => (
+                    <div className="param-col" key={i}>
+                      <IonItem lines="none" className="param-card">
+                        <IonLabel>
+                          <IonText color="medium">{item.label}</IonText>
+                          <p className="highlight-text"><b>{item.value}</b></p>
+                        </IonLabel>
+                      </IonItem>
+                    </div>
+                  ))}
                 </div>
 
-                {/* === Ligne Commune / Fokontany / Hameau === */}
                 <div className="param-row">
-                  <div className="param-col">
-                    <IonItem lines="none" className="param-card">
-                      <IonLabel>
-                        <IonText color="medium">Commune</IonText>
-                        <p className="highlight-text"><b>{parametreActuel.commune.nomcommune}</b></p>
-                      </IonLabel>
-                    </IonItem>
-                  </div>
-                  <div className="param-col">
-                    <IonItem lines="none" className="param-card">
-                      <IonLabel>
-                        <IonText color="medium">Fokontany</IonText>
-                        <p className="highlight-text"><b>{parametreActuel.fokontany.nomfokontany}</b></p>
-                      </IonLabel>
-                    </IonItem>
-                  </div>
-                  <div className="param-col">
-                    <IonItem lines="none" className="param-card">
-                      <IonLabel>
-                        <IonText color="medium">Hameau</IonText>
-                        <p className="highlight-text"><b>{parametreActuel.hameau.nomhameau}</b></p>
-                      </IonLabel>
-                    </IonItem>
-                  </div>
+                  {[
+                    { label: "Commune", value: parametreActuel.commune.nomcommune },
+                    { label: "Fokontany", value: parametreActuel.fokontany.nomfokontany },
+                    { label: "Hameau", value: parametreActuel.hameau.nomhameau }
+                  ].map((item, i) => (
+                    <div className="param-col" key={i}>
+                      <IonItem lines="none" className="param-card">
+                        <IonLabel>
+                          <IonText color="medium">{item.label}</IonText>
+                          <p className="highlight-text"><b>{item.value}</b></p>
+                        </IonLabel>
+                      </IonItem>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : (
               <div className="ion-text-center ion-padding">
-                <IonText color="medium">
-                  <p>Aucun paramètre sélectionné</p>
-                </IonText>
+                <IonText color="medium"><p>Aucun paramètre sélectionné</p></IonText>
               </div>
             )}
 
             <div className="ion-text-center ion-margin-top">
-              <IonButton
-                onClick={() => setShowModal(true)}
-                shape="round"
-                className="edit-button"
-              >
+              <IonButton onClick={() => setShowModal(true)} shape="round" className="edit-button">
                 <IonIcon slot="start" icon={settingsOutline} />
-                Ajouter une nouvelle paramètres
+                Ajouter un nouveau paramètre
               </IonButton>
             </div>
           </IonCardContent>
         </IonCard>
 
-        {/* Liste des paramètres enregistrés */}
+        {/* Historique */}
         {parametres.length > 0 && (
           <IonCard color="white" className="saved-params-card">
-            <IonCardContent>
-              <IonListHeader>
-                <IonText color="dark">
-                  <h3>Historique des Paramètres</h3>
-                </IonText>
-              </IonListHeader>
-
+            <IonCardContent className="p-0">
+              <IonText color="dark"><h3 className="ms-3 mt-3">Historique des Paramètres</h3></IonText>
               <IonList lines="none" className="saved-params-list">
-                {parametres.map((param) => (
+                {parametres.map(param => (
                   <IonItem
                     key={`param-${param.id}`}
                     button
-                    onClick={() => definirCommeActuel(param)}
+                    onClick={() => setParametreActuel(param)}
                     color={parametreActuel?.id === param.id ? "primary" : ""}
                     className="saved-param-item"
                   >
                     <IonLabel className="param-label">
                       <IonText>
                         <p>
-                          {param.region.nomregion} →{" "}
-                          {param.district.nomdistrict} →{" "}
-                          {param.commune.nomcommune} →{" "}
-                          {param.fokontany.nomfokontany} →{" "}
-                          {param.hameau.nomhameau}
+                          {param.region.nomregion} → {param.district.nomdistrict} → {param.commune.nomcommune} →
+                          {param.fokontany.nomfokontany} → {param.hameau.nomhameau}
                         </p>
                         <p>{new Date(param.dateSelection).toLocaleString()}</p>
                       </IonText>
@@ -864,452 +518,96 @@ const Tab4 = () => {
           </IonCard>
         )}
       </IonContent>
-      {isSyncing && <IonLoading isOpen={true} message="Synchronisation..." />}
+
+      {/* Loadings & Alerts */}
+      {isSyncing && <IonLoading isOpen message="Synchronisation..." />}
+
       {isDownloadingTiles && (
         <>
           <IonProgressBar value={progression} />
-          <div className="ion-text-center">
-            Téléchargement des cartes: {Math.round(progression * 100)}%
-          </div>
+          <div className="ion-text-center">Téléchargement des cartes: {Math.round(progression * 100)}%</div>
         </>
       )}
-      {allLoader ? (
-        <IonLoading isOpen={true} message="Chargement..." />
-      ) : error ? (
-        <IonAlert
-          isOpen={!!error}
-          onDidDismiss={() => setError(null)}
-          header="Erreur"
-          message={error}
-          buttons={["OK"]}
-        />
-      ) : success ? (
-        <IonAlert
-          isOpen={!!success}
-          onDidDismiss={() => setSuccess(null)}
-          header="Success"
-          message={success}
-          buttons={["OK"]}
-        />
-      ) : null}
 
-      <IonModal
-        isOpen={showModalCarte}
-        onDidDismiss={() => setShowModalCarte(false)}
-        className="param-modal"
-      >
+      {isLoading && <IonLoading isOpen message="Chargement..." />}
+      {error && <IonAlert isOpen onDidDismiss={() => setError(null)} header="Erreur" message={error} buttons={["OK"]} />}
+      {success && <IonAlert isOpen onDidDismiss={() => setSuccess(null)} header="Succès" message={success} buttons={["OK"]} />}
+
+      {/* Modal Configuration Serveur */}
+      <ServerModal
+        isOpen={modalServerOpen}
+        onClose={() => setModalServerOpen(false)}
+        onSaved={() => handleServerSaved()}
+      />
+
+      {/* Modal Carte */}
+      <IonModal isOpen={showModalCarte} onDidDismiss={() => setShowModalCarte(false)} className="param-modal">
         <IonHeader>
           <IonToolbar color="primary">
-            <IonTitle className="ion-text-center">
-              Telecharger la carte Voulue
-            </IonTitle>
+            <IonTitle className="ion-text-center">Télécharger la carte</IonTitle>
             <IonButtons slot="end">
-              <IonButton onClick={() => setShowModalCarte(false)}>
-                <IonIcon slot="icon-only" icon={close} />
-              </IonButton>
+              <IonButton onClick={() => setShowModalCarte(false)}><IonIcon slot="icon-only" icon={close} /></IonButton>
             </IonButtons>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding" color="light">
-          {isLoading ? (
-            <IonLoading isOpen={true} message="Chargement..." />
-          ) : error ? (
-            <IonAlert
-              isOpen={!!error}
-              onDidDismiss={() => setError(null)}
-              header="Erreur"
-              message={error}
-              buttons={["OK"]}
-            />
-          ) : (
-            <div className="selection-container">
-              {/* Sélection de la région */}
-              <IonItem className="selection-item" lines="full">
-                <IonLabel position="stacked" color="primary">
-                  <b>Région</b>
-                </IonLabel>
-                <IonSelect
-                  value={selectedRegion}
-                  placeholder="Sélectionnez une région"
-                  onIonChange={(e) => {
-                    setSelectedRegion(e.detail.value);
-                    resetDistrict();
-                  }}
-                  interface="action-sheet"
-                  className="selection-input"
-                >
-                  {territoire.map((region) => (
-                    <IonSelectOption
-                      key={`region-${region.idregion}`}
-                      value={region.idregion}
-                    >
-                      {region.nomregion}
-                    </IonSelectOption>
-                  ))}
-                </IonSelect>
-              </IonItem>
-
-              {/* Sélection du district */}
-              {selectedRegion && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>District</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedDistrict}
-                    placeholder="Sélectionnez un district"
-                    onIonChange={(e) => {
-                      setSelectedDistrict(e.detail.value);
-                      resetCommune();
-                    }}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .find((r) => r.idregion === selectedRegion)
-                      ?.districts.map((district) => (
-                        <IonSelectOption
-                          key={`district-${district.iddistrict}`}
-                          value={district.iddistrict}
-                        >
-                          {district.nomdistrict}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Sélection de la commune */}
-              {selectedDistrict && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>Commune</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedCommune}
-                    placeholder="Sélectionnez une commune"
-                    onIonChange={(e) => {
-                      setSelectedCommune(e.detail.value);
-                      resetFokontany();
-                    }}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .flatMap((r) => r.districts)
-                      .find((d) => d.iddistrict === selectedDistrict)
-                      ?.communes.map((commune) => (
-                        <IonSelectOption
-                          key={`commune-${commune.idcommune}`}
-                          value={commune.idcommune}
-                        >
-                          {commune.nomcommune}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Sélection du fokontany */}
-              {selectedCommune && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>Fokontany</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedFokontany}
-                    placeholder="Sélectionnez un fokontany"
-                    onIonChange={(e) => {
-                      setSelectedFokontany(e.detail.value);
-                      setSelectedHameau(null);
-                    }}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .flatMap((r) => r.districts.flatMap((d) => d.communes))
-                      .find((c) => c.idcommune === selectedCommune)
-                      ?.fokontany.map((fokontany) => (
-                        <IonSelectOption
-                          key={`fokontany-${fokontany.idfokontany}`}
-                          value={fokontany.idfokontany}
-                        >
-                          {fokontany.nomfokontany}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Sélection du hameau */}
-              {selectedFokontany && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>Hameau</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedHameau}
-                    placeholder="Sélectionnez un hameau"
-                    onIonChange={(e) => setSelectedHameau(e.detail.value)}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .flatMap((r) => r.districts)
-                      .flatMap((d) => d.communes)
-                      .find((c) => c.idcommune === selectedCommune)
-                      ?.fokontany.find(
-                        (f) => f.idfokontany === selectedFokontany
-                      )
-                      ?.hameaux.map((hameau) => (
-                        <IonSelectOption
-                          key={`hameau-${hameau.idhameau}`}
-                          value={hameau.idhameau}
-                        >
-                          {hameau.nomhameau}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Bouton d'enregistrement */}
-              <div className="ion-text-center ion-margin-top">
-                <IonButton
-                  expand="block"
-                  onClick={fetchCarte}
-                  disabled={!selectedHameau}
-                  shape="round"
-                  className="save-button"
-                >
-                  Enregistrer la configuration
-                </IonButton>
-              </div>
-            </div>
-          )}
+          <TerritorialSelector
+            territoire={territoire}
+            selectedRegion={selectedRegion}
+            selectedDistrict={selectedDistrict}
+            selectedCommune={selectedCommune}
+            selectedFokontany={selectedFokontany}
+            selectedHameau={selectedHameau}
+            onRegionChange={setSelectedRegion}
+            onDistrictChange={setSelectedDistrict}
+            onCommuneChange={setSelectedCommune}
+            onFokontanyChange={setSelectedFokontany}
+            onHameauChange={setSelectedHameau}
+            onSubmit={fetchCarte}
+            submitLabel="Télécharger la carte"
+            isForMap={true}
+          />
         </IonContent>
       </IonModal>
 
-      {/* Modal de sélection des paramètres */}
-      <IonModal
-        isOpen={showModal}
-        onDidDismiss={() => setShowModal(false)}
-        className="param-modal"
-      >
+      {/* Modal Paramètres */}
+      <IonModal isOpen={showModal} onDidDismiss={() => setShowModal(false)} className="param-modal">
         <IonHeader>
           <IonToolbar color="primary">
-            <IonTitle className="ion-text-center">
-              Configuration du Territoire
-            </IonTitle>
+            <IonTitle className="ion-text-center">Configuration du Territoire</IonTitle>
             <IonButtons slot="end">
-              <IonButton onClick={() => setShowModal(false)}>
-                <IonIcon slot="icon-only" icon={close} />
-              </IonButton>
+              <IonButton onClick={() => setShowModal(false)}><IonIcon slot="icon-only" icon={close} /></IonButton>
             </IonButtons>
           </IonToolbar>
         </IonHeader>
-
         <IonContent className="ion-padding" color="light">
-          {isLoading ? (
-            <IonLoading isOpen={true} message="Chargement..." />
-          ) : error ? (
-            <IonAlert
-              isOpen={!!error}
-              onDidDismiss={() => setError(null)}
-              header="Erreur"
-              message={error}
-              buttons={["OK"]}
-            />
-          ) : (
-            <div className="selection-container">
-              {/* Sélection de la région */}
-              <IonItem className="selection-item" lines="full">
-                <IonLabel position="stacked" color="primary">
-                  <b>Région</b>
-                </IonLabel>
-                <IonSelect
-                  value={selectedRegion}
-                  placeholder="Sélectionnez une région"
-                  onIonChange={(e) => {
-                    setSelectedRegion(e.detail.value);
-                    resetDistrict();
-                  }}
-                  interface="action-sheet"
-                  className="selection-input"
-                >
-                  {territoire.map((region) => (
-                    <IonSelectOption
-                      key={`region-${region.idregion}`}
-                      value={region.idregion}
-                    >
-                      {region.nomregion}
-                    </IonSelectOption>
-                  ))}
-                </IonSelect>
-              </IonItem>
-
-              {/* Sélection du district */}
-              {selectedRegion && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>District</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedDistrict}
-                    placeholder="Sélectionnez un district"
-                    onIonChange={(e) => {
-                      setSelectedDistrict(e.detail.value);
-                      resetCommune();
-                    }}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .find((r) => r.idregion === selectedRegion)
-                      ?.districts.map((district) => (
-                        <IonSelectOption
-                          key={`district-${district.iddistrict}`}
-                          value={district.iddistrict}
-                        >
-                          {district.nomdistrict}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Sélection de la commune */}
-              {selectedDistrict && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>Commune</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedCommune}
-                    placeholder="Sélectionnez une commune"
-                    onIonChange={(e) => {
-                      setSelectedCommune(e.detail.value);
-                      resetFokontany();
-                    }}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .flatMap((r) => r.districts)
-                      .find((d) => d.iddistrict === selectedDistrict)
-                      ?.communes.map((commune) => (
-                        <IonSelectOption
-                          key={`commune-${commune.idcommune}`}
-                          value={commune.idcommune}
-                        >
-                          {commune.nomcommune}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Sélection du fokontany */}
-              {selectedCommune && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>Fokontany</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedFokontany}
-                    placeholder="Sélectionnez un fokontany"
-                    onIonChange={(e) => {
-                      setSelectedFokontany(e.detail.value);
-                      setSelectedHameau(null);
-                    }}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .flatMap((r) => r.districts.flatMap((d) => d.communes))
-                      .find((c) => c.idcommune === selectedCommune)
-                      ?.fokontany.map((fokontany) => (
-                        <IonSelectOption
-                          key={`fokontany-${fokontany.idfokontany}`}
-                          value={fokontany.idfokontany}
-                        >
-                          {fokontany.nomfokontany}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Sélection du hameau */}
-              {selectedFokontany && (
-                <IonItem className="selection-item" lines="full">
-                  <IonLabel position="stacked" color="primary">
-                    <b>Hameau</b>
-                  </IonLabel>
-                  <IonSelect
-                    value={selectedHameau}
-                    placeholder="Sélectionnez un hameau"
-                    onIonChange={(e) => setSelectedHameau(e.detail.value)}
-                    interface="action-sheet"
-                    className="selection-input"
-                  >
-                    {territoire
-                      .flatMap((r) => r.districts)
-                      .flatMap((d) => d.communes)
-                      .find((c) => c.idcommune === selectedCommune)
-                      ?.fokontany.find(
-                        (f) => f.idfokontany === selectedFokontany
-                      )
-                      ?.hameaux.map((hameau) => (
-                        <IonSelectOption
-                          key={`hameau-${hameau.idhameau}`}
-                          value={hameau.idhameau}
-                        >
-                          {hameau.nomhameau}
-                        </IonSelectOption>
-                      ))}
-                  </IonSelect>
-                </IonItem>
-              )}
-
-              {/* Bouton d'enregistrement */}
-              <div className="ion-text-center ion-margin-top">
-                <IonButton
-                  expand="block"
-                  onClick={enregistrerParametres}
-                  disabled={!selectedHameau}
-                  shape="round"
-                  className="save-button"
-                >
-                  Enregistrer la configuration
-                </IonButton>
-              </div>
-            </div>
-          )}
+          <TerritorialSelector
+            territoire={territoire}
+            selectedRegion={selectedRegion}
+            selectedDistrict={selectedDistrict}
+            selectedCommune={selectedCommune}
+            selectedFokontany={selectedFokontany}
+            selectedHameau={selectedHameau}
+            onRegionChange={setSelectedRegion}
+            onDistrictChange={setSelectedDistrict}
+            onCommuneChange={setSelectedCommune}
+            onFokontanyChange={setSelectedFokontany}
+            onHameauChange={setSelectedHameau}
+            onSubmit={enregistrerParametres}
+            submitLabel="Enregistrer la configuration"
+            isForMap={false}
+          />
         </IonContent>
       </IonModal>
 
-      {/* Confirmation si il existe deja au lieu d'ecraser */}
+      {/* Confirmation */}
       <IonAlert
         isOpen={!!showModalConfirmation}
         header="Confirmation"
         message={showModalConfirmation?.message}
         buttons={[
-          {
-            text: "Annuler",
-            role: "cancel",
-            handler: () => {
-              showModalConfirmation?.onCancel();
-              setShowModalConfirmation(null);
-            },
-          },
-          {
-            text: "Écraser",
-            handler: () => {
-              showModalConfirmation?.onConfirm();
-              setShowModalConfirmation(null);
-            },
-          },
+          { text: "Annuler", role: "cancel", handler: () => { showModalConfirmation?.onCancel(); setShowModalConfirmation(null); } },
+          { text: "Écraser", handler: () => { showModalConfirmation?.onConfirm(); setShowModalConfirmation(null); } }
         ]}
       />
     </IonPage>

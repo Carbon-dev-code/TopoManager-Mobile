@@ -13,7 +13,7 @@
 
 .param-row {
   display: flex;
-  gap: 10px;
+  gap: 13px;
   flex-wrap: wrap;
 }
 
@@ -38,7 +38,6 @@
   margin-top: 3px;
 }
 
-
 .edit-button {
   --box-shadow: 0 2px 6px rgba(var(--ion-color-primary-rgb), 0.3);
 }
@@ -58,6 +57,7 @@
   --border-radius: 8px;
   margin-bottom: 8px;
   transition: all 0.2s ease;
+  margin: 5px;
 }
 
 .saved-param-item:hover {
@@ -95,7 +95,7 @@
   width: 100%;
 }
 
-.save-button {
+.save-button-tab4 {
   --box-shadow: 0 2px 6px rgba(var(--ion-color-primary-rgb), 0.3);
   max-width: 400px;
   margin: 0 auto;

@@ -12,13 +12,13 @@ import {
   IonRouterOutlet,
 } from '@ionic/react';
 import { useLocation, Redirect, Route } from 'react-router-dom';
-import { documentOutline, mapOutline, cloudUploadOutline, settings, personOutline, logOutOutline, chevronForwardOutline, peopleOutline, terminalOutline } from 'ionicons/icons';
+import { documentOutline, mapOutline, cloudUploadOutline, settings, logOutOutline, chevronForwardOutline, peopleOutline, terminalOutline } from 'ionicons/icons';
 
 import Tab1 from './pages/Tab1';
 import Tab2 from './pages/Tab2';
 import Tab3 from './pages/Tab3';
 import Tab4 from './pages/Tab4';
-import Tab5 from './pages/Tab6';
+import Profil from './pages/profil/Profil';
 import Accueil from './pages/accueil/Accueil';
 import Login from './pages/login/Login';
 import Demandeur from './pages/Tab5';
@@ -67,11 +67,11 @@ const MainRouter: React.FC = () => {
     <IonSplitPane contentId="main-content" when={false}>
       <IonMenu contentId="main-content" type="push" side="start" swipeGesture={true}>
         <IonContent className='color-smoke'>
-          <IonLabel>Menu</IonLabel>
+          <IonLabel>TopoManager</IonLabel>
           <IonList className='p-0'>
             <div className="compact">
               <IonMenuToggle autoHide={false}>
-                <IonItem className="user-item" lines='none'>
+                <IonItem className="user-item" lines='none' routerLink='/profil' routerDirection="none">
                   <div className="avatar">{initial}</div>
                   <div className="user-info">
                     <IonLabel className="username">{username}</IonLabel>
@@ -107,7 +107,7 @@ const MainRouter: React.FC = () => {
               <IonMenuToggle autoHide={false}>
                 <IonItem routerLink="/tab3" routerDirection="none">
                   <IonIcon icon={cloudUploadOutline} slot="start" />
-                  <IonLabel>Upload</IonLabel>
+                  <IonLabel>Synchronisation</IonLabel>
                   <IonIcon icon={chevronForwardOutline} slot="end" />
                 </IonItem>
               </IonMenuToggle>
@@ -148,13 +148,7 @@ const MainRouter: React.FC = () => {
       </IonMenu>
 
       <IonPage id="main-content">
-        <div
-          style={{
-            paddingTop: 'var(--ion-safe-area-top, 0)',
-            paddingBottom: 'var(--ion-safe-area-bottom, 0)',
-            height: '100%',
-          }}
-        >
+        <div style={{ paddingTop: 'var(--ion-safe-area-top, 0)', paddingBottom: 'var(--ion-safe-area-bottom, 0)', height: '100%' }} >
           <IonRouterOutlet>
             <Route exact path="/tab1" component={Tab1} />
             <Route exact path="/tab2" component={Tab2} />
@@ -162,6 +156,7 @@ const MainRouter: React.FC = () => {
             <Route exact path="/tab4" component={Tab4} />
             <Route exact path="/tab6" component={Tab6} />
             <Route exact path="/demandeur" component={Demandeur} />
+            <Route exact path="/profil" component={Profil} />
             <Route exact path="/">
               <Redirect to="/accueil" />
             </Route>

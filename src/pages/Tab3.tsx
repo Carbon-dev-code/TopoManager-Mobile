@@ -1,37 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonMenuButton,
-  IonPage,
-  IonTitle,
-  IonToolbar,
-  IonButton,
-  IonText,
-  IonCard,
-  IonSpinner,
-  IonCardContent,
-  IonLabel,
-  IonList,
-  IonIcon,
-  IonProgressBar,
-  IonToast,
-  IonInput,
-  IonModal,
-  IonLoading,
-  IonCardHeader,
-  IonCardSubtitle,
-  IonChip,
-  IonCardTitle, useIonViewWillEnter, IonRefresher, IonRefresherContent,
-} from "@ionic/react";
-import { Preferences } from "@capacitor/preferences";
+import { IonButtons, IonContent, IonHeader, IonMenuButton, IonPage, IonTitle, IonToolbar, IonButton, IonText, IonCard, IonSpinner, IonCardContent, IonLabel, IonIcon, IonProgressBar, IonToast, IonInput, IonModal, IonLoading, IonCardHeader, IonCardSubtitle, IonChip, IonCardTitle, useIonViewWillEnter, IonRefresher, IonRefresherContent, } from "@ionic/react";
 import { sync, checkmark, settings, wifi } from "ionicons/icons";
 import "./Tab3.css";
 import { ConfigService } from "../model/ConfigService";
 import { Parcelle } from "../model/parcelle/Parcelle";
 import DemandeurView from "../components/demandeur/DemandeurView";
 import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
+import Filtre from "../components/filtre/Filtre";
+import ServerModal from "../components/server/ServerModal";
 
 interface ApiResponse {
   success: boolean;
@@ -40,83 +16,40 @@ interface ApiResponse {
   server_time?: string;
 }
 
-const DEFAULT_IP_PORT = "192.168.88.85:80";
-const API_BASE_PATH = "/havelo_mandrare";
-
 const Tab3: React.FC = () => {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [syncingAll, setSyncingAll] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">("success");
-  const [serverIpPort, setServerIpPort] = useState(DEFAULT_IP_PORT);
+  const [serverIpPort, setServerIpPort] = useState<string>('');
   const [showServerModal, setShowServerModal] = useState(false);
-  const [tempServerIpPort, setTempServerIpPort] = useState(DEFAULT_IP_PORT);
   const [testingConnection, setTestingConnection] = useState(false);
   const [filtreParcelle, setFiltreParcelle] = useState<"tous" | "sync" | "nosync" | "erreur">("tous");
   const [hasUnsynced, setHasUnsynced] = useState(false);
-
-  const SERVER_URL_KEY = "server_url";
-
-  const buildServerUrl = (ipPort: string) => `http://${ipPort}${API_BASE_PATH}`;
 
   const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     return await getAllParcelles();
   }, []);
 
-  const loadServerUrl = useCallback(async (): Promise<void> => {
-    try {
-      const result = await Preferences.get({ key: SERVER_URL_KEY });
-      if (result.value) {
-        const url = new URL(result.value);
-        const ipPort = `${url.hostname}${url.port ? `:${url.port}` : ""}`;
-        setServerIpPort(ipPort);
-        setTempServerIpPort(ipPort);
-        ConfigService.setServerBaseUrl(result.value);
-      }
-    } catch (e) {
-      console.error("Erreur de chargement de l'URL:", e);
-    }
-  }, []);
-
   const load = useCallback(async () => {
-    await loadServerUrl();
+    setServerIpPort(await ConfigService.getServerIpPort());
     const savedParcelles = await loadParcellesFromStorage();
     setParcelles(savedParcelles);
     setHasUnsynced(savedParcelles.some((p) => p.synchronise !== 1));
-  }, [loadParcellesFromStorage, loadServerUrl]);
+  }, [loadParcellesFromStorage]);
 
   useIonViewWillEnter(() => {
     load();
   });
 
+  const handleServerSaved = async () => {
+    setServerIpPort(await ConfigService.getServerIpPort());
+  };
+
   useEffect(() => {
     setHasUnsynced(parcelles.some((p) => p.synchronise !== 1));
   }, [parcelles]);
-
-  const saveServerUrl = (ipPort: string) => {
-    const cleanedIpPort = ipPort.trim().replace(/^https?:\/\//, "");
-    if (!cleanedIpPort.match(/^[\w.-]+(:\d+)?$/)) {
-      showError("Format invalide. Utilisez IP:port (ex: 192.168.1.100:80)");
-      return false;
-    }
-
-    try {
-      const fullUrl = buildServerUrl(cleanedIpPort);
-      ConfigService.setServerBaseUrl(fullUrl);
-      setServerIpPort(cleanedIpPort);
-      setTempServerIpPort(cleanedIpPort);
-      // ✅ Persister l’URL dans Preferences (bugfix)
-      Preferences.set({ key: SERVER_URL_KEY, value: fullUrl });
-      setShowServerModal(false);
-      showSuccess("Adresse du serveur mise à jour");
-      return true;
-    } catch (e) {
-      console.error("Erreur de sauvegarde:", e);
-      showError("Erreur lors de la sauvegarde de l'adresse");
-      return false;
-    }
-  };
 
   const showSuccess = useCallback((message: string) => {
     setToastMessage(message);
@@ -132,16 +65,10 @@ const Tab3: React.FC = () => {
 
   const syncWithAPI = useCallback(
     async (parcelleData: Parcelle): Promise<boolean> => {
-      if (!serverIpPort) {
-        showError("Veuillez configurer l'adresse du serveur");
-        return false;
-      }
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000); // 8s max
       try {
-        const endpoint = `${buildServerUrl(
-          serverIpPort
-        )}/api_parcelle_demandeur`;
+        const endpoint = `${await ConfigService.getServerBaseUrl()}/api_parcelle_demandeur`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -172,16 +99,11 @@ const Tab3: React.FC = () => {
         showError("Erreur inconnue lors de la synchronisation");
       }
     },
-    [serverIpPort, showError]
+    [showError]
   );
 
   const testerConnexion = useCallback(async () => {
-    if (!serverIpPort) {
-      showError("Adresse du serveur non définie.");
-      return;
-    }
-
-    const testUrl = `${buildServerUrl(serverIpPort)}/ping`;
+    const testUrl = `${await ConfigService.getServerBaseUrl()}/ping`;
     setTestingConnection(true);
     const controller = new AbortController();
     const timeout = 10000;
@@ -220,7 +142,7 @@ const Tab3: React.FC = () => {
     } finally {
       setTestingConnection(false);
     }
-  }, [serverIpPort, showError, showSuccess]);
+  }, [showError, showSuccess]);
 
   const handleRefresh = useCallback(
     async (event: CustomEvent) => {
@@ -282,12 +204,8 @@ const Tab3: React.FC = () => {
   );
 
   const synchroniserToutes = useCallback(async () => {
-    if (!serverIpPort) {
-      showError("Veuillez configurer l'adresse du serveur");
-      return;
-    }
-
     const nonSyncParcelles = parcelles.filter((p) => p.synchronise !== 1);
+
     if (nonSyncParcelles.length === 0) {
       showSuccess("Toutes les parcelles sont déjà synchronisées.");
       return;
@@ -297,9 +215,7 @@ const Tab3: React.FC = () => {
 
     // marquer toutes les parcelles comme en cours
     let updatedParcelles = parcelles.map((p) =>
-      nonSyncParcelles.some((n) => n.code === p.code)
-        ? { ...p, syncing: true }
-        : p
+      nonSyncParcelles.some((n) => n.code === p.code) ? { ...p, syncing: true } : p
     );
     setParcelles(updatedParcelles);
 
@@ -354,7 +270,7 @@ const Tab3: React.FC = () => {
     }
 
     setSyncingAll(false);
-  }, [parcelles, serverIpPort, syncWithAPI, showSuccess, showError]);
+  }, [parcelles, syncWithAPI, showSuccess, showError]);
 
   return (
     <IonPage>
@@ -363,7 +279,7 @@ const Tab3: React.FC = () => {
           <IonButtons slot="start">
             <IonMenuButton />
           </IonButtons>
-          <IonTitle>Upload</IonTitle>
+          <IonTitle>Synchronisation</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => setShowServerModal(true)}>
               <IonIcon icon={settings} />
@@ -413,94 +329,21 @@ const Tab3: React.FC = () => {
         </div>
 
         {/* Filtres */}
-        <div className="mb-3 mt-3">
-          <div className="filtre-parcelle-container">
-            <div className="col-auto">
-              <input
-                type="radio"
-                className="btn-check"
-                name="filtreParcelle"
-                id="tous-outlined"
-                autoComplete="off"
-                checked={filtreParcelle === "tous"}
-                onChange={() => setFiltreParcelle("tous")}
-              />
-              <label
-                className="btn rounded btn-outline-primary"
-                htmlFor="tous-outlined"
-              >
-                Tous
-              </label>
-            </div>
-            <div className="col-auto">
-              <input
-                type="radio"
-                className="btn-check"
-                name="filtreParcelle"
-                id="sync-outlined"
-                autoComplete="off"
-                checked={filtreParcelle === "sync"}
-                onChange={() => setFiltreParcelle("sync")}
-              />
-              <label
-                className="btn rounded btn-outline-primary"
-                htmlFor="sync-outlined"
-              >
-                Synchronisées
-              </label>
-            </div>
-            <div className="col-auto">
-              <input
-                type="radio"
-                className="btn-check"
-                name="filtreParcelle"
-                id="nosync-outlined"
-                autoComplete="off"
-                checked={filtreParcelle === "nosync"}
-                onChange={() => setFiltreParcelle("nosync")}
-              />
-              <label
-                className="btn rounded btn-outline-primary"
-                htmlFor="nosync-outlined"
-              >
-                Non synchronisées
-              </label>
-            </div>
-            <div className="col-auto">
-              <input
-                type="radio"
-                className="btn-check"
-                name="filtreParcelle"
-                id="error-outlined"
-                autoComplete="off"
-                checked={filtreParcelle === "erreur"}
-                onChange={() => setFiltreParcelle("erreur")}
-              />
-              <label
-                className="btn rounded btn-outline-primary"
-                htmlFor="error-outlined"
-              >
-                Avec erreurs
-              </label>
-            </div>
-          </div>
-        </div>
+        <Filtre filtreParcelle={filtreParcelle} setFiltreParcelle={setFiltreParcelle} />
 
         <div className="cardContent">
-          {parcelles
-            .filter((p) => {
-              if (filtreParcelle === "tous") return true;
-              if (filtreParcelle === "sync") return p.synchronise === 1;
-              if (filtreParcelle === "nosync") return p.synchronise === 0 || p.synchronise === 2;
-              if (filtreParcelle === "erreur") return p.synchronise === 2;
-              return true;
-            })
+          {parcelles.filter((p) => {
+            if (filtreParcelle === "tous") return true;
+            if (filtreParcelle === "sync") return p.synchronise === 1;
+            if (filtreParcelle === "nosync") return p.synchronise === 0 || p.synchronise === 2;
+            if (filtreParcelle === "erreur") return p.synchronise === 2;
+            return true;
+          })
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
                   className={`position-badge-custom-tab2 ion-color ${parcelle.synchronise === 1
-                    ? "ion-color-success"
-                    : "ion-color-danger"
+                    ? "ion-color-success" : "ion-color-danger"
                     } ${parcelle.synchronise === 1 ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
@@ -568,46 +411,11 @@ const Tab3: React.FC = () => {
             ))}
         </div>
 
-        <IonModal
+        <ServerModal
           isOpen={showServerModal}
-          onDidDismiss={() => setShowServerModal(false)}
-        >
-          <IonHeader>
-            <IonToolbar color="primary">
-              <IonTitle>Configurer le serveur</IonTitle>
-              <IonButtons slot="end">
-                <IonButton onClick={() => setShowServerModal(false)}>
-                  Fermer
-                </IonButton>
-              </IonButtons>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent className="ion-padding">
-            <IonLabel position="stacked">
-              Adresse IP et port (Ex: 192.168.88.85:80)
-            </IonLabel>
-            <IonInput
-              value={tempServerIpPort}
-              onIonChange={(e) => setTempServerIpPort(e.detail.value!)}
-              placeholder="192.168.88.85:80"
-              clearInput
-              disabled={testingConnection}
-            />
-            <IonButton
-              expand="block"
-              onClick={() => saveServerUrl(tempServerIpPort)}
-            >
-              Enregistrer
-            </IonButton>
-            <IonButton
-              expand="block"
-              color="medium"
-              onClick={() => setShowServerModal(false)}
-            >
-              Annuler
-            </IonButton>
-          </IonContent>
-        </IonModal>
+          onClose={() => setShowServerModal(false)}
+          onSaved={handleServerSaved}
+        />
 
         <IonToast
           isOpen={showToast}

@@ -1,6 +1,5 @@
 import { IonButton, IonIcon, IonLabel } from "@ionic/react";
 import { closeOutline } from "ionicons/icons";
-import { Demandeur } from "../../model/parcelle/Demandeur";
 import "./CardGlass.css";
 import { Parcelle } from "../../model/parcelle/Parcelle";
 import DemandeurView from "../demandeur/DemandeurView";

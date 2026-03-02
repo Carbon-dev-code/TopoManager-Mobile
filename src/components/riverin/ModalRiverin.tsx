@@ -1,25 +1,5 @@
 import React, { useState } from "react";
-import {
-  IonModal,
-  IonHeader,
-  IonToolbar,
-  IonButtons,
-  IonButton,
-  IonTitle,
-  IonContent,
-  IonToast,
-  IonIcon,
-  IonList,
-  IonItem,
-  IonGrid,
-  IonRow,
-  IonCol,
-  IonSelect,
-  IonSelectOption,
-  IonTextarea,
-  IonLabel,
-  useIonViewWillEnter,
-} from "@ionic/react";
+import { IonModal, IonHeader, IonToolbar, IonButtons, IonButton, IonTitle, IonContent, IonToast, IonIcon, IonList, IonItem, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonTextarea, IonLabel, useIonViewWillEnter, } from "@ionic/react";
 import { close } from "ionicons/icons";
 import { Riverin } from "../../model/parcelle/Riverin";
 import SeacrhModal from "../demandeur/SearchModal";
@@ -51,14 +31,18 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
   setNewRiverin,
   demandeurs,
 }) => {
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
-    useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [decomposed, setDecomposed] = useState(false);
   const [isPhysique, setIsPhysique] = useState(0);
   const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
+
+  // Fonction pour supprimer un demandeur
+  const removeDemandeur = () => {
+    setNewRiverin({ ...newRiverin, demandeur: null });
+  };
 
   const loadDemandeurFromStorage = async (): Promise<Demandeur[]> => {
     const result = await Preferences.get({ key: "demandeur" });
@@ -125,18 +109,20 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
                 <IonCol size="12">
                   <IonSelect
                     label="Repère :"
-                    onIonChange={(e) =>
+                    onIonChange={(e) => {
+                      console.log(e.detail.value);
+                      
                       setNewRiverin({
                         ...newRiverin,
-                        repere: Number(e.detail.value),
+                        repere: e.detail.value,
                       })
-                    }
+                    }}
                     placeholder="Riverain du parcelle"
                   >
                     {repereL.map((rep, index) => (
                       <IonSelectOption
                         key={`rep-${index}`}
-                        value={rep.code_repere}
+                        value={rep.repere} // Code repere ny teto tam voalohany
                       >
                         {rep.repere}
                       </IonSelectOption>
@@ -146,17 +132,22 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
               </IonRow>
             </IonGrid>
           </IonItem>
-          <IonItem>
+          <div className="backGround">
             {newRiverin.demandeur ? (
               <div className="demandeur-list">
-                <DemandeurView demandeur={newRiverin.demandeur} />
+                <DemandeurView
+                  demandeur={newRiverin.demandeur}
+                  swipeEnabled={true}
+                  onDelete={removeDemandeur}
+                />
               </div>
             ) : (
-              <IonLabel className="demandeur-none">
-                ⚠️ Aucun demandeur sélectionné
+              <IonLabel className="demandeur-none" color="danger">
+                Aucun demandeur sélectionné
               </IonLabel>
             )}
-          </IonItem>
+          </div>
+          <div className="barRiverin"></div>
           <IonItem>
             <IonGrid>
               <IonRow>

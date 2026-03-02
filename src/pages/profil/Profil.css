@@ -1,0 +1,346 @@
+/* ===================== LAYOUT ===================== */
+
+.profil-container {
+  padding: 12px 16px 40px;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  color: #1e293b;
+  background:
+    radial-gradient(ellipse at 15% 40%, rgba(0, 84, 233, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 10%, rgba(34, 197, 94, 0.05) 0%, transparent 50%),
+    #f1f5f9;
+}
+
+/* ===================== TOP HEADER ===================== */
+
+.top-header {
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 72px;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0054e9;
+  box-shadow: 0 4px 20px rgba(0, 84, 233, 0.25);
+}
+
+.top-header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.header-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.header-sub {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  font-weight: 400;
+  margin-top: 1px;
+}
+
+.top-header-right ion-menu-button {
+  color: white;
+}
+
+/* ===================== PROFIL HEADER ===================== */
+
+.profil-header {
+  background: white;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 14px 0 16px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.profil-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #0054e9, #22c55e);
+  border-radius: 0 4px 4px 0;
+}
+
+.profil-avatar-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: whitesmoke;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profil-avatar-icon ion-icon {
+  color: rgb(0, 0, 0);
+  font-size: 24px;
+}
+
+.profil-info {
+  flex: 1;
+}
+
+.profil-info h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.profil-badge {
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* ===================== DASHBOARD GRID ===================== */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 800px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.card {
+  border-radius: 18px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.card-value {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-top: 6px;
+}
+
+.card-icon-bg {
+  position: absolute;
+  bottom: -4px;
+  right: 10px;
+  font-size: 36px;
+  opacity: 0.12;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Card variants */
+.card-blue {
+  background: linear-gradient(135deg, #0054e9, #3b82f6);
+  color: white;
+}
+
+.card-indigo {
+  background: linear-gradient(135deg, #4f46e5, #818cf8);
+  color: white;
+}
+
+.card-green {
+  background: white;
+  color: #16a34a;
+  border: 1.5px solid #dcfce7;
+}
+
+.card-green .card-label {
+  color: #86efac;
+  opacity: 1;
+}
+
+.card-green .card-value {
+  color: #16a34a;
+}
+
+.card-green .card-icon-bg {
+  opacity: 0.2;
+}
+
+.card-red {
+  background: white;
+  color: #dc2626;
+  border: 1.5px solid #fee2e2;
+}
+
+.card-red .card-label {
+  color: #fca5a5;
+  opacity: 1;
+}
+
+.card-red .card-value {
+  color: #dc2626;
+}
+
+.card-red .card-icon-bg {
+  opacity: 0.15;
+}
+
+/* ===================== SYNC PROGRESS BAR ===================== */
+
+.sync-bar-container {
+  background: white;
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.sync-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sync-bar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.sync-bar-percent {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0054e9;
+}
+
+.sync-bar-track {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.sync-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0054e9, #22c55e);
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===================== CHART ===================== */
+
+.chart-container {
+  background: white;
+  border-radius: 20px;
+  padding: 20px 18px 14px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.chart-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.chart-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.chart-badge {
+  background: #eff6ff;
+  color: #0054e9;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px 6px;
+}
+
+.week-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: white;
+  color: #0054e9;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: background 0.15s;
+}
+
+.week-nav-btn:disabled {
+  color: #cbd5e1;
+  cursor: default;
+  box-shadow: none;
+}
+
+.week-nav-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
