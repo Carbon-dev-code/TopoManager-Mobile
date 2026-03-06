@@ -68,6 +68,7 @@ import Cube from "../components/utils/Cube";
 import MultiPoint from "ol/geom/MultiPoint";
 import CardGlass from "../components/card/CardGlass";
 import { getArea } from "ol/sphere";
+import { FeatureLike } from "ol/Feature";
 
 // ==================== CONSTANTS ====================
 proj4.defs(
@@ -211,7 +212,7 @@ const Tab2: React.FC = () => {
             directory: Directory.Data,
             encoding: Encoding.UTF8,
           });
-          all.push(JSON.parse(file.data));
+          all.push(JSON.parse(file.data as string));
         }
       }
       return all;
@@ -222,16 +223,16 @@ const Tab2: React.FC = () => {
   }, []);
 
   useEffect(() => {
-  if (drawPoints.length < 3) {
-    setSurface(0);
-    return;
-  }
-  const closed = [...drawPoints, drawPoints[0]];
-  const polygon = new Polygon([closed]);
-  const area = getArea(polygon, { projection: "EPSG:3857" });
+    if (drawPoints.length < 3) {
+      setSurface(0);
+      return;
+    }
+    const closed = [...drawPoints, drawPoints[0]];
+    const polygon = new Polygon([closed]);
+    const area = getArea(polygon, { projection: "EPSG:3857" });
 
-  setSurface(area);
-}, [drawPoints]);
+    setSurface(area);
+  }, [drawPoints]);
 
   // ==================== STYLES ====================
   const getLabelText = useCallback(
@@ -246,9 +247,10 @@ const Tab2: React.FC = () => {
   );
 
   const styleByType = useCallback(
-    (feature: Feature): Style => {
-      const type = feature.get("name")?.toLowerCase() || "default";
-      const labelText = getLabelText(feature, type);
+    (feature: FeatureLike): Style => {
+      const f = feature as Feature; // cast
+      const type = f.get("name")?.toLowerCase() || "default";
+      const labelText = getLabelText(f, type);
 
       // Cache basé uniquement sur le type et le texte
       const cacheKey = `${type}_${labelText}`;
@@ -375,7 +377,7 @@ const Tab2: React.FC = () => {
 
               if (tileCache.size >= MAX_CACHE_SIZE) {
                 const firstKey = tileCache.keys().next().value;
-                tileCache.delete(firstKey);
+                if (firstKey !== undefined) tileCache.delete(firstKey);
                 // Note: On ne révoque pas immédiatement pour éviter les clignotements
               }
 
@@ -449,7 +451,7 @@ const Tab2: React.FC = () => {
     return layers;
   }, [styleByType]);
 
-  const getDrawStyle = useCallback((feature: Feature) => {
+  const getDrawStyle = useCallback((feature: FeatureLike) => {
     const geom = feature.getGeometry();
     if (geom instanceof Point || geom instanceof MultiPoint) {
       return new Style({
@@ -521,7 +523,7 @@ const Tab2: React.FC = () => {
       const feature = new Feature(polygon);
       feature.set("name", "parcelle");
       feature.set("code", updatedParcelle.code);
-      feature.setStyle(styleByType);
+      feature.setStyle((f: FeatureLike) => styleByType(f));
       source!.addFeature(feature);
     }
   }, [currentParcelle, drawPoints, parcelles, styleByType]);
@@ -838,7 +840,6 @@ const Tab2: React.FC = () => {
         declutter: true,
         updateWhileAnimating: false,
         updateWhileInteracting: false,
-        renderMode: "vector", // 'vector' est plus rapide pour les interactions que 'image' sur mobile
         renderBuffer: 100, // Réduit la charge de calcul hors-écran
       });
       mapRef.current.addLayer(vectorLayer);
@@ -980,14 +981,14 @@ const Tab2: React.FC = () => {
     if (!mapRef.current || geojsons.length === 0) return;
     const format = new GeoJSON();
     Object.keys(geoJsonLayersRef.current).forEach((n) =>
-      geoJsonLayersRef.current[n].getSource().clear(),
+      geoJsonLayersRef.current[n].getSource()?.clear(),
     );
     geojsons.forEach((g) => {
       const fts = format.readFeatures(g, { featureProjection: "EPSG:3857" });
       if (fts.length > 0) {
         const type = fts[0].get("name")?.toLowerCase();
         if (type && geoJsonLayersRef.current[type]) {
-          geoJsonLayersRef.current[type].getSource().addFeatures(fts);
+          geoJsonLayersRef.current[type].getSource()?.addFeatures(fts);
         }
       }
     });
@@ -1304,7 +1305,9 @@ const Tab2: React.FC = () => {
 
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             {fabOpen && drawPoints.length >= 3 && (
-              <div className="surface-parcelle">Surface {surface.toFixed(0)} m²</div>
+              <div className="surface-parcelle">
+                Surface {surface.toFixed(0)} m²
+              </div>
             )}
             <IonButton
               fill="clear"

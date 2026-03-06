@@ -30,7 +30,7 @@ interface ModalDemandeurProps {
   showCreateModal: boolean;
   setShowCreateModal: (b: boolean) => void;
   demandeur: Demandeur;
-  setDemandeur: (d: Demandeur) => void;
+  setDemandeur: React.Dispatch<React.SetStateAction<Demandeur>>;
   addDemandeur: () => void;
   toastMessage?: string | null;
   setToastMessage?: (msg: string | null) => void;
@@ -81,9 +81,9 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 
       if (!photo.dataUrl) throw new Error("Pas de photo");
 
-      setDemandeur((prev) => ({
+      setDemandeur((prev: Demandeur) => ({
         ...prev,
-        photos: [...prev.photos, photo.dataUrl],
+        photos: [...prev.photos, photo.dataUrl as string],
       }));
 
       setLastPhotoIndex(demandeur.photos.length);
@@ -112,11 +112,13 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
           <IonButtons slot="end">
             {/* En mode view : bouton pour passer en edit */}
             {mode === "view" && (
-              <IonButton onClick={() => {
-                // Signaler au parent de repasser en edit
-                // On ferme et le parent réouvre en edit
-                setShowCreateModal(false);
-              }}>
+              <IonButton
+                onClick={() => {
+                  // Signaler au parent de repasser en edit
+                  // On ferme et le parent réouvre en edit
+                  setShowCreateModal(false);
+                }}
+              >
                 <IonIcon icon={createOutline} slot="icon-only" />
               </IonButton>
             )}
@@ -145,7 +147,9 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
                 setDemandeur({ ...demandeur, type: Number(value) });
               }}
             >
-              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+              <div
+                style={{ display: "flex", gap: "1rem", alignItems: "center" }}
+              >
                 <IonItem lines="none">
                   <IonRadio justify="end" value="0" disabled={isReadOnly}>
                     Physique
@@ -183,7 +187,9 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             decomposed={decomposed}
             setDecomposed={setDecomposed}
             takePhoto={takePhoto}
-            clearPhotos={() => setDemandeur((prev) => ({ ...prev, photos: [] }))}
+            clearPhotos={() =>
+              setDemandeur((prev: Demandeur) => ({ ...prev, photos: [] }))
+            }
             name="Prendre une photo du demandeur"
           />
         )}
@@ -203,7 +209,10 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             text: "Oui",
             handler: () => {
               if (lastPhotoIndex !== null) {
-                setDemandeur((prev) => ({ ...prev, indexPhoto: lastPhotoIndex }));
+                setDemandeur((prev : Demandeur) => ({
+                  ...prev,
+                  indexPhoto: lastPhotoIndex,
+                }));
               }
               setShowConfirmProfile(false);
             },

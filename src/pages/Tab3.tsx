@@ -97,6 +97,7 @@ const Tab3: React.FC = () => {
           throw new Error("`Erreur: ${error.message}`");
         }
         showError("Erreur inconnue lors de la synchronisation");
+        return false;
       }
     },
     [showError]

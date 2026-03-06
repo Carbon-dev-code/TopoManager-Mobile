@@ -1,3 +1,7 @@
+body {
+  padding-top: env(safe-area-inset-top);
+}
+
 .truncate {
   flex: 1;
   white-space: nowrap;

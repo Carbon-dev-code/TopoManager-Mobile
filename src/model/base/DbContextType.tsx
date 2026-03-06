@@ -21,7 +21,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   let sqlite: SQLiteConnection | null = null;
   const dbRef = useRef<Database | SQLiteDBConnection | null>(null);
   const dbPromiseRef = useRef<Promise<Database | SQLiteDBConnection> | null>(null);
-  const [ready, setReady] = useState(false);
+  const [, setReady] = useState(false);
 
   const resetMBTiles = async () => {
     if (dbRef.current) {
@@ -103,7 +103,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
           const response = await fetch("/mbtiles/amb.mbtiles");
           const buffer = await response.arrayBuffer();
-          loadedDb = new SQL.Database(new Uint8Array(buffer), { useWorker: true });
+          loadedDb = new SQL.Database(new Uint8Array(buffer));
 
           dbRef.current = loadedDb;
           console.log("✅ sql.js initialisé");

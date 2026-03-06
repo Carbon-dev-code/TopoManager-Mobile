@@ -1,14 +1,45 @@
-import { IonButtons, IonContent, IonIcon, IonMenuButton, IonPage, useIonViewWillEnter } from "@ionic/react";
+import {
+  IonButtons,
+  IonContent,
+  IonIcon,
+  IonMenuButton,
+  IonPage,
+  useIonViewWillEnter,
+} from "@ionic/react";
 import "./Profil.css";
-import { alertOutline, checkmarkCircleOutline, layersSharp, person } from "ionicons/icons";
+import {
+  alertOutline,
+  checkmarkCircleOutline,
+  layersSharp,
+  person,
+} from "ionicons/icons";
 import { useCallback, useRef, useState, useEffect } from "react";
-import { statisiqueParcelles, parcellesParJourSemaine } from "../../model/base/DbSchema";
+import {
+  statisiqueParcelles,
+  parcellesParJourSemaine,
+} from "../../model/base/DbSchema";
 
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartOptions, } from "chart.js";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartOptions,
+} from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { Preferences } from "@capacitor/preferences";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+);
 
 const getLundi = (date: Date) => {
   const d = new Date(date);
@@ -24,11 +55,14 @@ const formatDate = (date: Date) =>
 const Profil: React.FC = () => {
   const isMounted = useRef(true);
   const chartRef = useRef<ChartJS<"bar">>(null);
-  const [gradientColor, setGradientColor] = useState<string | CanvasGradient>("#0054e9");
+  const [gradientColor, setGradientColor] = useState<string | CanvasGradient>(
+    "#0054e9",
+  );
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [username, setUsername] = useState("");
-  const [weekDataNumbers, setWeekDataNumbers] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
-
+  const [weekDataNumbers, setWeekDataNumbers] = useState<number[]>([
+    0, 0, 0, 0, 0, 0, 0,
+  ]);
 
   const [stats, setStats] = useState({
     totalParcelles: 0,
@@ -128,7 +162,10 @@ const Profil: React.FC = () => {
         cornerRadius: 10,
         titleFont: { size: 13, weight: "bold" },
         callbacks: {
-          label: (ctx) => ` ${ctx.parsed.y} parcelle${ctx.parsed.y > 1 ? "s" : ""}`,
+          label: (ctx) => {
+            const y = ctx.parsed.y ?? 0;
+            return ` ${y} parcelle${y > 1 ? "s" : ""}`;
+          },
         },
       },
     },
@@ -156,12 +193,14 @@ const Profil: React.FC = () => {
     },
   };
 
-  const syncRate = stats.totalParcelles > 0 ? Math.round((stats.parcellesSync / stats.totalParcelles) * 100) : 0;
+  const syncRate =
+    stats.totalParcelles > 0
+      ? Math.round((stats.parcellesSync / stats.totalParcelles) * 100)
+      : 0;
 
   return (
     <IonPage>
       <IonContent fullscreen>
-
         {/* HEADER */}
         <div className="top-header">
           <div className="top-header-left">
@@ -178,7 +217,6 @@ const Profil: React.FC = () => {
         </div>
 
         <div className="profil-container">
-
           {/* PROFIL CARD */}
           <div className="profil-header">
             <div className="profil-avatar-icon">
@@ -195,22 +233,30 @@ const Profil: React.FC = () => {
             <div className="card card-blue">
               <span className="card-label">Parcelles</span>
               <div className="card-value">{stats.totalParcelles}</div>
-              <div className="card-icon-bg"><IonIcon icon={layersSharp} /></div>
+              <div className="card-icon-bg">
+                <IonIcon icon={layersSharp} />
+              </div>
             </div>
             <div className="card card-indigo">
               <span className="card-label">Demandeurs</span>
               <div className="card-value">{stats.totalDemandeurs}</div>
-              <div className="card-icon-bg"><IonIcon icon={person} /></div>
+              <div className="card-icon-bg">
+                <IonIcon icon={person} />
+              </div>
             </div>
             <div className="card card-green">
               <span className="card-label">Synchronisées</span>
               <div className="card-value">{stats.parcellesSync}</div>
-              <div className="card-icon-bg"><IonIcon icon={checkmarkCircleOutline} /></div>
+              <div className="card-icon-bg">
+                <IonIcon icon={checkmarkCircleOutline} />
+              </div>
             </div>
             <div className="card card-red">
               <span className="card-label">Erreurs</span>
               <div className="card-value">{stats.parcellesErreur}</div>
-              <div className="card-icon-bg"><IonIcon icon={alertOutline} /></div>
+              <div className="card-icon-bg">
+                <IonIcon icon={alertOutline} />
+              </div>
             </div>
           </div>
 
@@ -221,7 +267,10 @@ const Profil: React.FC = () => {
               <span className="sync-bar-percent">{syncRate}%</span>
             </div>
             <div className="sync-bar-track">
-              <div className="sync-bar-fill" style={{ width: `${syncRate}%` }} />
+              <div
+                className="sync-bar-fill"
+                style={{ width: `${syncRate}%` }}
+              />
             </div>
           </div>
 
@@ -235,7 +284,9 @@ const Profil: React.FC = () => {
 
               {/* Navigateur semaine */}
               <div className="week-nav">
-                <button className="week-nav-btn" onClick={goToPrevWeek}>‹</button>
+                <button className="week-nav-btn" onClick={goToPrevWeek}>
+                  ‹
+                </button>
                 <span className="week-nav-label">
                   {formatDate(lundi)} – {formatDate(dimanche)}
                 </span>
@@ -243,12 +294,13 @@ const Profil: React.FC = () => {
                   className="week-nav-btn"
                   onClick={goToNextWeek}
                   disabled={isCurrentWeek}
-                >›</button>
+                >
+                  ›
+                </button>
               </div>
             </div>
             <Bar ref={chartRef} data={weekData} options={options} />
           </div>
-
         </div>
       </IonContent>
     </IonPage>

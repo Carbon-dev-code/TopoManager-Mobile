@@ -286,7 +286,7 @@ const Tab1: React.FC = () => {
 
       setParcelle((prev) => ({
         ...prev,
-        photos: [...prev.photos, photo.dataUrl],
+        photos: [...prev.photos, photo.dataUrl as string]
       }));
     } catch (err) {
       console.error(err);
