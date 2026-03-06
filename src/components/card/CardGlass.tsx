@@ -15,7 +15,6 @@ const CardGlass: React.FC<CardGlass> = ({ currentParcelle, setShowCard }) => {
         <div className="glass-card-bottom">
             {/* Header */}
             <div className="glass-card-header">
-                <div className="header-pill" />
                 <div className="header-content">
                     <div className="header-title">
                         <span className="header-label">Parcelle</span>
