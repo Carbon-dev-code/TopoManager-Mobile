@@ -60,7 +60,7 @@ const Tab5: React.FC = () => {
 
   // === Supprimer le demandeur ===
   const handlaOpenDelete = (d: Demandeur) => {
-    console.log("FAFAFO");
+    console.log(d.prenom);
   }
 
   // ===== Ouvrir en mode édition =====
@@ -110,7 +110,7 @@ const Tab5: React.FC = () => {
     <IonPage>
       <IonHeader>
         {seacrh ? (
-          <IonToolbar className="transparent-toolbar">
+          <IonToolbar color="primary">
             <IonSearchbar
               autoFocus
               showCancelButton="focus"

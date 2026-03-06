@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButtons, IonMenuButton, IonModal, IonButton, IonIcon, IonCard, IonCardSubtitle, IonCardContent, IonCardHeader, IonCardTitle, IonChip, IonLabel, useIonViewWillEnter, IonSearchbar, } from "@ionic/react";
-import { close, informationCircle, create, sync, map, searchSharp, menu, ellipsisVerticalOutline, } from "ionicons/icons";
+import { close, informationCircle, create, sync, map, searchSharp, ellipsisVerticalOutline, } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
@@ -131,7 +131,7 @@ const Tab1: React.FC = () => {
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
   const [riverinMess, setRiverinMess] = useState("Ajouter");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [selectedParcelle, setSelectedParcelle] = useState<Parcelle | null>(null);
+  const [, setSelectedParcelle] = useState<Parcelle | null>(null);
 
 
   // Hooks personnalisés
@@ -309,7 +309,7 @@ const Tab1: React.FC = () => {
     <IonPage>
       <IonHeader>
         {searchMode ? (
-          <IonToolbar className="transparent-toolbar">
+          <IonToolbar color="primary">
             <IonSearchbar
               autoFocus
               showCancelButton="focus"

@@ -1,7 +1,7 @@
 // MainRouter.tsx
 import { IonSplitPane, IonMenu, IonContent, IonList, IonMenuToggle, IonItem, IonLabel, IonIcon, IonPage, IonRouterOutlet, } from "@ionic/react";
 import { useLocation, Redirect, Route } from "react-router-dom";
-import { documentOutline, mapOutline, cloudUploadOutline, settings, logOutOutline, chevronForwardOutline, peopleOutline, terminalOutline, tabletPortrait,} from "ionicons/icons";
+import { documentOutline, mapOutline, cloudUploadOutline, settings, logOutOutline, chevronForwardOutline, peopleOutline, terminalOutline, tabletPortraitSharp,} from "ionicons/icons";
 
 import Tab1 from "./pages/Tab1";
 import Tab2 from "./pages/Tab2";
@@ -85,7 +85,7 @@ const MainRouter: React.FC = () => {
             <div className="compact">
               <IonMenuToggle autoHide={false}>
                 <IonItem routerLink="/tab7" routerDirection="none" lines="none">
-                  <IonIcon icon={tabletPortrait} slot="start" />
+                  <IonIcon icon={tabletPortraitSharp} slot="start" />
                   <IonLabel>Device</IonLabel>
                   <IonIcon icon={chevronForwardOutline} slot="end" />
                 </IonItem>

@@ -41,7 +41,9 @@ const DropDown: React.FC<DropDownProps> = ({
                          }}
                     >
                          <IonIcon icon={layersOutline} color='black' className='fs-4 me-2' />
-                         <IonLabel>Croquis</IonLabel>
+                         <IonLabel>
+                              Croquis
+                         </IonLabel>
                     </IonItem>
 
                     <div className="bar" />

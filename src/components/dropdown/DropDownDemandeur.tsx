@@ -24,7 +24,6 @@ const DropDownDemandeur: React.FC<DropDownDemandeurProps> = ({
                className="dropdown-demandeur-popover"
           >
                <IonList lines="none" className="dd-list">
-
                     <IonItem
                          button
                          detail={false}
