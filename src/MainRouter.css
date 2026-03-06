@@ -4,7 +4,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .user-item {
   --padding-start: 0px; /* remplace le padding par défaut */
   --inner-padding-start: 0px;

@@ -85,7 +85,7 @@
 }
 
 .login-form ion-item::part(native) {
-  background: #f6f6f6 !important;
+  background: #ffffff !important;
   border-radius: 35px !important;
   padding: 5px 0px 5px 15px;
 }

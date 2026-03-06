@@ -1,4 +1,4 @@
-import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonList, IonMenuButton, IonPage, IonSearchbar, IonTitle, IonToolbar, useIonViewWillEnter, } from "@ionic/react";
+import {IonButton,IonButtons,IonContent,IonHeader,IonIcon,IonList,IonMenuButton,IonPage,IonSearchbar,IonTitle,IonToolbar,useIonViewWillEnter,} from "@ionic/react";
 import "./Tab5.css";
 import { searchSharp, create, close, informationCircle } from "ionicons/icons";
 import { Demandeur } from "../model/parcelle/Demandeur";
@@ -23,7 +23,11 @@ const Tab5: React.FC = () => {
   const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
   const [showTempAlert, setShowTempAlert] = useState(false);
   const [tempAlertMessage, setTempAlertMessage] = useState("");
-  const [toast, setToast] = useState({ visible: false, message: "", type: "success" as ToastType });
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success" as ToastType,
+  });
 
   const loadDemandeurFromStorage = async (): Promise<Demandeur[]> => {
     return await getAllDemandeurs();
@@ -54,6 +58,11 @@ const Tab5: React.FC = () => {
     setShowCreateModal(true);
   };
 
+  // === Supprimer le demandeur ===
+  const handlaOpenDelete = (d: Demandeur) => {
+    console.log("FAFAFO");
+  }
+
   // ===== Ouvrir en mode édition =====
   const handleOpenEdit = (d: Demandeur) => {
     setDemandeur(d);
@@ -68,9 +77,17 @@ const Tab5: React.FC = () => {
       setDemandeur(Demandeur.init());
       setDemandeurList(await getAllDemandeurs());
       setShowCreateModal(false);
-      setToast({ visible: true, message: "Demandeur ajouté avec succès", type: "success" });
+      setToast({
+        visible: true,
+        message: "Demandeur ajouté avec succès",
+        type: "success",
+      });
     } catch (error) {
-      setTempAlertMessage(error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur");
+      setTempAlertMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue veuillez vous adresse au administrateur",
+      );
       setShowTempAlert(true);
     }
   };
@@ -82,7 +99,11 @@ const Tab5: React.FC = () => {
     const nom = (d.nom ?? "").toLowerCase();
     const prenom = (d.prenom ?? "").toLowerCase();
     const denomination = (d.denomination ?? "").toLowerCase();
-    return nom.includes(query) || prenom.includes(query) || denomination.includes(query);
+    return (
+      nom.includes(query) ||
+      prenom.includes(query) ||
+      denomination.includes(query)
+    );
   });
 
   return (
@@ -90,13 +111,22 @@ const Tab5: React.FC = () => {
       <IonHeader>
         {seacrh ? (
           <IonToolbar className="transparent-toolbar">
-            <IonSearchbar autoFocus showCancelButton="focus"
-              className="custom-search" placeholder="Recherche demandeur"
-              value={searchQuery} onIonInput={(e) => setSearchQuery(e.detail.value!)}
+            <IonSearchbar
+              autoFocus
+              showCancelButton="focus"
+              className="custom-search"
+              placeholder="Recherche demandeur"
+              value={searchQuery}
+              onIonInput={(e) => setSearchQuery(e.detail.value!)}
             />
             <IonButtons slot="end">
-              <IonButton fill="clear" size="large"
-                onClick={() => { setSearch(false); setSearchQuery(""); }}
+              <IonButton
+                fill="clear"
+                size="large"
+                onClick={() => {
+                  setSearch(false);
+                  setSearchQuery("");
+                }}
               >
                 <IonIcon icon={close} slot="icon-only" color="light" />
               </IonButton>
@@ -109,10 +139,16 @@ const Tab5: React.FC = () => {
             </IonButtons>
             <IonTitle>Création de demandeur</IonTitle>
             <IonButtons slot="end">
-              <IonButton aria-label="Rechercher" onClick={() => setSearch(true)}>
+              <IonButton
+                aria-label="Rechercher"
+                onClick={() => setSearch(true)}
+              >
                 <IonIcon icon={searchSharp} slot="icon-only" />
               </IonButton>
-              <IonButton aria-label="Créer une nouvelle demandeur" onClick={handleOpenCreate}>
+              <IonButton
+                aria-label="Créer une nouvelle demandeur"
+                onClick={handleOpenCreate}
+              >
                 <IonIcon icon={create} slot="icon-only" />
               </IonButton>
             </IonButtons>
@@ -121,30 +157,32 @@ const Tab5: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
-        <IonList>
-          {filteredList.length === 0 ? (
-            <div className="text-center py-5">
-              <IonIcon icon={informationCircle} size="large" className="text-muted mb-3" />
-              <h4 className="text-muted">Aucune demandeur enregistré</h4>
-              <IonButton onClick={handleOpenCreate}>
-                Créer des demandeurs
-              </IonButton>
-            </div>
-          ) : (
-            filteredList.map((d, index) => (
+        {filteredList.length === 0 ? (
+          <div className="text-center py-5">
+            <IonIcon
+              icon={informationCircle}
+              size="large"
+              className="text-muted mb-3"
+            />
+            <h4 className="text-muted">Aucune demandeur enregistré</h4>
+            <IonButton onClick={handleOpenCreate}>
+              Créer des demandeurs
+            </IonButton>
+          </div>
+        ) : (
+          filteredList.map((d, index) => (
+            <IonList className="custom-list-md">
               <DemandeurView
                 key={index}
                 demandeur={d}
                 longPressEnabled={true}
                 onView={() => handleOpenView(d)}
                 onEdit={() => handleOpenEdit(d)}
-                onDelete={() => {
-                  console.log("Fafao ee");
-                }}
+                onDelete={() => handlaOpenDelete(d)}
               />
-            ))
-          )}
-        </IonList>
+            </IonList>
+          ))
+        )}
 
         <ModalDemandeur
           showCreateModal={showCreateModal}
@@ -173,9 +211,8 @@ const Tab5: React.FC = () => {
           visible={toast.visible}
           message={toast.message}
           type={toast.type}
-          onClose={() => setToast(t => ({ ...t, visible: false }))}
+          onClose={() => setToast((t) => ({ ...t, visible: false }))}
         />
-
       </IonContent>
     </IonPage>
   );

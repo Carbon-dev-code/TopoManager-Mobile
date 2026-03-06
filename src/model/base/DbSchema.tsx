@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 // DbSchema.tsx
 import localforage from "localforage";
 import { checkParcelle, Parcelle } from "../parcelle/Parcelle";
@@ -25,7 +26,6 @@ export async function verifIDDevice(): Promise<void> {
 }
 export async function verifyDatabase(): Promise<void> {
   try {
-    //Verification de l'id du tablette si configurer
     await verifIDDevice();
 
     //Verification des paremetre territoriaux

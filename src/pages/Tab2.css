@@ -3,8 +3,10 @@
 }
 
 .custom-toolBar {
-  --background: var(--ion-toolbar-background,
-      var(--ion-background-color, #ffffff00)) !important;
+  --background: var(
+    --ion-toolbar-background,
+    var(--ion-background-color, #ffffff00)
+  ) !important;
 }
 
 .map-container {
@@ -22,6 +24,10 @@
   bottom: 18px;
   right: 2px;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .map-search {
@@ -50,7 +56,7 @@
   gap: 0px;
   min-width: 200px;
   max-width: 300px;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   transform: translateY(15px) scale(0.98);
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
@@ -172,7 +178,7 @@ ion-checkbox {
 }
 
 .cross-symbol::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -183,7 +189,7 @@ ion-checkbox {
 }
 
 .cross-symbol::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -321,7 +327,8 @@ ion-checkbox {
   backdrop-filter: blur(6px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
   display: flex;
   gap: 5px;
   align-items: center;
@@ -397,7 +404,6 @@ ion-checkbox {
 }
 
 @keyframes bounce {
-
   0%,
   80%,
   100% {
@@ -407,4 +413,19 @@ ion-checkbox {
   40% {
     transform: scale(1);
   }
+}
+
+.surface-parcelle {
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.788);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
