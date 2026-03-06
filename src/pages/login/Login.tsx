@@ -8,17 +8,15 @@ import {
   IonInput,
   IonRouterLink,
 } from "@ionic/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";
 
 import "../../assets/dist/css/bootstrap.min.css";
 import "./Login.css";
-import logoTopoManager from "../../assets/image/BackGround/topomanager.png";
 
 const USERNAME_ADMIN = import.meta.env.VITE_ADMIN_USER;
 const PASSWORD_ADMIN = import.meta.env.VITE_ADMIN_PASSWORD;
-
 
 const Login: React.FC = () => {
   const emailRef = useRef<HTMLIonInputElement>(null);
@@ -36,14 +34,15 @@ const Login: React.FC = () => {
       await Preferences.set({ key: "is_logged_in", value: "true" });
       await Preferences.set({ key: "id_session", value: "0" });
       await Preferences.set({ key: "username", value: "Admin" });
-      await Preferences.set({ key: "session_expiration", value: expirationTime.toString() });
+      await Preferences.set({
+        key: "session_expiration",
+        value: expirationTime.toString(),
+      });
       window.location.href = "/tab1";
     } else {
       setShowPasswordAlert(true);
     }
-
   };
-
 
   return (
     <IonPage>
@@ -51,63 +50,69 @@ const Login: React.FC = () => {
         <div className="login-bg">
           <div className="login-wrapper">
             <form className="login-form" onSubmit={handleLogin}>
-              <div className="text-center mb-4">
-                <img
-                  src={logoTopoManager}
-                  alt="Logo TopoManager"
-                  className="img-topomanager"
-                />
+
+              {/* Logo + Titre */}
+              <div className="all-login-title">
+                <div className="login-logo">T</div>
+                <h1 className="login-title">TopoManager</h1>
+                <p className="login-small-title">Collecte Foncière</p>
               </div>
-              <h1 className="login-title">Mobile</h1>
 
-              <IonItem lines="none" className="login-input">
-                <IonInput
-                  type="text"
-                  placeholder="Identifiant"
-                  ref={emailRef}
-                  required
-                />
-              </IonItem>
-
-              <IonItem lines="none" className="login-input">
-                <IonInput
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Mot de passe"
-                  ref={passwordRef}
-                  required
-                />
-                <IonButton
-                  fill="clear"
-                  slot="end"
-                  onClick={() => setShowPassword(!showPassword)}
-                  size="small"
-                  color="medium"
-                >
-                  <IonIcon
-                    slot="icon-only"
-                    icon={showPassword ? eyeOffOutline : eyeOutline}
+              <div className="input-pile">
+                <p className="mb-0 custom-label-login">
+                  Identifiant<span className="red">*</span>
+                </p>
+                <IonItem lines="none" className="login-input">
+                  <IonInput
+                    type="text"
+                    placeholder="Utilisateur"
+                    ref={emailRef}
+                    required
                   />
-                </IonButton>
-              </IonItem>
+                </IonItem>
+              </div>
+
+              <div className="input-pile">
+                <p className="mb-0 custom-label-login">
+                  Mot de passe<span className="red">*</span>
+                </p>
+                <IonItem lines="none" className="login-input">
+                  <IonInput
+                    type={showPassword ? "text" : "password"}
+                    placeholder="xxxxxxx"
+                    ref={passwordRef}
+                    required
+                  />
+                  <IonButton
+                    fill="clear"
+                    slot="end"
+                    onClick={() => setShowPassword(!showPassword)}
+                    size="small"
+                    color="medium"
+                  >
+                    <IonIcon
+                      slot="icon-only"
+                      icon={showPassword ? eyeOffOutline : eyeOutline}
+                    />
+                  </IonButton>
+                </IonItem>
+              </div>
 
               <IonButton expand="block" className="login-button" type="submit">
-                Connexion
+                Se connecter
               </IonButton>
-              <IonRouterLink
-                routerLink="/accueil"
-                className="link-custom"
-              >
-                Retour à la page <span className="text-primary">d'accueil</span>
+
+              <IonRouterLink routerLink="/accueil" className="link-custom">
+                Retour à <span className="text-primary">l'accueil</span>
               </IonRouterLink>
             </form>
           </div>
         </div>
-        {/* Alert mot de passe */}
+
         <IonAlert
           isOpen={showPasswordAlert}
           onDidDismiss={() => setShowPasswordAlert(false)}
-          className="text-center"
-          message="Mot de passe ou idetifiant incorrect. Veuillez contacter l'administrateur."
+          message="Mot de passe ou identifiant incorrect. Veuillez contacter l'administrateur."
           buttons={["OK"]}
         />
       </IonContent>
