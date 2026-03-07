@@ -1,5 +1,5 @@
 // schema.ts
-import { toTypedRxJsonSchema, ExtractDocumentTypeFromTypedRxJsonSchema, RxJsonSchema, } from 'rxdb';
+import {toTypedRxJsonSchema,ExtractDocumentTypeFromTypedRxJsonSchema,RxJsonSchema,} from 'rxdb';
 
 // ─── PARCELLE ─────────────────────────────────────────────────────────────────
 const parcelleSchemaLiteral = {
@@ -33,8 +33,10 @@ const parcelleSchemaLiteral = {
   indexes: ['id_personne', 'synchronise', 'dateCreation'],
 } as const;
 
-const parcelleTyped = toTypedRxJsonSchema(parcelleSchemaLiteral);
-export type ParcelleDocType = ExtractDocumentTypeFromTypedRxJsonSchema<typeof parcelleTyped>;
+// ✅ Pas de variable intermédiaire — ReturnType évite le warning "assigned but never used"
+export type ParcelleDocType = ExtractDocumentTypeFromTypedRxJsonSchema<
+  ReturnType<typeof toTypedRxJsonSchema<typeof parcelleSchemaLiteral>>
+>;
 export const parcelleSchema: RxJsonSchema<ParcelleDocType> = parcelleSchemaLiteral;
 
 
@@ -77,6 +79,8 @@ const demandeurSchemaLiteral = {
   indexes: ['parcelle_code', 'nom'],
 } as const;
 
-const demandeurTyped = toTypedRxJsonSchema(demandeurSchemaLiteral);
-export type DemandeurDocType = ExtractDocumentTypeFromTypedRxJsonSchema<typeof demandeurTyped>;
+// ✅ Même correction pour DemandeurDocType
+export type DemandeurDocType = ExtractDocumentTypeFromTypedRxJsonSchema<
+  ReturnType<typeof toTypedRxJsonSchema<typeof demandeurSchemaLiteral>>
+>;
 export const demandeurSchema: RxJsonSchema<DemandeurDocType> = demandeurSchemaLiteral;
