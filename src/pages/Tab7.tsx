@@ -8,7 +8,7 @@ import {
   IonToolbar,
 } from "@ionic/react";
 import { useEffect, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, PluginListenerHandle } from "@capacitor/core";
 import { CommunityDevice } from "@capacitor-community/device";
 import { Network } from "@capacitor/network";
 import { Geolocation } from "@capacitor/geolocation";
@@ -75,7 +75,7 @@ const Tab7: React.FC = () => {
 
   // Réseau — useEffect séparé pour le listener
   useEffect(() => {
-    let listenerHandle: any = null;
+    let listenerHandle: PluginListenerHandle | null = null;
 
     const initNetwork = async () => {
       const status = await Network.getStatus();
@@ -92,7 +92,7 @@ const Tab7: React.FC = () => {
           timeout: 8000,
         });
         setGpsAccuracy(pos.coords.accuracy);
-      } catch (e) {
+      } catch {
         setGpsError("Non disponible");
       } finally {
         setGpsLoading(false);
@@ -151,7 +151,7 @@ const Tab7: React.FC = () => {
         {/* Stockage */}
         <div className="storage-card">
           <div className="storage-header">
-            <span className="storage-title">💾 Stockage</span>
+            <span className="storage-title">Stockage</span>
             <span className="storage-status" style={{ color: storageColor }}>
               {storageStatus}
             </span>
@@ -177,7 +177,7 @@ const Tab7: React.FC = () => {
         {/* Réseau */}
         <div className="storage-card">
           <div className="storage-header">
-            <span className="storage-title">📶 Réseau</span>
+            <span className="storage-title">Réseau</span>
             <span
               className="storage-status"
               style={{ color: connected ? "#00c9a7" : "#ff6b6b" }}
@@ -198,7 +198,7 @@ const Tab7: React.FC = () => {
         {/* GPS */}
         <div className="storage-card">
           <div className="storage-header">
-            <span className="storage-title">📍 GPS</span>
+            <span className="storage-title">GPS</span>
             <span className="storage-status" style={{ color: gpsColor }}>
               {gpsLoading ? "Recherche…" : gpsError ? "Erreur" : gpsStatus}
             </span>

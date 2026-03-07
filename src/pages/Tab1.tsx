@@ -145,8 +145,8 @@ const Tab1: React.FC = () => {
     ]);
 
     setParcelles(parcellesData);
-    console.log(parcelles);
 
+    console.log(parcellesData);
     setDemandeurList(demandeursData);
   }, []);
 
