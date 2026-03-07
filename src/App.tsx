@@ -27,9 +27,8 @@ const App: React.FC = () => {
         await StatusBar.setOverlaysWebView({ overlay: true });
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: "#ffffff" });
-      } catch(e) {
-        console.error("Error", e);
-        
+      } catch {
+        //console.error("Error", e);
       }
     };
 

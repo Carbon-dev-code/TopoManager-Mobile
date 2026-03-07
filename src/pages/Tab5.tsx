@@ -1,4 +1,17 @@
-import {IonButton,IonButtons,IonContent,IonHeader,IonIcon,IonList,IonMenuButton,IonPage,IonSearchbar,IonTitle,IonToolbar,useIonViewWillEnter,} from "@ionic/react";
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonList,
+  IonMenuButton,
+  IonPage,
+  IonSearchbar,
+  IonTitle,
+  IonToolbar,
+  useIonViewWillEnter,
+} from "@ionic/react";
 import "./Tab5.css";
 import { searchSharp, create, close, informationCircle } from "ionicons/icons";
 import { Demandeur } from "../model/parcelle/Demandeur";
@@ -61,7 +74,7 @@ const Tab5: React.FC = () => {
   // === Supprimer le demandeur ===
   const handlaOpenDelete = (d: Demandeur) => {
     console.log(d.prenom);
-  }
+  };
 
   // ===== Ouvrir en mode édition =====
   const handleOpenEdit = (d: Demandeur) => {
@@ -77,11 +90,19 @@ const Tab5: React.FC = () => {
       setDemandeur(Demandeur.init());
       setDemandeurList(await getAllDemandeurs());
       setShowCreateModal(false);
-      setToast({
-        visible: true,
-        message: "Demandeur ajouté avec succès",
-        type: "success",
-      });
+      if (modalMode == "edit") {
+        setToast({
+          visible: true,
+          message: "Demandeur modifier avec succès",
+          type: "success",
+        });
+      }else{
+        setToast({
+          visible: true,
+          message: "Demandeur ajouté avec succès",
+          type: "success",
+        });
+      }
     } catch (error) {
       setTempAlertMessage(
         error instanceof Error
@@ -156,7 +177,7 @@ const Tab5: React.FC = () => {
         )}
       </IonHeader>
 
-      <IonContent fullscreen>
+      <IonContent>
         {filteredList.length === 0 ? (
           <div className="text-center py-5">
             <IonIcon
@@ -170,10 +191,10 @@ const Tab5: React.FC = () => {
             </IonButton>
           </div>
         ) : (
-          filteredList.map((d, index) => (
-            <IonList className="custom-list-md">
+          filteredList.map((d) => (
+            <IonList className="custom-list-md" key={d.id}>
               <DemandeurView
-                key={index}
+                key={d.id}
                 demandeur={d}
                 longPressEnabled={true}
                 onView={() => handleOpenView(d)}

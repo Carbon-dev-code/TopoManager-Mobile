@@ -1,25 +1,12 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useRef,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useContext, ReactNode, useRef, useEffect, useState } from "react";
 import initSqlJs, { Database } from "sql.js";
 import { Capacitor } from "@capacitor/core";
-import {
-  CapacitorSQLite,
-  SQLiteConnection,
-  SQLiteDBConnection,
-} from "@capacitor-community/sqlite";
-import { initDatabase } from "./Database"; // ✅ import RxDB
+import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from "@capacitor-community/sqlite";
 
 interface DbContextProps {
   db: Database | SQLiteDBConnection | null;
   loadMBTiles: () => Promise<Database | SQLiteDBConnection>;
   resetMBTiles: () => Promise<void>;
-  rxdbReady: boolean; // ✅ état RxDB exposé si besoin
 }
 
 const DbContext = createContext<DbContextProps | undefined>(undefined);
@@ -33,29 +20,19 @@ export const useDb = () => {
 export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   let sqlite: SQLiteConnection | null = null;
   const dbRef = useRef<Database | SQLiteDBConnection | null>(null);
-  const dbPromiseRef = useRef<Promise<Database | SQLiteDBConnection> | null>(
-    null,
-  );
+  const dbPromiseRef = useRef<Promise<Database | SQLiteDBConnection> | null>(null);
   const [, setReady] = useState(false);
-  const [rxdbReady, setRxdbReady] = useState(false); // ✅ état RxDB
-
-  // ✅ Init RxDB — une seule fois au montage du Provider
-  useEffect(() => {
-    initDatabase() .then(() => { setRxdbReady(true);
-        console.log("✅ RxDB initialisé");
-      }).catch((err) => {
-        console.error("❌ Erreur init RxDB:", err);
-      });
-  }, []);
 
   const resetMBTiles = async () => {
     if (dbRef.current) {
       try {
         if (Capacitor.isNativePlatform()) {
+          // Fermer la connexion SQLite native
           const db = dbRef.current as SQLiteDBConnection;
           await db.close();
           console.log("✅ Connexion SQLite native fermée");
         } else {
+          // Fermer la base sql.js
           const db = dbRef.current as Database;
           db.close();
           console.log("✅ Base sql.js fermée");
@@ -71,20 +48,22 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const loadMBTiles = async (): Promise<Database | SQLiteDBConnection> => {
+    // Si la DB est déjà chargée, la retourner
     if (dbRef.current) return dbRef.current;
+
+    // Si un chargement est déjà en cours, attendre sa résolution
     if (dbPromiseRef.current) return dbPromiseRef.current;
 
     dbPromiseRef.current = (async () => {
       let loadedDb: Database | SQLiteDBConnection;
 
       if (Capacitor.isNativePlatform()) {
+        // ====== Plateforme native: @capacitor-community/sqlite ======
         try {
           console.log("📦 Initialisation SQLite native...");
 
-          if (
-            Capacitor.getPlatform() === "android" ||
-            Capacitor.getPlatform() === "ios"
-          ) {
+          // attend deviceready si nécessaire
+          if (Capacitor.getPlatform() === "android" || Capacitor.getPlatform() === "ios") {
             if (!window.cordova) {
               console.warn("⚠️ Cordova deviceready pas encore dispo");
             }
@@ -95,6 +74,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           }
 
           let db: SQLiteDBConnection;
+
           const consistency = await sqlite.checkConnectionsConsistency();
           const isConn = (await sqlite.isConnection("amb", false)).result;
 
@@ -102,31 +82,29 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             db = await sqlite.retrieveConnection("amb", false);
             console.log("♻️ Connexion récupérée");
           } else {
-            db = await sqlite.createConnection(
-              "amb",
-              false,
-              "no-encryption",
-              1,
-              false,
-            );
+            db = await sqlite.createConnection("amb", false, "no-encryption", 1, false);
             console.log("🆕 Connexion créée");
           }
 
           await db.open();
           dbRef.current = db;
           loadedDb = db;
+
           console.log("✅ SQLite native initialisé");
         } catch (err) {
           console.error("❌ Erreur SQLite native:", err);
           throw err;
         }
       } else {
+        // ====== Plateforme web: sql.js ======
         try {
-          //console.log("📦 Initialisation sql.js (web)...");
+          console.log("📦 Initialisation sql.js (web)...");
           const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
+
           const response = await fetch("/mbtiles/amb.mbtiles");
           const buffer = await response.arrayBuffer();
           loadedDb = new SQL.Database(new Uint8Array(buffer));
+
           dbRef.current = loadedDb;
           console.log("✅ sql.js initialisé");
         } catch (err) {
@@ -142,14 +120,11 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return dbPromiseRef.current;
   };
 
-  // Préchargement MBTiles au startup
+  // Préchargement immédiat au startup de l'app
   useEffect(() => {
     const init = async () => {
-      if (
-        Capacitor.getPlatform() === "android" ||
-        Capacitor.getPlatform() === "ios"
-      ) {
-        document.addEventListener("deviceready", async () => {
+      if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
+        document.addEventListener('deviceready', async () => {
           try {
             await loadMBTiles();
             console.log("MBTiles préchargé ✔️");
@@ -158,6 +133,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           }
         });
       } else {
+        // web
         await loadMBTiles();
       }
     };
@@ -165,9 +141,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
   return (
-    <DbContext.Provider
-      value={{ db: dbRef.current, loadMBTiles, resetMBTiles, rxdbReady }}
-    >
+    <DbContext.Provider value={{ db: dbRef.current, loadMBTiles, resetMBTiles }}>
       {children}
     </DbContext.Provider>
   );
