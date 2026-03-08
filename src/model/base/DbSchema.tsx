@@ -141,9 +141,7 @@ export async function deleteParcelle(code: string): Promise<boolean> {
 
 // ─── Demandeurs ───────────────────────────────────────────────────────────────
 
-export async function insertDemandeur(
-  demandeur: Demandeur,
-): Promise<Demandeur> {
+export async function insertDemandeur(demandeur: Demandeur,): Promise<Demandeur> {
   try {
     checkDemandeur(demandeur);
     const database = await initDatabase();

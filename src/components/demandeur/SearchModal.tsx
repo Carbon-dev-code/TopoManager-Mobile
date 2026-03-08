@@ -39,31 +39,51 @@ const SearchModal: React.FC<SearchModalProps> = ({
     load();
   }, [showSearchModal]);
 
-  // Charger les recherches récentes depuis localStorage
+  // Charger les demandeurs à l'ouverture du modal
   useEffect(() => {
-    const saved = localStorage.getItem("recentSearches");
-    if (saved) {
-      setRecentSearches(JSON.parse(saved));
-    }
-  }, []);
+    if (!showSearchModal) return;
 
-  const filtered = query ? localDemandeurs.filter((d) => `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}` .toLowerCase() .includes(query.toLowerCase())) : recentSearches;
+    const load = async () => {
+      const allDemandeurs = await getAllDemandeurs();
+      setLocalDemandeurs(allDemandeurs);
+
+      // ← rehydrate les recent searches avec les données fraîches de RxDB
+      const saved = localStorage.getItem("recentSearches");
+      if (saved) {
+        const savedIds: string[] = JSON.parse(saved).map(
+          (d: Demandeur) => d.id,
+        );
+        const fresh = savedIds
+          .map((id) => allDemandeurs.find((d) => d.id === id))
+          .filter(Boolean) as Demandeur[];
+        setRecentSearches(fresh);
+      }
+    };
+
+    load();
+  }, [showSearchModal]);
+
+  const filtered = query
+    ? localDemandeurs.filter((d) =>
+        `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+      )
+    : recentSearches;
 
   const handleSelect = (d: Demandeur) => {
     onSelect({ ...d });
     setShowSearchModal(false);
 
     setRecentSearches((prev) => {
-      const exists = prev.find(r => r.id === d.id);
+      const exists = prev.find((r) => r.id === d.id);
       if (exists) return prev;
 
       const updated = [d, ...prev].slice(0, 5);
       localStorage.setItem("recentSearches", JSON.stringify(updated));
       return updated;
     });
-
   };
-
 
   return (
     <IonModal
