@@ -662,7 +662,7 @@ const Tab1: React.FC = () => {
             )}
           </div>
         )}
-        <ScrollToTop contentRef={contentRef} /> {/* ← ici, dans IonContent */}
+        <ScrollToTop contentRef={contentRef} />
       </IonContent>
 
       {/* Modal création parcelle */}

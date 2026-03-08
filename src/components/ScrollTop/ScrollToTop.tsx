@@ -1,43 +1,69 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { IonFab, IonFabButton, IonIcon } from "@ionic/react";
 import { chevronUpOutline } from "ionicons/icons";
 import "./ScrollToTop.css";
 
 interface ScrollToTopProps {
   contentRef: React.RefObject<HTMLIonContentElement | null>;
+  scrollContainerClass?: string;
 }
 
-const ScrollToTop: React.FC<ScrollToTopProps> = ({ contentRef }) => {
+// ← interface pour typer l'élément avec son handler
+interface ScrollableElement extends HTMLElement {
+  __scrollHandler?: EventListener;
+}
+
+const ScrollToTop: React.FC<ScrollToTopProps> = ({
+  scrollContainerClass = "parcelle-scroll",
+}) => {
   const [visible, setVisible] = useState(false);
+  const scrollElRef = useRef<ScrollableElement | null>(null);
+  const retryRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
+    const attach = () => {
+      const el = document.querySelector(
+        `.${scrollContainerClass}`,
+      ) as ScrollableElement;
+      if (!el) return false;
 
-    let scrollEl: HTMLElement | null = null;
+      scrollElRef.current = el;
+      const handleScroll = () => setVisible(el.scrollTop > 200);
+      el.addEventListener("scroll", handleScroll);
+      el.__scrollHandler = handleScroll;
+      return true;
+    };
 
-    el.getScrollElement().then((se) => {
-      scrollEl = se;
-      const handleScroll = () => {
-        setVisible(se.scrollTop > 180);
-        console.log(se.scrollTop);
-      };
-      se.addEventListener("scroll", handleScroll);
-    });
+    if (!attach()) {
+      retryRef.current = setInterval(() => {
+        if (attach() && retryRef.current) {
+          clearInterval(retryRef.current);
+        }
+      }, 300);
+    }
 
     return () => {
-      scrollEl?.removeEventListener("scroll", () => {});
+      if (retryRef.current) clearInterval(retryRef.current);
+      const el = scrollElRef.current;
+      if (el?.__scrollHandler) {
+        el.removeEventListener("scroll", el.__scrollHandler);
+      }
     };
-  }, [contentRef]);
+  }, [scrollContainerClass]);
 
   const scrollToTop = () => {
-    contentRef.current?.scrollToTop(400);
+    scrollElRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (!visible) return null;
 
   return (
-    <IonFab vertical="bottom" horizontal="end" slot="fixed" className="scroll-to-top-fab">
+    <IonFab
+      vertical="bottom"
+      horizontal="end"
+      slot="fixed"
+      className="scroll-to-top-fab"
+    >
       <IonFabButton size="small" onClick={scrollToTop}>
         <IonIcon icon={chevronUpOutline} />
       </IonFabButton>

@@ -26,12 +26,11 @@ const App: React.FC = () => {
       try {
         await StatusBar.setOverlaysWebView({ overlay: true });
         await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: "#ffffff" });
+        await StatusBar.setBackgroundColor({ color: "#1B4F72" }); // ← hex
       } catch {
-        //console.error("Error", e);
+        //console.log("Status");
       }
     };
-
     configureStatusBar();
   }, []);
 
