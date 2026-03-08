@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { Preferences } from "@capacitor/preferences";
 import {
   IonContent,
@@ -46,10 +52,17 @@ import ModalRiverin from "../components/riverin/ModalRiverin";
 import SeacrhModal from "../components/demandeur/SearchModal";
 import DemandeurView from "../components/demandeur/DemandeurView";
 import ParcelleForm from "../components/parcelle/ParcelleForm";
-import {deleteParcelle,getAllDemandeurs,getAllParcelles,insertParcelle,verifyDatabase,} from "../model/base/DbSchema";
+import {
+  deleteParcelle,
+  getAllDemandeurs,
+  getAllParcelles,
+  insertParcelle,
+  verifyDatabase,
+} from "../model/base/DbSchema";
 import Alert from "../components/alert/Alert";
 import DropDown from "../components/dropdown/DropDown";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import ScrollToTop from "../components/ScrollTop/ScrollToTop";
 
 // Hook personnalisé pour la gestion des données de référence
 const useReferenceData = () => {
@@ -135,6 +148,7 @@ const useParcelleCode = () => {
 
 const Tab1: React.FC = () => {
   const history = useHistory();
+  const contentRef = useRef<HTMLIonContentElement>(null);
 
   // États UI
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -172,7 +186,7 @@ const Tab1: React.FC = () => {
   const [, setSelectedParcelle] = useState<Parcelle | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalParcelles, setTotalParcelles] = useState(0);
-  const ITEMS_PER_PAGE = 13;
+  const ITEMS_PER_PAGE = 10;
 
   // Hooks personnalisés
   const { categorie, setCategorie, status, repereL, loadReferenceData } =
@@ -182,7 +196,10 @@ const Tab1: React.FC = () => {
 
   // Chargement initial
   const loadData = useCallback(async (page: number = 1) => {
-    const [{ data, total }, demandeursData] = await Promise.all([getAllParcelles(page, ITEMS_PER_PAGE),getAllDemandeurs(),]);
+    const [{ data, total }, demandeursData] = await Promise.all([
+      getAllParcelles(page, ITEMS_PER_PAGE),
+      getAllDemandeurs(),
+    ]);
     setParcelles(data);
     setTotalParcelles(total);
     setDemandeurList(demandeursData);
@@ -494,7 +511,7 @@ const Tab1: React.FC = () => {
         onClose={() => setShowAlertVerif(false)}
       />
 
-      <IonContent className="ion-padding">
+      <IonContent ref={contentRef} className="ion-padding">
         {parcelles.length === 0 ? (
           <div className="text-center py-5">
             <IonIcon
@@ -645,6 +662,7 @@ const Tab1: React.FC = () => {
             )}
           </div>
         )}
+        <ScrollToTop contentRef={contentRef} /> {/* ← ici, dans IonContent */}
       </IonContent>
 
       {/* Modal création parcelle */}
@@ -691,7 +709,6 @@ const Tab1: React.FC = () => {
           />
         </IonContent>
       </IonModal>
-
       <Alert
         show={showTempAlert}
         type={0}

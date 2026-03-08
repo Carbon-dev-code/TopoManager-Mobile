@@ -83,7 +83,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                   value={demandeur.dateNaissance ? demandeur.dateNaissance : ""}
                   onIonChange={(e) => {
                     const year = e.detail.value;
-                    setDemandeur({ ...demandeur, dateNaissance: year });
+                    setDemandeur({ ...demandeur, dateNaissance: year ?? null });
                   }}
                 />
               ) : (
@@ -96,7 +96,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                     demandeur.dateNaissance
                       ? typeof demandeur.dateNaissance === "string"
                         ? demandeur.dateNaissance.substring(0, 10)
-                        : demandeur.dateNaissance.toISOString().substring(0, 10)
+                        : new Date(demandeur.dateNaissance).toISOString().substring(0,10)
                       : ""
                   }
                   onIonChange={(e) =>

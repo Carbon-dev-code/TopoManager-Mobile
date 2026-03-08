@@ -1,5 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { IonButtons, IonContent, IonHeader, IonMenuButton, IonPage, IonTitle, IonToolbar, IonButton, IonText, IonCard, IonSpinner, IonCardContent, IonLabel, IonIcon, IonProgressBar, IonToast, IonInput, IonModal, IonLoading, IonCardHeader, IonCardSubtitle, IonChip, IonCardTitle, useIonViewWillEnter, IonRefresher, IonRefresherContent, } from "@ionic/react";
+import {
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonMenuButton,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  IonButton,
+  IonText,
+  IonCard,
+  IonSpinner,
+  IonCardContent,
+  IonLabel,
+  IonIcon,
+  IonProgressBar,
+  IonToast,
+  IonLoading,
+  IonCardHeader,
+  IonCardSubtitle,IonChip,IonCardTitle,useIonViewWillEnter,IonRefresher,IonRefresherContent,} from "@ionic/react";
 import { sync, checkmark, settings, wifi } from "ionicons/icons";
 import "./Tab3.css";
 import { ConfigService } from "../model/ConfigService";
@@ -21,15 +40,22 @@ const Tab3: React.FC = () => {
   const [syncingAll, setSyncingAll] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">("success");
-  const [serverIpPort, setServerIpPort] = useState<string>('');
+  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">(
+    "success",
+  );
+  const [serverIpPort, setServerIpPort] = useState<string>("");
   const [showServerModal, setShowServerModal] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
-  const [filtreParcelle, setFiltreParcelle] = useState<"tous" | "sync" | "nosync" | "erreur">("tous");
+  const [filtreParcelle, setFiltreParcelle] = useState<
+    "tous" | "sync" | "nosync" | "erreur"
+  >("tous");
   const [hasUnsynced, setHasUnsynced] = useState(false);
 
-  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
-    return await getAllParcelles();
+  const loadParcellesFromStorage = useCallback(async (): Promise<
+    Parcelle[]
+  > => {
+    const { data } = await getAllParcelles();
+    return data;
   }, []);
 
   const load = useCallback(async () => {
@@ -100,7 +126,7 @@ const Tab3: React.FC = () => {
         return false;
       }
     },
-    [showError]
+    [showError],
   );
 
   const testerConnexion = useCallback(async () => {
@@ -127,8 +153,8 @@ const Tab3: React.FC = () => {
         delayMs < 100
           ? "Ultra rapide 🚀"
           : delayMs < 200
-            ? "Rapide ✅"
-            : "Lent 🐢";
+          ? "Rapide ✅"
+          : "Lent 🐢";
       showSuccess(`Connexion réussie (${delayMs} ms) — ${speedText}`);
     } catch (error: unknown) {
       clearTimeout(timer);
@@ -153,7 +179,7 @@ const Tab3: React.FC = () => {
         event.detail.complete(); // stop le refresher dès que load est terminé
       }
     },
-    [load]
+    [load],
   );
 
   const synchroniserParcelle = useCallback(
@@ -162,7 +188,7 @@ const Tab3: React.FC = () => {
       if (!parcelle) return;
 
       setParcelles((prev) =>
-        prev.map((p) => (p.code === parcelleId ? { ...p, syncing: true } : p))
+        prev.map((p) => (p.code === parcelleId ? { ...p, syncing: true } : p)),
       );
 
       try {
@@ -179,12 +205,13 @@ const Tab3: React.FC = () => {
         await insertParcelle(updatedParcelle);
 
         setParcelles((prev) =>
-          prev.map((p) => (p.code === parcelleId ? updatedParcelle : p))
+          prev.map((p) => (p.code === parcelleId ? updatedParcelle : p)),
         );
 
         if (success) showSuccess(`Parcelle ${parcelle.code} synchronisée!`);
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : "Erreur inconnue";
+        const errorMsg =
+          error instanceof Error ? error.message : "Erreur inconnue";
 
         const updatedParcelle = {
           ...parcelle,
@@ -195,13 +222,13 @@ const Tab3: React.FC = () => {
 
         await insertParcelle(updatedParcelle);
         setParcelles((prev) =>
-          prev.map((p) => (p.code === parcelleId ? updatedParcelle : p))
+          prev.map((p) => (p.code === parcelleId ? updatedParcelle : p)),
         );
 
         showError(`Échec de synchronisation: ${errorMsg}`);
       }
     },
-    [parcelles, syncWithAPI, showSuccess, showError]
+    [parcelles, syncWithAPI, showSuccess, showError],
   );
 
   const synchroniserToutes = useCallback(async () => {
@@ -216,7 +243,9 @@ const Tab3: React.FC = () => {
 
     // marquer toutes les parcelles comme en cours
     let updatedParcelles = parcelles.map((p) =>
-      nonSyncParcelles.some((n) => n.code === p.code) ? { ...p, syncing: true } : p
+      nonSyncParcelles.some((n) => n.code === p.code)
+        ? { ...p, syncing: true }
+        : p,
     );
     setParcelles(updatedParcelles);
 
@@ -238,7 +267,7 @@ const Tab3: React.FC = () => {
         await insertParcelle(updatedParcelle);
 
         updatedParcelles = updatedParcelles.map((p) =>
-          p.code === parcelle.code ? updatedParcelle : p
+          p.code === parcelle.code ? updatedParcelle : p,
         );
 
         if (!success) erreurs += 1;
@@ -256,7 +285,7 @@ const Tab3: React.FC = () => {
 
         await insertParcelle(updatedParcelle);
         updatedParcelles = updatedParcelles.map((p) =>
-          p.code === parcelle.code ? updatedParcelle : p
+          p.code === parcelle.code ? updatedParcelle : p,
         );
 
         erreurs += 1;
@@ -330,22 +359,29 @@ const Tab3: React.FC = () => {
         </div>
 
         {/* Filtres */}
-        <Filtre filtreParcelle={filtreParcelle} setFiltreParcelle={setFiltreParcelle} />
+        <Filtre
+          filtreParcelle={filtreParcelle}
+          setFiltreParcelle={setFiltreParcelle}
+        />
 
         <div className="cardContent">
-          {parcelles.filter((p) => {
-            if (filtreParcelle === "tous") return true;
-            if (filtreParcelle === "sync") return p.synchronise === 1;
-            if (filtreParcelle === "nosync") return p.synchronise === 0 || p.synchronise === 2;
-            if (filtreParcelle === "erreur") return p.synchronise === 2;
-            return true;
-          })
+          {parcelles
+            .filter((p) => {
+              if (filtreParcelle === "tous") return true;
+              if (filtreParcelle === "sync") return p.synchronise === 1;
+              if (filtreParcelle === "nosync")
+                return p.synchronise === 0 || p.synchronise === 2;
+              if (filtreParcelle === "erreur") return p.synchronise === 2;
+              return true;
+            })
             .map((parcelle) => (
               <IonCard key={parcelle.code} className="custom-card">
                 <span
-                  className={`position-badge-custom-tab2 ion-color ${parcelle.synchronise === 1
-                    ? "ion-color-success" : "ion-color-danger"
-                    } ${parcelle.synchronise === 1 ? "disabled" : ""}`}
+                  className={`position-badge-custom-tab2 ion-color ${
+                    parcelle.synchronise === 1
+                      ? "ion-color-success"
+                      : "ion-color-danger"
+                  } ${parcelle.synchronise === 1 ? "disabled" : ""}`}
                   title="Synchroniser"
                   onClick={() => {
                     if (parcelle.synchronise !== 1 && !parcelle.syncing) {
@@ -383,7 +419,7 @@ const Tab3: React.FC = () => {
                         <IonLabel>
                           {" "}
                           Sync le {new Date(
-                            parcelle.lastSync
+                            parcelle.lastSync,
                           ).toLocaleString()}{" "}
                         </IonLabel>
                       </IonChip>

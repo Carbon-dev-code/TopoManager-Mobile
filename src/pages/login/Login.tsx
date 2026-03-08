@@ -65,7 +65,7 @@ const Login: React.FC = () => {
                 <IonItem lines="none" className="login-input">
                   <IonInput
                     type="text"
-                    placeholder="Utilisateur"
+                    placeholder="utilisateur"
                     ref={emailRef}
                     required
                   />
