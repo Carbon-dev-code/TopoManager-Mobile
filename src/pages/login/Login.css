@@ -106,3 +106,7 @@
 .red {
   color: red;
 }
+
+.password-placeholder input::placeholder {
+  font-size: 12px; /* ajustez selon votre besoin */
+}

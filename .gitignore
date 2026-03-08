@@ -32,7 +32,7 @@ yarn-error.log*
 
 #fichier important
 /AndroidManifest.xml
-public/mbtiles/amb.mbtiles
+public/mbtiles/*
 npx cap add android.txt
 .vscode/extensions.json
 /.vscode

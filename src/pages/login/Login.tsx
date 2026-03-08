@@ -81,6 +81,7 @@ const Login: React.FC = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="xxxxxxx"
                     ref={passwordRef}
+                    className="password-placeholder"
                     required
                   />
                   <IonButton

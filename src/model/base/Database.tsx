@@ -5,8 +5,8 @@ import { RxDBDevModePlugin } from "rxdb/plugins/dev-mode";
 import { wrappedValidateAjvStorage } from "rxdb/plugins/validate-ajv";
 import { disableWarnings } from "rxdb/plugins/dev-mode";
 
-addRxPlugin(RxDBDevModePlugin);
 disableWarnings();
+addRxPlugin(RxDBDevModePlugin);
 
 let dbPromise: Promise<RxDatabase> | null = null;
 

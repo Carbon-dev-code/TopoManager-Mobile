@@ -19,6 +19,8 @@ export async function checkParcelle(parcelle: Parcelle): Promise<void> {
     if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 demandeur");
     if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");
 
+    parcelle.demandeurs = JSON.parse(JSON.stringify(parcelle.demandeurs));
+    
     parcelle.demandeurs.forEach((demandeur, i) => {
         try {
             checkDemandeur(demandeur);

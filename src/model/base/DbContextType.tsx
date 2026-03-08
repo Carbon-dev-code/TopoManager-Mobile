@@ -1,18 +1,7 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useRef,
-  useEffect,
-  useState,
-} from "react";
+import {createContext,useContext,ReactNode,useRef,useEffect,useState,} from "react";
 import initSqlJs, { Database } from "sql.js";
 import { Capacitor } from "@capacitor/core";
-import {
-  CapacitorSQLite,
-  SQLiteConnection,
-  SQLiteDBConnection,
-} from "@capacitor-community/sqlite";
+import { CapacitorSQLite,SQLiteConnection,SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { initDatabase } from "./Database"; // ✅ import RxDB
 
 interface DbContextProps {
@@ -39,7 +28,6 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [, setReady] = useState(false);
   const [rxdbReady, setRxdbReady] = useState(false); // ✅ état RxDB
 
-  // ✅ Init RxDB — une seule fois au montage du Provider
   useEffect(() => {
     initDatabase() .then(() => { setRxdbReady(true);
         console.log("✅ RxDB initialisé");
@@ -81,10 +69,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         try {
           console.log("📦 Initialisation SQLite native...");
 
-          if (
-            Capacitor.getPlatform() === "android" ||
-            Capacitor.getPlatform() === "ios"
-          ) {
+          if ( Capacitor.getPlatform() === "android" || Capacitor.getPlatform() === "ios" ) {
             if (!window.cordova) {
               console.warn("⚠️ Cordova deviceready pas encore dispo");
             }
@@ -102,13 +87,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             db = await sqlite.retrieveConnection("amb", false);
             console.log("♻️ Connexion récupérée");
           } else {
-            db = await sqlite.createConnection(
-              "amb",
-              false,
-              "no-encryption",
-              1,
-              false,
-            );
+            db = await sqlite.createConnection("amb",false,"no-encryption",1,false);
             console.log("🆕 Connexion créée");
           }
 
@@ -122,7 +101,6 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         }
       } else {
         try {
-          //console.log("📦 Initialisation sql.js (web)...");
           const SQL = await initSqlJs({ locateFile: (f) => `/sql-wasm/${f}` });
           const response = await fetch("/mbtiles/amb.mbtiles");
           const buffer = await response.arrayBuffer();
@@ -134,7 +112,6 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           throw err;
         }
       }
-
       setReady(true);
       return loadedDb;
     })();
@@ -145,10 +122,7 @@ export const DbProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Préchargement MBTiles au startup
   useEffect(() => {
     const init = async () => {
-      if (
-        Capacitor.getPlatform() === "android" ||
-        Capacitor.getPlatform() === "ios"
-      ) {
+      if (Capacitor.getPlatform() === "android" || Capacitor.getPlatform() === "ios") {
         document.addEventListener("deviceready", async () => {
           try {
             await loadMBTiles();

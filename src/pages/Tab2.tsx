@@ -193,10 +193,9 @@ const Tab2: React.FC = () => {
   const codeParcelle = query.get("code");
 
   // ==================== DATA LOADING ====================
-  const loadParcellesFromStorage = useCallback(async (): Promise<
-    Parcelle[]
-  > => {
-    return await getAllParcelles();
+  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
+    const { data } = await getAllParcelles();
+    return data;
   }, []);
 
   const loadGeoJsonFromStorage = useCallback(async (): Promise<any[]> => {
@@ -741,7 +740,7 @@ const Tab2: React.FC = () => {
             setGpsStatus(2);
             mapRef.current.getView().animate({
               center: fromLonLat([longitude, latitude]),
-              zoom: 18,
+              zoom: 21,
               duration: 800,
             });
           }

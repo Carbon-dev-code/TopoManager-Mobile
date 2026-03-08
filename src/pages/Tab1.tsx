@@ -1,7 +1,35 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButtons, IonMenuButton, IonModal, IonButton, IonIcon, IonCard, IonCardSubtitle, IonCardContent, IonCardHeader, IonCardTitle, IonChip, IonLabel, useIonViewWillEnter, IonSearchbar, } from "@ionic/react";
-import { close, informationCircle, create, sync, map, searchSharp, ellipsisVerticalOutline, } from "ionicons/icons";
+import {
+  IonContent,
+  IonHeader,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  IonButtons,
+  IonMenuButton,
+  IonModal,
+  IonButton,
+  IonIcon,
+  IonCard,
+  IonCardSubtitle,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonChip,
+  IonLabel,
+  useIonViewWillEnter,
+  IonSearchbar,
+} from "@ionic/react";
+import {
+  close,
+  informationCircle,
+  create,
+  sync,
+  map,
+  searchSharp,
+  ellipsisVerticalOutline,
+} from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
@@ -18,9 +46,10 @@ import ModalRiverin from "../components/riverin/ModalRiverin";
 import SeacrhModal from "../components/demandeur/SearchModal";
 import DemandeurView from "../components/demandeur/DemandeurView";
 import ParcelleForm from "../components/parcelle/ParcelleForm";
-import { deleteParcelle, getAllDemandeurs, getAllParcelles, insertParcelle, verifyDatabase, } from "../model/base/DbSchema";
+import {deleteParcelle,getAllDemandeurs,getAllParcelles,insertParcelle,verifyDatabase,} from "../model/base/DbSchema";
 import Alert from "../components/alert/Alert";
 import DropDown from "../components/dropdown/DropDown";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 
 // Hook personnalisé pour la gestion des données de référence
 const useReferenceData = () => {
@@ -40,13 +69,14 @@ const useReferenceData = () => {
     if (repereData.value) setRepere(JSON.parse(repereData.value));
   }, []);
 
-  return { categorie, setCategorie, status, repereL, loadReferenceData }
+  return { categorie, setCategorie, status, repereL, loadReferenceData };
 };
 
 // Hook personnalisé pour la génération du code parcelle
 const useParcelleCode = () => {
   const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] = useState<ParametreTerritoire | null>(null);
+  const [parametreTerritoire, setParametreTerritoire] =
+    useState<ParametreTerritoire | null>(null);
 
   const generateNextCode = useCallback(async () => {
     try {
@@ -89,7 +119,10 @@ const useParcelleCode = () => {
       const parametreActuel = JSON.parse(parametrePref.value);
       await Preferences.set({
         key: "parametreActuel",
-        value: JSON.stringify({ ...parametreActuel, increment: currentIncrement }),
+        value: JSON.stringify({
+          ...parametreActuel,
+          increment: currentIncrement,
+        }),
       });
     } catch (error) {
       console.error("Erreur sauvegarde incrément:", error);
@@ -106,12 +139,15 @@ const Tab1: React.FC = () => {
   // États UI
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
+    useState(false);
   const [showRiverin, setShowRiverin] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
   const [showAlertRemove, setShowAlertRemove] = useState(false);
   const [showAlertVerif, setShowAlertVerif] = useState(false);
-  const [verifMessageError, setVerifMessageError] = useState<string | null>(null);
+  const [verifMessageError, setVerifMessageError] = useState<string | null>(
+    null,
+  );
   const [codeToRemove, setCodeToRemove] = useState<string | null>(null);
   const [showTempAlert, setShowTempAlert] = useState(false);
   const [tempAlertMessage, setTempAlertMessage] = useState("");
@@ -119,7 +155,9 @@ const Tab1: React.FC = () => {
   const [mode, setMode] = useState<"view" | "edit" | "create">("create");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur");
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
+    "demandeur",
+  );
   const [decomposed, setDecomposed] = useState(false);
   const [isPhysique, setIsPhysique] = useState(0);
 
@@ -132,26 +170,30 @@ const Tab1: React.FC = () => {
   const [riverinMess, setRiverinMess] = useState("Ajouter");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, setSelectedParcelle] = useState<Parcelle | null>(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalParcelles, setTotalParcelles] = useState(0);
+  const ITEMS_PER_PAGE = 13;
 
   // Hooks personnalisés
-  const { categorie, setCategorie, status, repereL, loadReferenceData } = useReferenceData(); const { parametreTerritoire, generateNextCode, saveIncrement } = useParcelleCode();
+  const { categorie, setCategorie, status, repereL, loadReferenceData } =
+    useReferenceData();
+  const { parametreTerritoire, generateNextCode, saveIncrement } =
+    useParcelleCode();
 
   // Chargement initial
-  const loadData = useCallback(async () => {
-    const [parcellesData, demandeursData] = await Promise.all([
-      getAllParcelles(),
-      getAllDemandeurs(),
-    ]);
-
-    setParcelles(parcellesData);
-
-    console.log(parcellesData);
+  const loadData = useCallback(async (page: number = 1) => {
+    const [{ data, total }, demandeursData] = await Promise.all([getAllParcelles(page, ITEMS_PER_PAGE),getAllDemandeurs(),]);
+    setParcelles(data);
+    setTotalParcelles(total);
     setDemandeurList(demandeursData);
   }, []);
 
+  useEffect(() => {
+    loadData(currentPage);
+  }, [currentPage]);
+
   useIonViewWillEnter(() => {
-    loadData();
+    loadData(currentPage);
   });
 
   //Avant de cree une parcelle une verification de data s'impose
@@ -159,12 +201,16 @@ const Tab1: React.FC = () => {
     try {
       await verifyDatabase();
       setShowCreateModal(true);
-      setMode('create');
+      setMode("create");
       setShowAlertVerif(false);
       setVerifMessageError(null);
     } catch (error) {
       setShowAlertVerif(true);
-      setVerifMessageError(error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur");
+      setVerifMessageError(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue veuillez vous adresse au administrateur",
+      );
     }
   }, []);
 
@@ -185,23 +231,31 @@ const Tab1: React.FC = () => {
     }
   }, [showCreateModal, mode, generateNextCode, loadReferenceData]);
 
+  // totalPages calculé depuis le serveur
+  const totalPages = Math.ceil(totalParcelles / ITEMS_PER_PAGE);
 
-  // Filtrage parcelles
+  // filteredParcelles reste local (sur la page courante seulement)
   const filteredParcelles = useMemo(() => {
     if (!searchQuery) return parcelles;
     const q = searchQuery.toLowerCase();
-    return parcelles.filter((p) =>
-      p.code?.toLowerCase().includes(q) ||
-      p.demandeurs.some((d) =>
-        d.nom?.toLowerCase().includes(q) || d.prenom?.toLowerCase().includes(q)
-      )
+    return parcelles.filter(
+      (p) =>
+        p.code?.toLowerCase().includes(q) ||
+        p.demandeurs.some(
+          (d) =>
+            d.nom?.toLowerCase().includes(q) ||
+            d.prenom?.toLowerCase().includes(q),
+        ),
     );
   }, [searchQuery, parcelles]);
 
   // Handlers
-  const handleCardClick = useCallback((codeParcelle: string) => {
-    history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
-  }, [history]);
+  const handleCardClick = useCallback(
+    (codeParcelle: string) => {
+      history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
+    },
+    [history],
+  );
 
   const addDemandeur = useCallback(async () => {
     try {
@@ -213,10 +267,19 @@ const Tab1: React.FC = () => {
       setDemandeur(Demandeur.init());
       setShowDemandeurModal(false);
     } catch (error) {
-      setTempAlertMessage(error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur");
+      setTempAlertMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue veuillez vous adresse au administrateur",
+      );
       setShowTempAlert(true);
     }
   }, [demandeur]);
+
+  // Reset page quand la recherche change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const addRiverin = useCallback(() => {
     if (!newRiverin.repere || !newRiverin.observation.trim()) {
@@ -233,7 +296,9 @@ const Tab1: React.FC = () => {
 
   const removeParcelle = useCallback((code: string, synchronise?: number) => {
     if (synchronise === 1) {
-      setTempAlertMessage("Cette parcelle est déjà synchronisée et ne peut pas être supprimée.");
+      setTempAlertMessage(
+        "Cette parcelle est déjà synchronisée et ne peut pas être supprimée.",
+      );
       setShowTempAlert(true);
       return;
     }
@@ -252,23 +317,59 @@ const Tab1: React.FC = () => {
       // Mise à jour de la liste selon le mode
       if (mode === "edit") {
         // Mode édition : remplacer la parcelle existante
-        setParcelles(prev =>
-          prev.map(p => p.code === parcelle.code ? parcelle : p)
+        setParcelles((prev) =>
+          prev.map((p) => (p.code === parcelle.code ? parcelle : p)),
         );
       } else {
         // Mode création : ajouter la nouvelle parcelle
-        setParcelles(prev => [...prev, parcelle]);
+        setParcelles((prev) => [...prev, parcelle]);
       }
 
       setParcelle(Parcelle.init());
       setShowCreateModal(false);
-
     } catch (error) {
-      setTempAlertMessage(error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur");
+      setTempAlertMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue veuillez vous adresse au administrateur",
+      );
       setShowTempAlert(true);
     }
   }, [parcelle, saveIncrement, mode]);
 
+  async function compressImage(
+    base64: string,
+    maxSize: number = 1024,
+    quality: number = 0.6,
+  ): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = `data:image/jpeg;base64,${base64}`;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        } else if (height > width && height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Retourne le base64 compressé sans le préfixe
+        const compressed = canvas.toDataURL("image/jpeg", quality);
+        resolve(compressed.split(",")[1]); // ← base64 pur
+      };
+    });
+  }
   const takePhotoParcelle = useCallback(async () => {
     try {
       if (parcelle.photos?.length >= 5) {
@@ -277,22 +378,38 @@ const Tab1: React.FC = () => {
       }
 
       const photo = await Camera.getPhoto({
-        quality: 90,
-        resultType: CameraResultType.DataUrl,
+        quality: 60,
+        resultType: CameraResultType.Base64,
         source: CameraSource.Camera,
+        width: 1024,
+        height: 1024,
+        correctOrientation: true,
       });
 
-      if (!photo.dataUrl) throw new Error("Pas de photo");
+      if (!photo.base64String) throw new Error("Pas de photo");
 
-      setParcelle((prev) => ({
-        ...prev,
-        photos: [...prev.photos, photo.dataUrl as string]
-      }));
+      // ← compression réelle avant stockage
+      const compressed = await compressImage(photo.base64String, 1024, 0.6);
+
+      const fileName = `photo_${Date.now()}.jpeg`;
+      await Filesystem.writeFile({
+        path: fileName,
+        data: compressed,
+        directory: Directory.Data,
+      });
+
+      setParcelle((prev) => {
+        if (prev.photos?.length >= 5) return prev;
+        return {
+          ...prev,
+          photos: [...prev.photos, fileName],
+        };
+      });
     } catch (err) {
       console.error(err);
       setToastMessage("Erreur lors de la capture");
     }
-  }, [parcelle.photos]);
+  }, [parcelle.photos?.length]);
 
   const closeSearch = useCallback(() => {
     setSearchMode(false);
@@ -354,7 +471,7 @@ const Tab1: React.FC = () => {
         onConfirm={() => {
           if (codeToRemove) {
             deleteParcelle(codeToRemove);
-            setParcelles(prev => prev.filter(p => p.code !== codeToRemove));
+            setParcelles((prev) => prev.filter((p) => p.code !== codeToRemove));
           }
           setShowAlertRemove(false);
           setCodeToRemove(null);
@@ -366,95 +483,166 @@ const Tab1: React.FC = () => {
       />
 
       <Alert
-        show={showAlertVerif} type={0} title="Information" duration={5000}
-        message={verifMessageError || "Une erreur est survenue lors de la vérification des données. Veuillez vous adresser à l'administrateur."}
+        show={showAlertVerif}
+        type={0}
+        title="Information"
+        duration={5000}
+        message={
+          verifMessageError ||
+          "Une erreur est survenue lors de la vérification des données. Veuillez vous adresser à l'administrateur."
+        }
         onClose={() => setShowAlertVerif(false)}
       />
 
       <IonContent className="ion-padding">
         {parcelles.length === 0 ? (
           <div className="text-center py-5">
-            <IonIcon icon={informationCircle} size="large" className="text-muted mb-3" />
+            <IonIcon
+              icon={informationCircle}
+              size="large"
+              className="text-muted mb-3"
+            />
             <h4 className="text-muted">Aucune parcelle enregistrée</h4>
             <IonButton onClick={() => verifyDataBeforeCreate()}>
               Créer une première parcelle
             </IonButton>
           </div>
         ) : (
-          <div className="cardContent">
-            {filteredParcelles.map((p) => (
-              <IonCard key={p.code} className="custom-card">
-                <IonCardHeader className="custom-header-card">
-                  <IonCardTitle className="row g-0 d-flex align-items-center">
-                    <div className="col">
-                      <strong>{p.code}</strong>
-                    </div>
-                    <div
-                      id={`trigger-${p.code}`}
-                      className="col-auto three-point"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenDropdown(p.code!);
-                      }}
-                    >
-                      <IonIcon icon={ellipsisVerticalOutline} className="fs-4" />
-                    </div>
-                  </IonCardTitle>
+          <div className="parcelle-layout">
+            {/* Zone scrollable */}
+            <div className="parcelle-scroll">
+              <div className="cardContent">
+                {filteredParcelles.map((p) => (
+                  <IonCard key={p.code} className="custom-card">
+                    <IonCardHeader className="custom-header-card">
+                      <IonCardTitle className="row g-0 d-flex align-items-center">
+                        <div className="col">
+                          <strong>{p.code}</strong>
+                        </div>
+                        <div
+                          id={`trigger-${p.code}`}
+                          className="col-auto three-point"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdown(p.code!);
+                          }}
+                        >
+                          <IonIcon
+                            icon={ellipsisVerticalOutline}
+                            className="fs-4"
+                          />
+                        </div>
+                      </IonCardTitle>
 
-                  <DropDown
-                    show={openDropdown === p.code}
-                    onClose={() => setOpenDropdown(null)}
+                      <DropDown
+                        show={openDropdown === p.code}
+                        onClose={() => setOpenDropdown(null)}
+                        onView={() => {
+                          setOpenDropdown(null);
+                          setMode("view");
+                          setParcelle(p);
 
-                    onView={() => {
-                      setOpenDropdown(null);
-                      setMode("view");
-                      setParcelle(p);
+                          setSelectedParcelle(p);
+                          setShowCreateModal(true);
+                        }}
+                        onEdit={() => {
+                          setOpenDropdown(null);
+                          setMode("edit");
+                          setParcelle(p);
+                          setSelectedParcelle(p);
+                          setShowCreateModal(true);
+                        }}
+                        onDelete={() => {
+                          setOpenDropdown(null);
+                          removeParcelle(p.code!, p.synchronise);
+                        }}
+                        onCroquis={() => {
+                          setOpenDropdown(null);
+                          handleCardClick(p.code!);
+                        }}
+                        triggerId={`trigger-${p.code}`}
+                      />
 
-                      setSelectedParcelle(p);
-                      setShowCreateModal(true);
-                    }}
+                      <IonCardSubtitle className="parcelle-chips">
+                        <IonChip
+                          color={p.synchronise === 1 ? "success" : "danger"}
+                        >
+                          <IonIcon icon={sync} />
+                          <IonLabel>
+                            {p.synchronise === 1 ? "Sync" : "Non sync."}
+                          </IonLabel>
+                        </IonChip>
+                        <IonChip
+                          color={p.polygone?.length ? "success" : "danger"}
+                        >
+                          <IonIcon icon={map} />
+                          <IonLabel>
+                            {p.polygone?.length
+                              ? "Avec croquis"
+                              : "Pas de croquis"}
+                          </IonLabel>
+                        </IonChip>
+                      </IonCardSubtitle>
+                    </IonCardHeader>
 
-                    onEdit={() => {
-                      setOpenDropdown(null);
-                      setMode("edit");
-                      setParcelle(p);
-                      setSelectedParcelle(p);
-                      setShowCreateModal(true);
-                    }}
+                    <IonCardContent className="p-0">
+                      <div className="scrollable-list">
+                        {p.demandeurs.map((d) => (
+                          <DemandeurView key={`dem${d.id}`} demandeur={d} />
+                        ))}
+                      </div>
+                    </IonCardContent>
+                  </IonCard>
+                ))}
+              </div>
+            </div>
 
-                    onDelete={() => {
-                      setOpenDropdown(null);
-                      removeParcelle(p.code!, p.synchronise);
-                    }}
+            {/* Pagination fixe en bas */}
+            {totalPages > 1 && (
+              <div className="pagination-footer">
+                <div className="pagination-bar">
+                  <IonButton
+                    fill="clear"
+                    size="small"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
+                    ‹ Préc
+                  </IonButton>
 
-                    onCroquis={() => {
-                      setOpenDropdown(null);
-                      handleCardClick(p.code!);
-                    }}
-                    triggerId={`trigger-${p.code}`}
-                  />
-
-                  <IonCardSubtitle className="parcelle-chips">
-                    <IonChip color={p.synchronise === 1 ? "success" : "danger"}>
-                      <IonIcon icon={sync} />
-                      <IonLabel>{p.synchronise === 1 ? "Sync" : "Non sync."}</IonLabel>
-                    </IonChip>
-                    <IonChip color={p.polygone?.length ? "success" : "danger"}>
-                      <IonIcon icon={map} />
-                      <IonLabel>{p.polygone?.length ? "Avec croquis" : "Pas de croquis"}</IonLabel>
-                    </IonChip>
-                  </IonCardSubtitle>
-                </IonCardHeader>
-
-                <IonCardContent className="p-0">
-                  <div className="scrollable-list">
-                    {p.demandeurs.map((d) => (
-                      <DemandeurView key={`dem${d.id}`} demandeur={d} />
-                    ))}
+                  <div className="pagination-pages">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => Math.abs(page - currentPage) <= 2)
+                      .map((page) => (
+                        <IonButton
+                          key={page}
+                          size="small"
+                          fill={page === currentPage ? "solid" : "clear"}
+                          color={page === currentPage ? "primary" : "medium"}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </IonButton>
+                      ))}
                   </div>
-                </IonCardContent>
-              </IonCard>
-            ))}
+
+                  <IonButton
+                    fill="clear"
+                    size="small"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                  >
+                    Suiv ›
+                  </IonButton>
+                </div>
+
+                <p className="pagination-info">
+                  {totalParcelles} parcelle{totalParcelles > 1 ? "s" : ""}
+                  {searchQuery && ` — filtre actif`}
+                  {` — page ${currentPage}/${totalPages}`}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </IonContent>
@@ -469,19 +657,31 @@ const Tab1: React.FC = () => {
               </IonButton>
             </IonButtons>
             <IonTitle>
-              {mode === "view" ? "Détail de la parcelle" : mode === "edit" ? "Modification de la parcelle" : "Nouvelle parcelle"}
+              {mode === "view"
+                ? "Détail de la parcelle"
+                : mode === "edit"
+                ? "Modification de la parcelle"
+                : "Nouvelle parcelle"}
             </IonTitle>
           </IonToolbar>
         </IonHeader>
 
         <IonContent className="ion-padding">
           <ParcelleForm
-            mode={mode} parcelle={parcelle}
+            mode={mode}
+            parcelle={parcelle}
             setParcelle={setParcelle}
-            categorie={categorie} status={status}
-            parametreTerritoire={mode !== "create" ? parcelle.parametreTerritoire : parametreTerritoire}
-            activeTab={activeTab} setActiveTab={setActiveTab}
-            decomposed={decomposed} setDecomposed={setDecomposed}
+            categorie={categorie}
+            status={status}
+            parametreTerritoire={
+              mode !== "create"
+                ? parcelle.parametreTerritoire
+                : parametreTerritoire
+            }
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            decomposed={decomposed}
+            setDecomposed={setDecomposed}
             takePhotoParcelle={takePhotoParcelle}
             onCreateParcelle={createParcelle}
             onShowDemandeurModal={() => setShowDemandeurModal(true)}
@@ -502,9 +702,12 @@ const Tab1: React.FC = () => {
 
       {/* Modals */}
       <ModalRiverin
-        showRiverin={showRiverin} setShowRiverin={setShowRiverin}
-        addRiverin={addRiverin} riverinMess={riverinMess}
-        repereL={repereL} newRiverin={newRiverin}
+        showRiverin={showRiverin}
+        setShowRiverin={setShowRiverin}
+        addRiverin={addRiverin}
+        riverinMess={riverinMess}
+        repereL={repereL}
+        newRiverin={newRiverin}
         setNewRiverin={setNewRiverin}
         demandeurs={demandeurList}
       />
@@ -514,22 +717,27 @@ const Tab1: React.FC = () => {
         setShowSearchModal={setShowSearchDemandeurModal}
         onSelect={(d) => {
           setParcelle((prev) => {
-            const exists = prev.demandeurs.find(r => r.id === d.id);
+            const exists = prev.demandeurs.find((r) => r.id === d.id);
             if (exists) return prev;
             return { ...prev, demandeurs: [...prev.demandeurs, d] };
-          })
+          });
         }}
       />
 
       <ModalDemandeur
-        showCreateModal={showDemandeurModal} setShowCreateModal={setShowDemandeurModal}
-        demandeur={demandeur} setDemandeur={setDemandeur}
+        showCreateModal={showDemandeurModal}
+        setShowCreateModal={setShowDemandeurModal}
+        demandeur={demandeur}
+        setDemandeur={setDemandeur}
         addDemandeur={addDemandeur}
-        toastMessage={toastMessage} setToastMessage={setToastMessage}
-        isPhysique={isPhysique} setIsPhysique={setIsPhysique}
-        decomposed={decomposed} setDecomposed={setDecomposed}
+        toastMessage={toastMessage}
+        setToastMessage={setToastMessage}
+        isPhysique={isPhysique}
+        setIsPhysique={setIsPhysique}
+        decomposed={decomposed}
+        setDecomposed={setDecomposed}
       />
-    </IonPage >
+    </IonPage>
   );
 };
 export default Tab1;
