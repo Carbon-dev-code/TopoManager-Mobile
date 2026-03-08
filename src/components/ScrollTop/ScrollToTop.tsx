@@ -5,30 +5,33 @@ import "./ScrollToTop.css";
 
 interface ScrollToTopProps {
   contentRef: React.RefObject<HTMLIonContentElement | null>;
-  scrollContainerClass?: string;
 }
 
-const ScrollToTop: React.FC<ScrollToTopProps> = ({
-  scrollContainerClass = "parcelle-scroll",
-}) => {
+const ScrollToTop: React.FC<ScrollToTopProps> = ({ contentRef }) => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const scrollEl = document.querySelector(
-      `.${scrollContainerClass}`,
-    ) as HTMLElement;
-    if (!scrollEl) return;
+    const el = contentRef.current;
+    if (!el) return;
 
-    const handleScroll = () => setVisible(scrollEl.scrollTop > 200);
-    scrollEl.addEventListener("scroll", handleScroll);
-    return () => scrollEl.removeEventListener("scroll", handleScroll);
-  }, [scrollContainerClass]);
+    let scrollEl: HTMLElement | null = null;
+
+    el.getScrollElement().then((se) => {
+      scrollEl = se;
+      const handleScroll = () => {
+        setVisible(se.scrollTop > 180);
+        console.log(se.scrollTop);
+      };
+      se.addEventListener("scroll", handleScroll);
+    });
+
+    return () => {
+      scrollEl?.removeEventListener("scroll", () => {});
+    };
+  }, [contentRef]);
 
   const scrollToTop = () => {
-    const scrollEl = document.querySelector(
-      `.${scrollContainerClass}`,
-    ) as HTMLElement;
-    scrollEl?.scrollTo({ top: 0, behavior: "smooth" });
+    contentRef.current?.scrollToTop(400);
   };
 
   if (!visible) return null;
