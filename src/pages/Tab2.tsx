@@ -757,7 +757,7 @@ const Tab2: React.FC = () => {
             handleError,
             {
               enableHighAccuracy: true,
-              timeout: 10000,
+              timeout: 10000, //10s
               maximumAge: 0,
             },
           );
