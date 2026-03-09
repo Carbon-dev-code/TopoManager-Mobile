@@ -33,6 +33,7 @@ export async function initDatabase(): Promise<RxDatabase> {
             code: { type: "string", maxLength: 50 }, // ✅ obligatoire et string
             id_personne: { type: ["string", "null"] },
             dateCreation: { type: ["string", "null"] },
+            origine: { type: ["string", "null"] },
             status: { type: ["number", "null"] },
             anneeOccup: { type: ["number", "null"] },
             categorie: { type: ["string", "null"] },

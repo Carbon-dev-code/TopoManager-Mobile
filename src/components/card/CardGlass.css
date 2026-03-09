@@ -67,16 +67,8 @@
   gap: 8px;
 }
 
-.header-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
 .header-code {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: #1a1a2e;
   letter-spacing: 0.02em;

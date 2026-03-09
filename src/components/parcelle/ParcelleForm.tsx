@@ -146,9 +146,11 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                   label="Origine :"
                   type="text"
                   className="input-end"
-                  onIonChange={(e) =>
-                    updateField("origine", String(e.detail.value))
-                  }
+                  onIonInput={(e) => {
+                    const val = e.detail.value?.toUpperCase() ?? "";
+                    updateField("origine", val);
+                    if (e.target) (e.target as HTMLIonInputElement).value = val;
+                  }}
                   placeholder="T000AV"
                   readonly={isDisabled}
                   value={parcelle.origine}

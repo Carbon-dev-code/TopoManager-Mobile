@@ -17,7 +17,6 @@ const CardGlass: React.FC<CardGlass> = ({ currentParcelle, setShowCard }) => {
             <div className="glass-card-header">
                 <div className="header-content">
                     <div className="header-title">
-                        <span className="header-label">Parcelle</span>
                         <span className="header-code">{currentParcelle.code}</span>
                     </div>
                     <IonButton fill="clear" size="small" className="close-btn" onClick={() => setShowCard(false)}>

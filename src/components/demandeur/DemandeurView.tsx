@@ -1,9 +1,26 @@
-import { IonAvatar, IonIcon, IonItemSliding, IonItem, IonItemOptions, IonItemOption, IonChip } from "@ionic/react";
-import { person, business, male, female, calendar, trash } from "ionicons/icons";
+import {
+  IonAvatar,
+  IonIcon,
+  IonItemSliding,
+  IonItem,
+  IonItemOptions,
+  IonItemOption,
+  IonChip,
+} from "@ionic/react";
+import {
+  person,
+  business,
+  male,
+  female,
+  calendar,
+  trash,
+} from "ionicons/icons";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 import "./DemandeurView.css";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import DropDownDemandeur from "../../components/dropdown/DropDownDemandeur";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Capacitor } from "@capacitor/core";
 
 interface DemandeurViewProps {
   demandeur: Demandeur;
@@ -11,10 +28,46 @@ interface DemandeurViewProps {
   onView?: () => void;
   onEdit?: () => void;
   swipeEnabled?: boolean;
-  longPressEnabled?: boolean; // Désactivé par défaut
+  longPressEnabled?: boolean;
 }
 
-const LONG_PRESS_DELAY = 1000; // ms
+const LONG_PRESS_DELAY = 1000;
+
+// ─── Hook photo de profil ────────────────────────────────────────────
+const useProfilePhoto = (fileName: string | null | undefined) => {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!fileName) {
+      setSrc(null);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const uri = await Filesystem.getUri({
+            path: fileName,
+            directory: Directory.Data,
+          });
+          setSrc(Capacitor.convertFileSrc(uri.uri));
+        } else {
+          const file = await Filesystem.readFile({
+            path: fileName,
+            directory: Directory.Data,
+          });
+          setSrc(`data:image/jpeg;base64,${file.data}`);
+        }
+      } catch {
+        setSrc(null);
+      }
+    };
+
+    load();
+  }, [fileName]);
+
+  return src;
+};
 
 const DemandeurView: React.FC<DemandeurViewProps> = ({
   demandeur,
@@ -28,21 +81,27 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
-  const triggerId = `demandeur-trigger-${demandeur.id ?? Math.random().toString(36).slice(2)}`;
+  const triggerId = `demandeur-trigger-${
+    demandeur.id ?? Math.random().toString(36).slice(2)
+  }`;
+
+  // ─── Photo de profil ─────────────────────────────────────────────
+  const profileFileName =
+    demandeur.indexPhoto !== null && demandeur.photos?.length
+      ? demandeur.photos[demandeur.indexPhoto!]
+      : null;
+  const profileSrc = useProfilePhoto(profileFileName);
 
   const formatDate = (d: Date | string | null) => {
     if (!d) return "-";
     const dateObj = d instanceof Date ? d : new Date(d);
     if (isNaN(dateObj.getTime())) return "-";
-
     const year = dateObj.getFullYear();
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-    const day = dateObj.getDate().toString().padStart(2, '0');
-
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
+    const day = dateObj.getDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
-  // Long press handlers
   const handlePressStart = () => {
     if (!longPressEnabled) return;
     didLongPress.current = false;
@@ -52,26 +111,24 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
     }, LONG_PRESS_DELAY);
   };
 
-  const handlePressEnd = (e?: React.TouchEvent | React.MouseEvent) => {
+  const handlePressEnd = () => {
     if (!longPressEnabled) return;
     if (timerRef.current) clearTimeout(timerRef.current);
   };
 
-  const handleClick = (e: React.MouseEvent) => {
-    // Ne rien faire — le dropdown s'ouvre via long press uniquement
-    if (didLongPress.current) {
-      didLongPress.current = false;
-    }
+  const handleClick = () => {
+    if (didLongPress.current) didLongPress.current = false;
   };
 
-  // ⚡ Déterminer le contenu de l'avatar
-  const avatarContent =
-    demandeur.indexPhoto !== null &&
-      demandeur.photos && demandeur.photos[demandeur.indexPhoto]
-      ? <img src={demandeur.photos[demandeur.indexPhoto]} alt="Profil" className="person-avatar-img" />
-      : isPhysique ? demandeur.nom?.[0].toUpperCase() ?? "?" : demandeur.denomination?.[0].toUpperCase() ?? "?";
+  // ─── Avatar ──────────────────────────────────────────────────────
+  const avatarContent = profileSrc ? (
+    <img src={profileSrc} alt="Profil" className="person-avatar-img" />
+  ) : isPhysique ? (
+    demandeur.nom?.[0]?.toUpperCase() ?? "?"
+  ) : (
+    demandeur.denomination?.[0]?.toUpperCase() ?? "?"
+  );
 
-  // ⚡ Déterminer l'icône de fond
   const typeIcon = isPhysique ? person : business;
 
   const cardContent = (
@@ -82,7 +139,7 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
       onMouseUp={handlePressEnd}
       onMouseLeave={handlePressEnd}
       onTouchStart={handlePressStart}
-      onTouchEnd={handlePressEnd} 
+      onTouchEnd={handlePressEnd}
       onTouchCancel={handlePressEnd}
       onClick={handleClick}
     >
@@ -106,9 +163,11 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
                   <span>{formatDate(demandeur.dateNaissance)}</span>
                 </div>
               </IonChip>
-              <IonChip className="chip row g-0" color="tertiary" >
+              <IonChip className="chip row g-0" color="tertiary">
                 <div className="col-auto d-flex me-1">
-                  <IonIcon icon={Number(demandeur.sexe) === 1 ? male : female} />
+                  <IonIcon
+                    icon={Number(demandeur.sexe) === 1 ? male : female}
+                  />
                 </div>
                 <div className="col">
                   {Number(demandeur.sexe) === 1 ? "M" : "F"}
@@ -131,7 +190,6 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
     </div>
   );
 
-  // Si swipe est désactivé
   if (!swipeEnabled) {
     return (
       <>
@@ -150,14 +208,12 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
     );
   }
 
-  // Si swipe est activé
   return (
     <>
       <IonItemSliding className="demandeur-sliding">
         <IonItem lines="none" className="ion-no-padding">
           {cardContent}
         </IonItem>
-
         <IonItemOptions side="end" onIonSwipe={onDelete}>
           <IonItemOption color="danger" expandable onClick={onDelete}>
             <IonIcon icon={trash} slot="icon-only" />

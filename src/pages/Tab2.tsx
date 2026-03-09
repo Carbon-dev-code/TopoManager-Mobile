@@ -193,7 +193,9 @@ const Tab2: React.FC = () => {
   const codeParcelle = query.get("code");
 
   // ==================== DATA LOADING ====================
-  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<
+    Parcelle[]
+  > => {
     const { data } = await getAllParcelles();
     return data;
   }, []);
@@ -1024,6 +1026,15 @@ const Tab2: React.FC = () => {
     };
   }, []);
 
+  function formatSurface(m2: number): string {
+    const ha = Math.floor(m2 / 10000);
+    const reste = m2 % 10000;
+    const a = Math.floor(reste / 100);
+    const ca = Math.floor(reste % 100);
+
+    return `${ha} ha ${a} a ${ca.toString().padStart(2, "0")} ca`;
+  }
+
   // ==================== RENDER ====================
   return (
     <IonPage>
@@ -1305,7 +1316,7 @@ const Tab2: React.FC = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             {fabOpen && drawPoints.length >= 3 && (
               <div className="surface-parcelle">
-                Surface {surface.toFixed(0)} m²
+                Surface {formatSurface(surface)}
               </div>
             )}
             <IonButton
