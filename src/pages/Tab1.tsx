@@ -63,6 +63,7 @@ import Alert from "../components/alert/Alert";
 import DropDown from "../components/dropdown/DropDown";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import ScrollToTop from "../components/ScrollTop/ScrollToTop";
+import { ToastType } from "../components/toast/Toast";
 
 // Hook personnalisé pour la gestion des données de référence
 const useReferenceData = () => {
@@ -181,7 +182,7 @@ const Tab1: React.FC = () => {
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
-  const [riverinMess, setRiverinMess] = useState("Ajouter");
+  const [riverinMess, setRiverinMess] = useState<ToastType | null>(null);  
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, setSelectedParcelle] = useState<Parcelle | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -300,7 +301,7 @@ const Tab1: React.FC = () => {
 
   const addRiverin = useCallback(() => {
     if (!newRiverin.repere || !newRiverin.observation.trim()) {
-      setRiverinMess("‼️Vérifiez votre insertion");
+      setRiverinMess("error");
       return;
     }
     setParcelle((prev) => ({
@@ -308,7 +309,7 @@ const Tab1: React.FC = () => {
       riverin: [...prev.riverin, newRiverin],
     }));
     setNewRiverin(Riverin.init());
-    setRiverinMess("✅ Riverin ajouté");
+    setRiverinMess("success");
   }, [newRiverin]);
 
   const removeParcelle = useCallback((code: string, synchronise?: number) => {

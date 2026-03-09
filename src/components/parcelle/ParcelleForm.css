@@ -1,0 +1,7 @@
+ion-input.input-end input {
+  text-align: end !important;
+}
+
+ion-input.input-end::part(placeholder) {
+  text-align: end !important;
+}

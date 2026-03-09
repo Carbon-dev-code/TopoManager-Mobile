@@ -25,6 +25,8 @@ import RiverinView from "../riverin/RiverinView";
 import CategorySelect from "../categorie/CategorySelect";
 import { deletePhotos } from "../../model/base/DbSchema";
 
+import "./ParcelleForm.css";
+
 interface ParcelleFormProps {
   mode: "view" | "edit" | "create";
   parcelle: Parcelle;
@@ -141,12 +143,28 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
               </IonCol>
               <IonCol size="12">
                 <IonInput
+                  label="Origine :"
+                  type="text"
+                  className="input-end"
+                  onIonChange={(e) =>
+                    updateField("origine", String(e.detail.value))
+                  }
+                  placeholder="T000AV"
+                  readonly={isDisabled}
+                  value={parcelle.origine}
+                />
+              </IonCol>
+              <IonCol size="12">
+                <IonInput
                   label="Durée d'occupation :"
                   type="number"
+                  min={0}
+                  max={200}
                   onIonChange={(e) =>
                     updateField("anneeOccup", Number(e.detail.value))
                   }
                   placeholder="Nombre d'année"
+                  className="input-end"
                   readonly={isDisabled}
                   value={parcelle.anneeOccup}
                 />
@@ -172,6 +190,7 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                 <IonInput
                   label="Consistance :"
                   type="text"
+                  className="input-end"
                   onIonChange={(e) =>
                     updateField("consistance", String(e.detail.value))
                   }

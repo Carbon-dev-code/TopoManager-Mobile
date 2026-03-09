@@ -35,7 +35,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                 label="Nom"
                 placeholder="Enter le nom du demandeur"
                 value={demandeur.nom}
-                onIonChange={(e) =>
+                onIonInput={(e) =>
                   setDemandeur({ ...demandeur, nom: String(e.detail.value) })
                 }
               />
@@ -46,7 +46,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                 label="Prenom"
                 placeholder="Enter le prenom du demandeur"
                 value={demandeur.prenom}
-                onIonChange={(e) =>
+                onIonInput={(e) =>
                   setDemandeur({ ...demandeur, prenom: String(e.detail.value) })
                 }
               />
@@ -81,7 +81,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                   max={new Date().getFullYear()}
                   readonly={readonly}
                   value={demandeur.dateNaissance ? demandeur.dateNaissance : ""}
-                  onIonChange={(e) => {
+                  onIonInput={(e) => {
                     const year = e.detail.value;
                     setDemandeur({ ...demandeur, dateNaissance: year ?? null });
                   }}
@@ -99,7 +99,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                         : new Date(demandeur.dateNaissance).toISOString().substring(0,10)
                       : ""
                   }
-                  onIonChange={(e) =>
+                  onIonInput={(e) =>
                     setDemandeur({
                       ...demandeur,
                       dateNaissance: e.detail.value ? e.detail.value : null, // On garde la string du format date HTML
@@ -116,7 +116,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                 placeholder="Entrer le lieu de naissance du demandeur"
                 readonly={readonly}
                 value={demandeur.lieuNaissance}
-                onIonChange={(e) =>
+                onIonInput={(e) =>
                   setDemandeur({
                     ...demandeur,
                     lieuNaissance: String(e.detail.value),
@@ -131,7 +131,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                 placeholder="Enter l'adresse du demandeur"
                 readonly={readonly}
                 value={demandeur.adresse}
-                onIonChange={(e) =>
+                onIonInput={(e) =>
                   setDemandeur({
                     ...demandeur,
                     adresse: String(e.detail.value),
@@ -204,7 +204,7 @@ const Physique: React.FC<PhysiqueProps> = ({
             placeholder="Enter le nom du conjoint du demandeur"
             readonly={readonly}
             value={demandeur.nomConjoint}
-            onIonChange={(e) =>
+            onIonInput={(e) =>
               setDemandeur({
                 ...demandeur,
                 nomConjoint: String(e.detail.value),
@@ -223,7 +223,7 @@ const Physique: React.FC<PhysiqueProps> = ({
               placeholder="Enter le nom du père demandeur"
               readonly={readonly}
               value={demandeur.nomPere}
-              onIonChange={(e) =>
+              onIonInput={(e) =>
                 setDemandeur({ ...demandeur, nomPere: String(e.detail.value) })
               }
             />
@@ -236,7 +236,7 @@ const Physique: React.FC<PhysiqueProps> = ({
               placeholder="Enter le nom de la mère du demandeur"
               readonly={readonly}
               value={demandeur.nomMere}
-              onIonChange={(e) =>
+              onIonInput={(e) =>
                 setDemandeur({ ...demandeur, nomMere: String(e.detail.value) })
               }
             />
@@ -288,7 +288,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                   style={{ width: "25%" }}
                   readonly={readonly}
                   value={demandeur.cin?.numero?.[index] || ""}
-                  onIonChange={(e) => {
+                  onIonInput={(e) => {
                     const value = e.detail.value || "";
                     const existingNumero = demandeur.cin?.numero ?? [
                       "",
@@ -322,7 +322,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                         ? demandeur.cin.date.toISOString().substring(0, 10)
                         : ""
                     }
-                    onIonChange={(e) =>
+                    onIonInput={(e) =>
                       setDemandeur({
                         ...demandeur,
                         cin: {
@@ -342,7 +342,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                     placeholder="Lieu du délivrance du CIN"
                     readonly={readonly}
                     value={demandeur.cin?.lieu || ""}
-                    onIonChange={(e) =>
+                    onIonInput={(e) =>
                       setDemandeur({
                         ...demandeur,
                         cin: { ...demandeur.cin, lieu: e.detail.value! },
@@ -369,7 +369,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                     label="Numéro"
                     readonly={readonly}
                     value={demandeur.acte?.numero || ""}
-                    onIonChange={(e) =>
+                    onIonInput={(e) =>
                       setDemandeur({
                         ...demandeur,
                         acte: { ...demandeur.acte, numero: e.detail.value! },
@@ -389,7 +389,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                     placeholder="Lieu de l'acte de naissance"
                     readonly={readonly}
                     value={demandeur.acte?.lieu}
-                    onIonChange={(e) =>
+                    onIonInput={(e) =>
                       setDemandeur({
                         ...demandeur,
                         acte: { ...demandeur.acte, lieu: e.detail.value || "" },
@@ -407,7 +407,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                         ? demandeur.acte.date.toISOString().substring(0, 10)
                         : ""
                     }
-                    onIonChange={(e) =>
+                    onIonInput={(e) =>
                       setDemandeur({
                         ...demandeur,
                         acte: {

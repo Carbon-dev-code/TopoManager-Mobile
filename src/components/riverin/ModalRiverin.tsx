@@ -1,5 +1,24 @@
-import React, { useState } from "react";
-import { IonModal, IonHeader, IonToolbar, IonButtons, IonButton, IonTitle, IonContent, IonToast, IonIcon, IonList, IonItem, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonTextarea, IonLabel, useIonViewWillEnter, } from "@ionic/react";
+import React, { useEffect, useState } from "react";
+import {
+  IonModal,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonButton,
+  IonTitle,
+  IonContent,
+  IonIcon,
+  IonList,
+  IonItem,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonSelect,
+  IonSelectOption,
+  IonTextarea,
+  IonLabel,
+  useIonViewWillEnter,
+} from "@ionic/react";
 import { close } from "ionicons/icons";
 import { Riverin } from "../../model/parcelle/Riverin";
 import SeacrhModal from "../demandeur/SearchModal";
@@ -9,12 +28,13 @@ import "./ModalRiverin.css";
 import ModalDemandeur from "../demandeur/ModalDemandeur";
 import { Preferences } from "@capacitor/preferences";
 import { insertDemandeur } from "../../model/base/DbSchema";
+import Toast, { ToastType } from "../toast/Toast";
 
 interface ModalRiverinProps {
   showRiverin: boolean;
   setShowRiverin: (value: boolean) => void;
   addRiverin: () => void;
-  riverinMess: string;
+  riverinMess: string | null;
   repereL: { code_repere: number; repere: string }[];
   newRiverin: Riverin;
   setNewRiverin: (value: Riverin) => void;
@@ -29,15 +49,21 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
   repereL,
   newRiverin,
   setNewRiverin,
-  demandeurs,
 }) => {
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
+    useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [decomposed, setDecomposed] = useState(false);
   const [isPhysique, setIsPhysique] = useState(0);
-  const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
+  const [, setDemandeurList] = useState<Demandeur[]>([]);
+
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success" as ToastType,
+  });
 
   // Fonction pour supprimer un demandeur
   const removeDemandeur = () => {
@@ -74,6 +100,13 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
     setShowDemandeurModal(false);
   };
 
+  useEffect(() => {
+    if (!riverinMess) return;
+    const message =
+      riverinMess === "success" ? "Riverin ajouté avec succès" : "Vérifiez le repère et l'observation";
+    setToast({ visible: true, message, type: riverinMess as ToastType });
+  }, [riverinMess]);
+
   return (
     <IonModal
       isOpen={showRiverin}
@@ -101,7 +134,13 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <IonToast trigger="open-loading" message={riverinMess} duration={900} />
+        <Toast
+          visible={toast.visible}
+          message={toast.message} // ← était riverinMess
+          type={toast.type}
+          onClose={() => setToast((t) => ({ ...t, visible: false }))}
+        />
+
         <IonList>
           <IonItem>
             <IonGrid>
@@ -111,11 +150,11 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
                     label="Repère :"
                     onIonChange={(e) => {
                       console.log(e.detail.value);
-                      
+
                       setNewRiverin({
                         ...newRiverin,
                         repere: e.detail.value,
-                      })
+                      });
                     }}
                     placeholder="Riverain du parcelle"
                   >

@@ -22,16 +22,12 @@ setupIonicReact();
 
 const App: React.FC = () => {
   useEffect(() => {
-    const configureStatusBar = async () => {
-      try {
-        await StatusBar.setOverlaysWebView({ overlay: true });
-        await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: "#1B4F72" }); // ← hex
-      } catch {
-        //console.log("Status");
-      }
+    const init = async () => {
+      await StatusBar.setOverlaysWebView({ overlay: false });
+      await StatusBar.setBackgroundColor({ color: "#1B4F72" });
+      await StatusBar.setStyle({ style: Style.Dark });
     };
-    configureStatusBar();
+    init();
   }, []);
 
   return (

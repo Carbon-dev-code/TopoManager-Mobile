@@ -39,9 +39,9 @@ const Login: React.FC = () => {
         value: expirationTime.toString(),
       });
       window.location.href = "/tab1";
-    } else {
+    } else { // utilisateur normal agent
       setShowPasswordAlert(true);
-    }
+    } // sinon mots de passe completement erroner
   };
 
   return (

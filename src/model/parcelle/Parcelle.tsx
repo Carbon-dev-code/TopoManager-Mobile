@@ -15,6 +15,7 @@ export async function checkParcelle(parcelle: Parcelle): Promise<void> {
 
     if (!parcelle.code) throw new Error("Code parcelle requis");
     if (!parcelle.dateCreation) throw new Error("Date de création vide");
+    if (!parcelle.origine) throw new Error("Origine require !");
     if (!parcelle.anneeOccup) throw new Error("Veuillez insérer l'année d'occupation");
     if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 demandeur");
     if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");
@@ -37,6 +38,7 @@ export class Parcelle {
     id_personne: string | null;
     dateCreation: string | null;
     status: number | null;
+    origine: string | null;
     anneeOccup: number | null;
     categorie: string | null;
     consistance: string | null;
@@ -57,7 +59,7 @@ export class Parcelle {
     photos: string[];
 
 
-    constructor(code: string | null, dateCreation: string | null, status: number | null,
+    constructor(code: string | null, dateCreation: string | null, status: number | null, origine: string | null,
         anneeOccup: number | null, categorie: string | null, consistance: string | null, opposition: boolean, revandication: boolean,
         observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[],
         synchronise: number, syncError: string, lastSync: string, syncing: boolean,
@@ -66,6 +68,7 @@ export class Parcelle {
         this.code = code;
         this.dateCreation = dateCreation;
         this.status = status;
+        this.origine = origine;
         this.anneeOccup = anneeOccup
         this.demandeurs = demandeurs;
         this.parametreTerritoire = parametreterritoire;
@@ -85,6 +88,6 @@ export class Parcelle {
     }
 
     static init(): Parcelle {
-        return new Parcelle(null, null, null, null, null, null, false, false, '', [], null, [], 0, '', '', false, [], [], null);
+        return new Parcelle(null, null, null, null, null, null, null, false, false, '', [], null, [], 0, '', '', false, [], [], null);
     }
 }

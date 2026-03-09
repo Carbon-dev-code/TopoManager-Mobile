@@ -1,28 +1,14 @@
-import React, { useState } from "react";
-import {
-  IonModal,
-  IonHeader,
-  IonToolbar,
-  IonButtons,
-  IonButton,
-  IonTitle,
-  IonContent,
-  IonToast,
-  IonIcon,
-  IonList,
-  IonItem,
-  IonLabel,
-  IonRadio,
-  IonRadioGroup,
-  IonAlert,
-} from "@ionic/react";
+import React, { useState, useCallback } from "react";
+import {IonModal,IonHeader,IonToolbar,IonButtons,IonButton,IonTitle,IonContent,IonToast,IonIcon,IonList,IonItem,IonLabel,IonRadio,IonRadioGroup,IonAlert,} from "@ionic/react";
 import { close, createOutline } from "ionicons/icons";
 import "./ModalDemandeur.css";
 import Physique from "./Physique";
 import Moral from "./Moral";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 import Photo from "../photo/Photo";
+import { deletePhotos } from "../../model/base/DbSchema";
 
 type ModalMode = "create" | "view" | "edit";
 
@@ -38,7 +24,7 @@ interface ModalDemandeurProps {
   setIsPhysique: (d: number) => void;
   decomposed: boolean;
   setDecomposed: (d: boolean) => void;
-  mode?: ModalMode; // "create" par défaut
+  mode?: ModalMode;
 }
 
 const TITLES: Record<ModalMode, string> = {
@@ -63,36 +49,76 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 }) => {
   const [showConfirmProfile, setShowConfirmProfile] = useState(false);
   const [lastPhotoIndex, setLastPhotoIndex] = useState<number | null>(null);
-
   const isReadOnly = mode === "view";
 
-  const takePhoto = async () => {
-    try {
-      if (demandeur.photos.length >= 5) {
-        setToastMessage?.("Vous ne pouvez pas ajouter plus de 5 photos");
-        return;
-      }
+  // ─── Compression ────────────────────────────────────────────────
+  async function compressImage(
+    base64: string,
+    maxSize = 1024,
+    quality = 0.6,
+  ): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = `data:image/jpeg;base64,${base64}`;
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        } else if (height > width && height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
+      };
+    });
+  }
 
+  // ─── Prise de photo ─────────────────────────────────────────────
+  const takePhoto = useCallback(async () => {
+    if ((demandeur.photos?.length ?? 0) >= 5) {
+      setToastMessage?.("Maximum 5 photos");
+      return;
+    }
+    try {
       const photo = await Camera.getPhoto({
-        quality: 90,
-        resultType: CameraResultType.DataUrl,
+        quality: 60,
+        resultType: CameraResultType.Base64,
         source: CameraSource.Camera,
+        width: 1024,
+        height: 1024,
+        correctOrientation: true,
       });
 
-      if (!photo.dataUrl) throw new Error("Pas de photo");
+      if (!photo.base64String) throw new Error("Pas de photo");
 
+      const compressed = await compressImage(photo.base64String);
+
+      const fileName = `demandeur/${Date.now()}.jpeg`;
+      await Filesystem.writeFile({
+        path: fileName,
+        data: compressed,
+        directory: Directory.Data,
+        recursive: true, // ← crée le dossier si inexistant
+      });
+
+      const newIndex = demandeur.photos?.length ?? 0;
       setDemandeur((prev: Demandeur) => ({
         ...prev,
-        photos: [...prev.photos, photo.dataUrl as string],
+        photos: [...(prev.photos ?? []), fileName],
       }));
 
-      setLastPhotoIndex(demandeur.photos.length);
+      setLastPhotoIndex(newIndex);
       setShowConfirmProfile(true);
     } catch (err) {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
     }
-  };
+  }, [demandeur.photos, setDemandeur, setToastMessage]);
 
   return (
     <IonModal
@@ -106,24 +132,13 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
               <IonIcon icon={close} />
             </IonButton>
           </IonButtons>
-
           <IonTitle>{TITLES[mode]}</IonTitle>
-
           <IonButtons slot="end">
-            {/* En mode view : bouton pour passer en edit */}
             {mode === "view" && (
-              <IonButton
-                onClick={() => {
-                  // Signaler au parent de repasser en edit
-                  // On ferme et le parent réouvre en edit
-                  setShowCreateModal(false);
-                }}
-              >
+              <IonButton onClick={() => setShowCreateModal(false)}>
                 <IonIcon icon={createOutline} slot="icon-only" />
               </IonButton>
             )}
-
-            {/* En mode create ou edit : bouton valider */}
             {mode !== "view" && (
               <IonButton strong={true} onClick={addDemandeur}>
                 {mode === "edit" ? "Mettre à jour" : "Ajouter"}
@@ -134,7 +149,6 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
       </IonHeader>
 
       <IonContent className="ion-padding">
-        {/* Sélecteur de type — désactivé en view/edit */}
         <IonList>
           <IonItem>
             <IonLabel className="me-3 truncate">Type :</IonLabel>
@@ -144,7 +158,11 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
                 if (isReadOnly) return;
                 const value = Number(e.detail.value);
                 setIsPhysique(value);
-                setDemandeur({ ...demandeur, type: Number(value) });
+                const fresh = Demandeur.init();
+                setDemandeur({
+                  ...fresh, type: value, id: demandeur.id, photos: demandeur.photos,
+                  indexPhoto: demandeur.indexPhoto, observations: demandeur.observations, adresse: demandeur.adresse,
+                });
               }}
             >
               <div
@@ -165,7 +183,6 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
           </IonItem>
         </IonList>
 
-        {/* Formulaire selon le type */}
         {isPhysique === 0 ? (
           <Physique
             demandeur={demandeur}
@@ -180,19 +197,28 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
           />
         )}
 
-        {/* Photos — masquées en mode view */}
-        {mode !== "view" && (
+        {/* ─── Photos ─────────────────────────────────────────────── */}
+        <IonItem lines="none">
           <Photo
-            photos={demandeur.photos}
+            photos={demandeur.photos ?? []}
             decomposed={decomposed}
             setDecomposed={setDecomposed}
             takePhoto={takePhoto}
-            clearPhotos={() =>
-              setDemandeur((prev: Demandeur) => ({ ...prev, photos: [] }))
-            }
-            name="Prendre une photo du demandeur"
+            viewOnly={isReadOnly}
+            clearPhotos={async () => {
+              await deletePhotos(demandeur.photos ?? []);
+              setDemandeur((prev: Demandeur) => ({ ...prev, photos: [] }));
+            }}
+            onDeletePhoto={async (idx) => {
+              await deletePhotos([demandeur.photos[idx]]);
+              setDemandeur((prev: Demandeur) => ({
+                ...prev,
+                photos: prev.photos.filter((_, i) => i !== idx),
+              }));
+            }}
+            name="Photo du demandeur"
           />
-        )}
+        </IonItem>
       </IonContent>
 
       <IonAlert
@@ -209,7 +235,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             text: "Oui",
             handler: () => {
               if (lastPhotoIndex !== null) {
-                setDemandeur((prev : Demandeur) => ({
+                setDemandeur((prev: Demandeur) => ({
                   ...prev,
                   indexPhoto: lastPhotoIndex,
                 }));
