@@ -39,7 +39,9 @@ export async function initDatabase(): Promise<RxDatabase> {
             categorie: { type: ["string", "null"] },
             consistance: { type: ["string", "null"] },
             oppossition: { type: "boolean" },
+            observationOpposition: { type: ["string", "null"] },
             revandication: { type: "boolean" },
+            observationRevendication: { type: ["string", "null"] },
             observation: { type: "string" },
             polygone: {
               type: "array",

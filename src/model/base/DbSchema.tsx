@@ -5,6 +5,7 @@ import { Preferences } from "@capacitor/preferences";
 import { DashboardStats } from "../dashbord/dashbord";
 import { initDatabase } from "./Database";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Riverin } from "../parcelle/Riverin";
 
 // ─── Photos ───────────────────────────────────────────────────────────────────
 export async function deletePhotos(photos: string[]): Promise<void> {
@@ -165,14 +166,34 @@ async function syncDemandeurInParcelles(demandeur: Demandeur): Promise<void> {
     const allDocs = await database.parcelle.find().exec();
 
     for (const doc of allDocs) {
-      const demandeurs: Demandeur[] = JSON.parse(
-        JSON.stringify(doc.toJSON().demandeurs ?? []),
-      );
-      const idx = demandeurs.findIndex((d) => d.id === demandeur.id);
+      const json = doc.toJSON();
+      let updated = false;
 
-      if (idx !== -1) {
-        demandeurs[idx] = demandeur;
-        await doc.patch({ demandeurs });
+      // ─── Sync dans demandeurs[] ──────────────────────────────────
+      const demandeurs: Demandeur[] = JSON.parse(JSON.stringify(json.demandeurs ?? []));
+      const idxD = demandeurs.findIndex((d) => d.id === demandeur.id);
+      if (idxD !== -1) {
+        demandeurs[idxD] = demandeur;
+        updated = true;
+      }
+
+      // ─── Sync dans riverin[].demandeur ───────────────────────────
+      const riverins: Riverin[] = JSON.parse(JSON.stringify(json.riverin ?? []));
+      let riverinUpdated = false;
+      for (const r of riverins) {
+        if (r.demandeur?.id === demandeur.id) {
+          r.demandeur = demandeur;
+          riverinUpdated = true;
+        }
+      }
+      if (riverinUpdated) updated = true;
+
+      // ─── Patch seulement si changement ──────────────────────────
+      if (updated) {
+        await doc.patch({
+          ...(idxD !== -1 && { demandeurs }),
+          ...(riverinUpdated && { riverin: riverins }),
+        });
       }
     }
   } catch (error) {

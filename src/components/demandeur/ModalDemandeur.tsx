@@ -1,5 +1,21 @@
 import React, { useState, useCallback } from "react";
-import {IonModal,IonHeader,IonToolbar,IonButtons,IonButton,IonTitle,IonContent,IonToast,IonIcon,IonList,IonItem,IonLabel,IonRadio,IonRadioGroup,IonAlert,} from "@ionic/react";
+import {
+  IonModal,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonButton,
+  IonTitle,
+  IonContent,
+  IonToast,
+  IonIcon,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonRadio,
+  IonRadioGroup,
+  IonAlert,
+} from "@ionic/react";
 import { close, createOutline } from "ionicons/icons";
 import "./ModalDemandeur.css";
 import Physique from "./Physique";
@@ -48,7 +64,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   mode = "create",
 }) => {
   const [showConfirmProfile, setShowConfirmProfile] = useState(false);
-  const [lastPhotoIndex, setLastPhotoIndex] = useState<number | null>(null);
+  const [lastPhotoIndex] = useState<number | null>(null);
   const isReadOnly = mode === "view";
 
   // ─── Compression ────────────────────────────────────────────────
@@ -80,8 +96,9 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 
   // ─── Prise de photo ─────────────────────────────────────────────
   const takePhoto = useCallback(async () => {
-    if ((demandeur.photos?.length ?? 0) >= 5) {
-      setToastMessage?.("Maximum 5 photos");
+    if ((demandeur.photos?.length ?? 0) >= 1) {
+      // ← 5 devient 1
+      setToastMessage?.("1 photo maximum pour le demandeur");
       return;
     }
     try {
@@ -89,31 +106,29 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         quality: 60,
         resultType: CameraResultType.Base64,
         source: CameraSource.Camera,
-        width: 1024,
-        height: 1024,
+        width: 512,
+        height: 512,
         correctOrientation: true,
       });
 
       if (!photo.base64String) throw new Error("Pas de photo");
 
-      const compressed = await compressImage(photo.base64String);
-
+      const compressed = await compressImage(photo.base64String, 512, 0.7);
       const fileName = `demandeur/${Date.now()}.jpeg`;
       await Filesystem.writeFile({
         path: fileName,
         data: compressed,
         directory: Directory.Data,
-        recursive: true, // ← crée le dossier si inexistant
+        recursive: true,
       });
 
-      const newIndex = demandeur.photos?.length ?? 0;
       setDemandeur((prev: Demandeur) => ({
         ...prev,
-        photos: [...(prev.photos ?? []), fileName],
+        photos: [fileName], // ← remplace au lieu d'ajouter
+        indexPhoto: 0,
       }));
 
-      setLastPhotoIndex(newIndex);
-      setShowConfirmProfile(true);
+      // Plus besoin de demander si photo de profil — c'est automatiquement index 0
     } catch (err) {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
@@ -160,8 +175,13 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
                 setIsPhysique(value);
                 const fresh = Demandeur.init();
                 setDemandeur({
-                  ...fresh, type: value, id: demandeur.id, photos: demandeur.photos,
-                  indexPhoto: demandeur.indexPhoto, observations: demandeur.observations, adresse: demandeur.adresse,
+                  ...fresh,
+                  type: value,
+                  id: demandeur.id,
+                  photos: demandeur.photos,
+                  indexPhoto: demandeur.indexPhoto,
+                  observations: demandeur.observations,
+                  adresse: demandeur.adresse,
                 });
               }}
             >
@@ -205,15 +225,21 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             setDecomposed={setDecomposed}
             takePhoto={takePhoto}
             viewOnly={isReadOnly}
+            maxPhotos={1} // ← ajout
             clearPhotos={async () => {
               await deletePhotos(demandeur.photos ?? []);
-              setDemandeur((prev: Demandeur) => ({ ...prev, photos: [] }));
+              setDemandeur((prev: Demandeur) => ({
+                ...prev,
+                photos: [],
+                indexPhoto: null,
+              }));
             }}
             onDeletePhoto={async (idx) => {
               await deletePhotos([demandeur.photos[idx]]);
               setDemandeur((prev: Demandeur) => ({
                 ...prev,
                 photos: prev.photos.filter((_, i) => i !== idx),
+                indexPhoto: null,
               }));
             }}
             name="Photo du demandeur"

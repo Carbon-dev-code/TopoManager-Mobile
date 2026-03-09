@@ -43,7 +43,9 @@ export class Parcelle {
     categorie: string | null;
     consistance: string | null;
     oppossition: boolean;
+    observationOpposition: string | null;;
     revandication: boolean;
+    observationRevendication: string | null;;
     observation: string;
     demandeurs: Demandeur[];
     parametreTerritoire: ParametreTerritoire | null;
@@ -60,7 +62,7 @@ export class Parcelle {
 
 
     constructor(code: string | null, dateCreation: string | null, status: number | null, origine: string | null,
-        anneeOccup: number | null, categorie: string | null, consistance: string | null, opposition: boolean, revandication: boolean,
+        anneeOccup: number | null, categorie: string | null, consistance: string | null, opposition: boolean, observationOpposition: string, revandication: boolean, observationRevendication: string, 
         observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[],
         synchronise: number, syncError: string, lastSync: string, syncing: boolean,
         polygone: Polygone[], photos: string[] = [], id_personne: string | null = null
@@ -75,7 +77,9 @@ export class Parcelle {
         this.categorie = categorie;
         this.consistance = consistance;
         this.oppossition = opposition;
+        this.observationOpposition = observationOpposition;
         this.revandication = revandication;
+        this.observationRevendication = observationRevendication;
         this.observation = observation;
         this.riverin = riverin;
         this.synchronise = synchronise;
@@ -88,6 +92,6 @@ export class Parcelle {
     }
 
     static init(): Parcelle {
-        return new Parcelle(null, null, null, null, null, null, null, false, false, '', [], null, [], 0, '', '', false, [], [], null);
+        return new Parcelle(null, null, null, null, null, null, null, false, '', false, '', '', [], null, [], 0, '', '', false, [], [], null);
     }
 }

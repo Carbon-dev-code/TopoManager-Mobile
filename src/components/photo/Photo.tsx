@@ -14,6 +14,7 @@ interface PhotoProps {
   onDeletePhoto?: (index: number) => void;
   name?: string;
   viewOnly?: boolean;
+  maxPhotos?: number;
 }
 
 async function resolveUri(uri: string): Promise<string> {
@@ -81,9 +82,10 @@ const Photo: React.FC<PhotoProps> = ({
   onDeletePhoto,
   name,
   viewOnly = false, // ← était manquant dans la déstructuration
+  maxPhotos = 5,
 }) => {
   const hasPhotos = photos?.length > 0;
-  const canAdd = !viewOnly && (!hasPhotos || photos.length < 5);
+  const canAdd = !viewOnly && photos.length < maxPhotos; // ← utilise maxPhotos
 
   return (
     <div className="photo-wrapper">
@@ -137,7 +139,11 @@ const Photo: React.FC<PhotoProps> = ({
               <IonRippleEffect />
               <IonIcon icon={cameraOutline} />
               <span>{name ?? "Prendre une photo"}</span>
-              {hasPhotos && <em>{photos.length}/5</em>}
+              {hasPhotos && (
+                <em>
+                  {photos.length}/{maxPhotos}
+                </em>
+              )}
             </button>
           )}
 

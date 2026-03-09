@@ -221,6 +221,20 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                   Opposition
                 </IonCheckbox>
               </IonCol>
+              {parcelle.oppossition && (
+                  <IonTextarea
+                    placeholder="Détails sur l'opposition..."
+                    labelPlacement="stacked"
+                    label="Observation opposition"
+                    autoGrow
+                    disabled={isDisabled}
+                    value={parcelle.observationOpposition}
+                    onIonInput={(e) =>
+                      updateField("observationOpposition", e.detail.value ?? "")
+                    }
+                    className="textarea-cool"
+                  />
+                )}
               <IonCol size="12">
                 <IonCheckbox
                   disabled={isDisabled}
@@ -233,6 +247,23 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                   Revendication
                 </IonCheckbox>
               </IonCol>
+              {parcelle.revandication && (
+                  <IonTextarea
+                    placeholder="Détails sur la revendication..."
+                    labelPlacement="stacked"
+                    label="Observation revendication"
+                    autoGrow
+                    disabled={isDisabled}
+                    value={parcelle.observationRevendication}
+                    onIonInput={(e) =>
+                      updateField(
+                        "observationRevendication",
+                        e.detail.value ?? "",
+                      )
+                    }
+                    className="textarea-cool"
+                  />
+                )}
             </IonRow>
           </IonGrid>
         </IonItem>

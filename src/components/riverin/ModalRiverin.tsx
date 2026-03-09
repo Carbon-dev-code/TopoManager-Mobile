@@ -17,17 +17,17 @@ import {
   IonSelectOption,
   IonTextarea,
   IonLabel,
+  IonInput,
   useIonViewWillEnter,
 } from "@ionic/react";
 import { close } from "ionicons/icons";
-import { Riverin } from "../../model/parcelle/Riverin";
+import { Riverin, TypeRiverin } from "../../model/parcelle/Riverin";
 import SeacrhModal from "../demandeur/SearchModal";
 import { Demandeur } from "../../model/parcelle/Demandeur";
 import DemandeurView from "../demandeur/DemandeurView";
 import "./ModalRiverin.css";
 import ModalDemandeur from "../demandeur/ModalDemandeur";
 import { Preferences } from "@capacitor/preferences";
-import { insertDemandeur } from "../../model/base/DbSchema";
 import Toast, { ToastType } from "../toast/Toast";
 
 interface ModalRiverinProps {
@@ -65,7 +65,6 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
     type: "success" as ToastType,
   });
 
-  // Fonction pour supprimer un demandeur
   const removeDemandeur = () => {
     setNewRiverin({ ...newRiverin, demandeur: null });
   };
@@ -75,9 +74,7 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
     if (result.value) {
       try {
         const parsed = JSON.parse(result.value);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
+        if (Array.isArray(parsed)) return parsed;
       } catch (error) {
         console.error("Erreur parsing JSON:", error);
       }
@@ -85,17 +82,12 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
     return [];
   };
 
-  const load = async () => {
-    setDemandeurList(await loadDemandeurFromStorage());
-  };
-
   useIonViewWillEnter(() => {
-    load();
+    loadDemandeurFromStorage().then(setDemandeurList);
   });
 
   const addDemandeur = async () => {
-    setNewRiverin({ ...newRiverin, demandeur: demandeur });
-    await insertDemandeur(demandeur);
+    setNewRiverin({ ...newRiverin, demandeur });
     setDemandeur(Demandeur.init());
     setShowDemandeurModal(false);
   };
@@ -103,25 +95,18 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
   useEffect(() => {
     if (!riverinMess) return;
     const message =
-      riverinMess === "success" ? "Riverin ajouté avec succès" : "Vérifiez le repère et l'observation";
+      riverinMess === "success"
+        ? "Riverin ajouté avec succès"
+        : "Vérifiez le repère et la désignation";
     setToast({ visible: true, message, type: riverinMess as ToastType });
   }, [riverinMess]);
 
   return (
-    <IonModal
-      isOpen={showRiverin}
-      onDidDismiss={() => {
-        setShowRiverin(false);
-      }}
-    >
+    <IonModal isOpen={showRiverin} onDidDismiss={() => setShowRiverin(false)}>
       <IonHeader>
         <IonToolbar color="primary">
           <IonButtons slot="start">
-            <IonButton
-              onClick={() => {
-                setShowRiverin(false);
-              }}
-            >
+            <IonButton onClick={() => setShowRiverin(false)}>
               <IonIcon icon={close} />
             </IonButton>
           </IonButtons>
@@ -133,36 +118,31 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
           </IonButtons>
         </IonToolbar>
       </IonHeader>
+
       <IonContent>
         <Toast
           visible={toast.visible}
-          message={toast.message} // ← était riverinMess
+          message={toast.message}
           type={toast.type}
           onClose={() => setToast((t) => ({ ...t, visible: false }))}
         />
 
         <IonList>
+          {/* ─── Repère ─────────────────────────────────────────── */}
           <IonItem>
             <IonGrid>
               <IonRow>
                 <IonCol size="12">
                   <IonSelect
                     label="Repère :"
-                    onIonChange={(e) => {
-                      console.log(e.detail.value);
-
-                      setNewRiverin({
-                        ...newRiverin,
-                        repere: e.detail.value,
-                      });
-                    }}
+                    value={newRiverin.repere}
+                    onIonChange={(e) =>
+                      setNewRiverin({ ...newRiverin, repere: e.detail.value })
+                    }
                     placeholder="Riverain du parcelle"
                   >
                     {repereL.map((rep, index) => (
-                      <IonSelectOption
-                        key={`rep-${index}`}
-                        value={rep.repere} // Code repere ny teto tam voalohany
-                      >
+                      <IonSelectOption key={`rep-${index}`} value={rep.repere}>
                         {rep.repere}
                       </IonSelectOption>
                     ))}
@@ -171,22 +151,102 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
               </IonRow>
             </IonGrid>
           </IonItem>
-          <div className="backGround">
-            {newRiverin.demandeur ? (
-              <div className="demandeur-list">
-                <DemandeurView
-                  demandeur={newRiverin.demandeur}
-                  swipeEnabled={true}
-                  onDelete={removeDemandeur}
-                />
+
+          {/* ─── Type ───────────────────────────────────────────── */}
+          <IonItem>
+            <IonGrid>
+              <IonRow>
+                <IonCol size="12">
+                  <IonSelect
+                    label="Type :"
+                    value={newRiverin.type}
+                    onIonChange={(e) =>
+                      setNewRiverin({
+                        ...newRiverin,
+                        type: e.detail.value as TypeRiverin,
+                        nom: null,
+                        demandeur: null,
+                      })
+                    }
+                    placeholder="Type de riverain"
+                  >
+                    <IonSelectOption value="personne">Personne</IonSelectOption>
+                    <IonSelectOption value="autre">Autre</IonSelectOption>
+                  </IonSelect>
+                </IonCol>
+              </IonRow>
+            </IonGrid>
+          </IonItem>
+
+          {/* ─── Champ libre si "autre" ──────────────────────────── */}
+          {newRiverin.type === "autre" && (
+            <IonItem>
+              <IonGrid>
+                <IonRow>
+                  <IonCol size="12">
+                    <IonInput
+                      label="Désignation :"
+                      placeholder="Ex: Route, Rivière, Rocher..."
+                      value={newRiverin.nom ?? ""}
+                      onIonInput={(e) =>
+                        setNewRiverin({
+                          ...newRiverin,
+                          nom: e.detail.value ?? null,
+                        })
+                      }
+                    />
+                  </IonCol>
+                </IonRow>
+              </IonGrid>
+            </IonItem>
+          )}
+
+          {/* ─── Personne ────────────────────────────────────────── */}
+          {newRiverin.type === "personne" && (
+            <>
+              <div className="backGround">
+                {newRiverin.demandeur ? (
+                  <div className="demandeur-list">
+                    <DemandeurView
+                      demandeur={newRiverin.demandeur}
+                      swipeEnabled={true}
+                      onDelete={removeDemandeur}
+                    />
+                  </div>
+                ) : (
+                  <IonLabel className="demandeur-none" color="danger">
+                    Aucun personne sélectionné
+                  </IonLabel>
+                )}
               </div>
-            ) : (
-              <IonLabel className="demandeur-none" color="danger">
-                Aucun demandeur sélectionné
-              </IonLabel>
-            )}
-          </div>
-          <div className="barRiverin"></div>
+              <div className="barRiverin"></div>
+              <IonItem lines="none">
+                <IonGrid>
+                  <IonRow className="justify-content-between text-center">
+                    <IonCol size="12" size-md="6">
+                      <IonButton
+                        expand="full"
+                        onClick={() => setShowDemandeurModal(true)}
+                      >
+                        Ajout demandeur
+                      </IonButton>
+                    </IonCol>
+                    <IonCol size="12" size-md="6">
+                      <IonButton
+                        expand="full"
+                        color="tertiary"
+                        onClick={() => setShowSearchDemandeurModal(true)}
+                      >
+                        Recherche demandeur
+                      </IonButton>
+                    </IonCol>
+                  </IonRow>
+                </IonGrid>
+              </IonItem>
+            </>
+          )}
+
+          {/* ─── Observation ─────────────────────────────────────── */}
           <IonItem>
             <IonGrid>
               <IonRow>
@@ -207,39 +267,14 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
               </IonRow>
             </IonGrid>
           </IonItem>
-
-          <IonItem lines="none">
-            <IonGrid>
-              <IonRow className="justify-content-between text-center">
-                <IonCol size="12" size-md="6">
-                  <IonButton
-                    expand="full"
-                    onClick={() => setShowDemandeurModal(true)}
-                  >
-                    Ajout demandeur
-                  </IonButton>
-                </IonCol>
-                <IonCol size="12" size-md="6">
-                  <IonButton
-                    expand="full"
-                    color="tertiary"
-                    onClick={() => setShowSearchDemandeurModal(true)}
-                  >
-                    Recherche demandeur
-                  </IonButton>
-                </IonCol>
-              </IonRow>
-            </IonGrid>
-          </IonItem>
         </IonList>
+
         <SeacrhModal
           showSearchModal={showSearchDemandeurModal}
           setShowSearchModal={setShowSearchDemandeurModal}
-          onSelect={(d) => {
-            setNewRiverin({ ...newRiverin, demandeur: d });
-          }}
+          onSelect={(d) => setNewRiverin({ ...newRiverin, demandeur: d })}
         />
-        {/**Modal creation demandeur*/}
+
         <ModalDemandeur
           showCreateModal={showDemandeurModal}
           setShowCreateModal={setShowDemandeurModal}

@@ -1,19 +1,29 @@
 import { Demandeur } from "./Demandeur";
 
+export type TypeRiverin = "personne" | "autre";
+
 export class Riverin {
-    repere: string | null;
-    observation: string;
-    demandeur: Demandeur | null;
+  repere: string | null;
+  type: TypeRiverin;
+  nom: string | null;
+  demandeur: Demandeur | null;
+  observation: string;
 
-    constructor(repere: string | null, observation: string, demandeur: Demandeur | null) {
-        this.repere = repere;
-        this.observation = observation;
-        this.demandeur = demandeur;
+  constructor(
+    repere: string | null,
+    type: TypeRiverin = "personne",
+    nom: string | null = null,
+    demandeur: Demandeur | null = null,
+    observation: string = "",
+  ) {
+    this.repere = repere;
+    this.type = type;
+    this.nom = nom;
+    this.demandeur = demandeur;
+    this.observation = observation;
+  }
 
-    }
-
-    static init(): Riverin {
-        return new Riverin(null,  '', null);
-    }
-
+  static init(): Riverin {
+    return new Riverin(null, "personne", null, null, "");
+  }
 }

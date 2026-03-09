@@ -84,18 +84,40 @@ const CardGlass: React.FC<CardGlass> = ({ currentParcelle, setShowCard }) => {
                         <span className="section-title">Informations</span>
                     </div>
                     <div className="info-grid">
-                        {[
-                            { label: "Date de création du parcelle", value: currentParcelle.dateCreation || "N/A" },
-                            { label: "Catégorie", value: currentParcelle.categorie || "N/A" },
-                            { label: "Consistance", value: currentParcelle.consistance || "Aucune" },
-                            { label: "Opposition", value: currentParcelle.oppossition ? "Oui" : "Non", highlight: currentParcelle.oppossition },
-                            { label: "Revendication", value: currentParcelle.revandication ? "Oui" : "Non", highlight: currentParcelle.revandication },
-                        ].map(({ label, value, highlight }) => (
-                            <div className="info-row" key={label}>
-                                <span className="info-label">{label}</span>
-                                <span className={`info-value ${highlight ? "info-alert" : ""}`}>{value}</span>
-                            </div>
+                        { [
+                        { label: "Date de création", value: currentParcelle.dateCreation || "N/A" },
+                        { label: "Catégorie", value: currentParcelle.categorie || "N/A" },
+                        { label: "Consistance", value: currentParcelle.consistance || "Aucune" },
+                        ].map(({ label, value }) => (
+                        <div className="info-row" key={label}>
+                            <span className="info-label">{label}</span>
+                            <span className="info-value">{value}</span>
+                        </div>
                         ))}
+
+                        {/* Opposition */}
+                        <div className={`info-flag-block ${currentParcelle.oppossition ? "flag-alert" : "flag-ok"}`}>
+                        <div className="flag-row">
+                            <span className="flag-dot" />
+                            <span className="flag-label">Opposition</span>
+                            <span className="flag-value">{currentParcelle.oppossition ? "Oui" : "Non"}</span>
+                        </div>
+                        {currentParcelle.oppossition && currentParcelle.observationOpposition && (
+                            <div className="flag-obs">{currentParcelle.observationOpposition}</div>
+                        )}
+                        </div>
+
+                        {/* Revendication */}
+                        <div className={`info-flag-block ${currentParcelle.revandication ? "flag-alert" : "flag-ok"}`}>
+                        <div className="flag-row">
+                            <span className="flag-dot" />
+                            <span className="flag-label">Revendication</span>
+                            <span className="flag-value">{currentParcelle.revandication ? "Oui" : "Non"}</span>
+                        </div>
+                        {currentParcelle.revandication && currentParcelle.observationRevendication && (
+                            <div className="flag-obs">{currentParcelle.observationRevendication}</div>
+                        )}
+                        </div>
                     </div>
                 </div>
 

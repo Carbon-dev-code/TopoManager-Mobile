@@ -230,3 +230,69 @@
     max-height: 50vh;
   }
 }
+
+/* Flag blocks — opposition / revendication */
+.info-flag-block {
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  border-left: 3px solid transparent;
+}
+
+.flag-alert {
+  background: rgba(231, 76, 60, 0.07);
+  border-left-color: #e74c3c;
+}
+
+.flag-ok {
+  background: rgba(39, 174, 96, 0.07);
+  border-left-color: #27ae60;
+}
+
+.flag-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.flag-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.flag-alert .flag-dot {
+  background: #e74c3c;
+}
+.flag-ok .flag-dot {
+  background: #27ae60;
+}
+
+.flag-label {
+  font-size: 12px;
+  color: #777;
+  flex: 1;
+}
+
+.flag-value {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flag-alert .flag-value {
+  color: #e74c3c;
+}
+.flag-ok .flag-value {
+  color: #27ae60;
+}
+
+.flag-obs {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #555;
+  font-style: italic;
+  line-height: 1.5;
+  padding-left: 14px;
+}

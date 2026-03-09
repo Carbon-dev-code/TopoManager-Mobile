@@ -56,6 +56,7 @@ import {
   deleteParcelle,
   getAllDemandeurs,
   getAllParcelles,
+  insertDemandeur,
   insertParcelle,
   verifyDatabase,
 } from "../model/base/DbSchema";
@@ -182,7 +183,7 @@ const Tab1: React.FC = () => {
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
   const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
-  const [riverinMess, setRiverinMess] = useState<ToastType | null>(null);  
+  const [riverinMess, setRiverinMess] = useState<ToastType | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, setSelectedParcelle] = useState<Parcelle | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -300,10 +301,22 @@ const Tab1: React.FC = () => {
   }, [searchQuery]);
 
   const addRiverin = useCallback(() => {
-    if (!newRiverin.repere || !newRiverin.observation.trim()) {
+    if (!newRiverin.repere) {
       setRiverinMess("error");
       return;
     }
+
+    // ← validation selon le type
+    if (newRiverin.type === "personne" && !newRiverin.demandeur) {
+      setRiverinMess("error");
+      return;
+    }
+
+    if (newRiverin.type === "autre" && !newRiverin.nom?.trim()) {
+      setRiverinMess("error");
+      return;
+    }
+
     setParcelle((prev) => ({
       ...prev,
       riverin: [...prev.riverin, newRiverin],
@@ -326,9 +339,23 @@ const Tab1: React.FC = () => {
 
   const createParcelle = useCallback(async () => {
     try {
+      //Insert Parcelle
       await insertParcelle(parcelle);
 
+      //Insert Demandeur ?? Aona ra efa ao ??
+      for (let i = 0; i < parcelle.demandeurs.length; i++) {
+        await insertDemandeur(parcelle.demandeurs[i]);
+      }
+
+      // Insert Demandeur de Riverin ra to ka tsiss ko
+      for (let i = 0; i < parcelle.riverin.length; i++) {
+        if (parcelle.riverin[i].demandeur != null) {
+          await insertDemandeur(parcelle.riverin[i].demandeur!);
+        }
+      }
+
       if (mode === "create") {
+        // augmenter l'incrementation
         await saveIncrement();
       }
 
@@ -409,11 +436,12 @@ const Tab1: React.FC = () => {
       // ← compression réelle avant stockage
       const compressed = await compressImage(photo.base64String, 1024, 0.6);
 
-      const fileName = `photo_${Date.now()}.jpeg`;
+      const fileName = `parcelle/${Date.now()}.jpeg`;
       await Filesystem.writeFile({
         path: fileName,
         data: compressed,
         directory: Directory.Data,
+        recursive: true,
       });
 
       setParcelle((prev) => {

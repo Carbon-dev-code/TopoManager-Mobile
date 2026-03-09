@@ -369,6 +369,7 @@ const Physique: React.FC<PhysiqueProps> = ({
                     label="Numéro"
                     readonly={readonly}
                     value={demandeur.acte?.numero || ""}
+                    placeholder="N154648464169"
                     onIonInput={(e) =>
                       setDemandeur({
                         ...demandeur,
