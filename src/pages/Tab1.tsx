@@ -113,7 +113,10 @@ const useParcelleCode = () => {
       setParametreTerritoire(parametreActuel);
 
       const now = new Date();
-      const dateTime = now.toISOString().replace("T", " ").split(".")[0];
+      const dateTime = now.toLocaleString("fr-FR", {
+          timeZone: "Indian/Antananarivo",year: "numeric",
+          month: "2-digit",day: "2-digit",hour: "2-digit",minute: "2-digit",second: "2-digit", hour12: false,
+        }).replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
 
       return {
         code,

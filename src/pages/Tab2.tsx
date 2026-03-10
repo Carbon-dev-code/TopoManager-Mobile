@@ -947,7 +947,7 @@ const Tab2: React.FC = () => {
       view: new View({
         center: fromLonLat([46.8, -18.8]),
         zoom: 13,
-        maxZoom: 18,
+        maxZoom: 21,
         minZoom: 11,
       }),
       controls: [

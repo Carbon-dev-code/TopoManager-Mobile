@@ -295,6 +295,7 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                 <IonCol size="12" size-md="4">
                   <IonButton
                     expand="full"
+                    color="tertiary"
                     onClick={onShowRiverinModal}
                     disabled={isDisabled}
                   >
