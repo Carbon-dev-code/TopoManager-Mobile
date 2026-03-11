@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   IonList,
   IonItem,
@@ -11,19 +11,22 @@ import {
   IonRadioGroup,
   IonRadio,
 } from "@ionic/react";
-import { Demandeur } from "../../model/parcelle/DemandeurDTO";
+import { PersonnePhysique } from "../../model/Demandeur/PersonnePhysique";
 
 interface PhysiqueProps {
-  demandeur: Demandeur;
-  setDemandeur: (value: Demandeur) => void;
+  physique: PersonnePhysique;
+  setPhysique: (value: PersonnePhysique) => void;
   readonly?: boolean; // optionnel, false par défaut
 }
 
 const Physique: React.FC<PhysiqueProps> = ({
-  demandeur,
-  setDemandeur,
+  physique,
+  setPhysique,
   readonly = false,
 }) => {
+  const [pieceType, setPieceType] = useState<0 | 1 | 2>(
+    physique.cin ? 0 : physique.acte ? 1 : 2,
+  );
   return (
     <IonList className="pt-0">
       <IonItem className="mb-2">
@@ -34,9 +37,9 @@ const Physique: React.FC<PhysiqueProps> = ({
                 readonly={readonly}
                 label="Nom"
                 placeholder="Enter le nom du demandeur"
-                value={demandeur.nom}
+                value={physique.nom}
                 onIonInput={(e) =>
-                  setDemandeur({ ...demandeur, nom: String(e.detail.value) })
+                  setPhysique({ ...physique, nom: String(e.detail.value) })
                 }
               />
             </IonCol>
@@ -44,10 +47,10 @@ const Physique: React.FC<PhysiqueProps> = ({
               <IonInput
                 readonly={readonly}
                 label="Prenom"
-                placeholder="Enter le prenom du demandeur"
-                value={demandeur.prenom}
+                placeholder="Enter le prenom du physique"
+                value={physique.prenom}
                 onIonInput={(e) =>
-                  setDemandeur({ ...demandeur, prenom: String(e.detail.value) })
+                  setPhysique({ ...physique, prenom: String(e.detail.value) })
                 }
               />
             </IonCol>
@@ -58,10 +61,10 @@ const Physique: React.FC<PhysiqueProps> = ({
       <IonCheckbox
         style={{ marginLeft: "20px" }}
         labelPlacement="end"
-        checked={demandeur.neVers}
+        checked={physique.neVers}
         disabled={readonly}
         onIonChange={(e) =>
-          setDemandeur({ ...demandeur, neVers: Boolean(e.detail.checked) })
+          setPhysique({ ...physique, neVers: Boolean(e.detail.checked) })
         }
       >
         Né vers (approximatif)
@@ -71,7 +74,7 @@ const Physique: React.FC<PhysiqueProps> = ({
         <IonGrid>
           <IonRow>
             <IonCol size="12">
-              {demandeur.neVers ? (
+              {physique.neVers ? (
                 <IonInput
                   labelPlacement="stacked"
                   type="number"
@@ -80,10 +83,10 @@ const Physique: React.FC<PhysiqueProps> = ({
                   min="1500"
                   max={new Date().getFullYear()}
                   readonly={readonly}
-                  value={demandeur.dateNaissance ? demandeur.dateNaissance : ""}
+                  value={physique.dateNaissance ? physique.dateNaissance : ""}
                   onIonInput={(e) => {
                     const year = e.detail.value;
-                    setDemandeur({ ...demandeur, dateNaissance: year ?? null });
+                    setPhysique({ ...physique, dateNaissance: year ?? null });
                   }}
                 />
               ) : (
@@ -93,15 +96,17 @@ const Physique: React.FC<PhysiqueProps> = ({
                   label="Date de naissance*"
                   readonly={readonly}
                   value={
-                    demandeur.dateNaissance
-                      ? typeof demandeur.dateNaissance === "string"
-                        ? demandeur.dateNaissance.substring(0, 10)
-                        : new Date(demandeur.dateNaissance).toISOString().substring(0,10)
+                    physique.dateNaissance
+                      ? typeof physique.dateNaissance === "string"
+                        ? physique.dateNaissance.substring(0, 10)
+                        : new Date(physique.dateNaissance)
+                            .toISOString()
+                            .substring(0, 10)
                       : ""
                   }
                   onIonInput={(e) =>
-                    setDemandeur({
-                      ...demandeur,
+                    setPhysique({
+                      ...physique,
                       dateNaissance: e.detail.value ? e.detail.value : null, // On garde la string du format date HTML
                     })
                   }
@@ -113,12 +118,12 @@ const Physique: React.FC<PhysiqueProps> = ({
                 type="text"
                 labelPlacement="stacked"
                 label="Lieu de naissance"
-                placeholder="Entrer le lieu de naissance du demandeur"
+                placeholder="Entrer le lieu de naissance du physique"
                 readonly={readonly}
-                value={demandeur.lieuNaissance}
+                value={physique.lieuNaissance}
                 onIonInput={(e) =>
-                  setDemandeur({
-                    ...demandeur,
+                  setPhysique({
+                    ...physique,
                     lieuNaissance: String(e.detail.value),
                   })
                 }
@@ -128,12 +133,12 @@ const Physique: React.FC<PhysiqueProps> = ({
               <IonInput
                 labelPlacement="stacked"
                 label="Adresse"
-                placeholder="Enter l'adresse du demandeur"
+                placeholder="Enter l'adresse du physique"
                 readonly={readonly}
-                value={demandeur.adresse}
+                value={physique.adresse}
                 onIonInput={(e) =>
-                  setDemandeur({
-                    ...demandeur,
+                  setPhysique({
+                    ...physique,
                     adresse: String(e.detail.value),
                   })
                 }
@@ -146,10 +151,10 @@ const Physique: React.FC<PhysiqueProps> = ({
       <IonItem>
         <IonLabel className="me-3 truncate">Sexe :</IonLabel>
         <IonRadioGroup
-          value={demandeur.sexe}
+          value={physique.sexe}
           onIonChange={(e) => {
             if (readonly) return;
-            setDemandeur({ ...demandeur, sexe: e.detail.value });
+            setPhysique({ ...physique, sexe: e.detail.value });
           }}
         >
           <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -170,10 +175,10 @@ const Physique: React.FC<PhysiqueProps> = ({
       <IonItem className="custom-wrapper">
         <IonLabel className="me-3">Situation matrimoniale</IonLabel>
         <IonRadioGroup
-          value={demandeur.situation}
+          value={physique.situation}
           onIonChange={(e) => {
             if (readonly) return;
-            setDemandeur({ ...demandeur, situation: e.detail.value });
+            setPhysique({ ...physique, situation: e.detail.value });
           }}
         >
           <div className="radio-options">
@@ -197,16 +202,16 @@ const Physique: React.FC<PhysiqueProps> = ({
       </IonItem>
 
       <div style={{ marginLeft: "16px" }}>
-        {(demandeur.situation === "1" || demandeur.situation === "2") && (
+        {(physique.situation === "1" || physique.situation === "2") && (
           <IonInput
             className="border-bottom"
             label="Nom du conjoint"
-            placeholder="Enter le nom du conjoint du demandeur"
+            placeholder="Enter le nom du conjoint du physique"
             readonly={readonly}
-            value={demandeur.nomConjoint}
+            value={physique.nomConjoint}
             onIonInput={(e) =>
-              setDemandeur({
-                ...demandeur,
+              setPhysique({
+                ...physique,
                 nomConjoint: String(e.detail.value),
               })
             }
@@ -220,11 +225,11 @@ const Physique: React.FC<PhysiqueProps> = ({
           <IonRow>
             <IonInput
               label="Nom du père"
-              placeholder="Enter le nom du père demandeur"
+              placeholder="Enter le nom du père physique"
               readonly={readonly}
-              value={demandeur.nomPere}
+              value={physique.nomPere}
               onIonInput={(e) =>
-                setDemandeur({ ...demandeur, nomPere: String(e.detail.value) })
+                setPhysique({ ...physique, nomPere: String(e.detail.value) })
               }
             />
           </IonRow>
@@ -233,11 +238,11 @@ const Physique: React.FC<PhysiqueProps> = ({
           <IonRow>
             <IonInput
               label="Nom de la mère"
-              placeholder="Enter le nom de la mère du demandeur"
+              placeholder="Enter le nom de la mère du physique"
               readonly={readonly}
-              value={demandeur.nomMere}
+              value={physique.nomMere}
               onIonInput={(e) =>
-                setDemandeur({ ...demandeur, nomMere: String(e.detail.value) })
+                setPhysique({ ...physique, nomMere: String(e.detail.value) })
               }
             />
           </IonRow>
@@ -247,25 +252,25 @@ const Physique: React.FC<PhysiqueProps> = ({
       <IonItem>
         <IonLabel className="me-3">Pièces d'identification</IonLabel>
         <IonRadioGroup
-          value={demandeur.piece}
+          value={pieceType.toString()}
           onIonChange={(e) => {
             if (readonly) return;
-            setDemandeur({ ...demandeur, piece: Number(e.detail.value) });
+            setPieceType(Number(e.detail.value) as 0 | 1 | 2);
           }}
         >
           <div className="radio-options">
             <IonItem lines="none">
-              <IonRadio justify="end" value={2} disabled={readonly}>
-                Neant
+              <IonRadio justify="end" value="2" disabled={readonly}>
+                Néant
               </IonRadio>
             </IonItem>
             <IonItem lines="none">
-              <IonRadio justify="end" value={0} disabled={readonly}>
+              <IonRadio justify="end" value="0" disabled={readonly}>
                 CIN
               </IonRadio>
             </IonItem>
             <IonItem lines="none">
-              <IonRadio justify="end" value={1} disabled={readonly}>
+              <IonRadio justify="end" value="1" disabled={readonly}>
                 Acte de naissance
               </IonRadio>
             </IonItem>
@@ -273,7 +278,7 @@ const Physique: React.FC<PhysiqueProps> = ({
         </IonRadioGroup>
       </IonItem>
 
-      {demandeur.piece === 0 && (
+      {pieceType === 0 && (
         <div>
           <h5 style={{ marginLeft: "20px" }} className="mt-4">
             CIN
@@ -287,10 +292,10 @@ const Physique: React.FC<PhysiqueProps> = ({
                   className="form-control px-3"
                   style={{ width: "25%" }}
                   readonly={readonly}
-                  value={demandeur.cin?.numero?.[index] || ""}
+                  value={physique.cin?.numero?.[index] || ""}
                   onIonInput={(e) => {
                     const value = e.detail.value || "";
-                    const existingNumero = demandeur.cin?.numero ?? [
+                    const existingNumero = physique.cin?.numero ?? [
                       "",
                       "",
                       "",
@@ -298,9 +303,9 @@ const Physique: React.FC<PhysiqueProps> = ({
                     ];
                     const newNumero = [...existingNumero];
                     newNumero[index] = value;
-                    setDemandeur({
-                      ...demandeur,
-                      cin: { ...demandeur.cin, numero: newNumero },
+                    setPhysique({
+                      ...physique,
+                      cin: { ...physique.cin, numero: newNumero },
                     });
                   }}
                   maxlength={3}
@@ -318,15 +323,15 @@ const Physique: React.FC<PhysiqueProps> = ({
                     label="Date CIN"
                     readonly={readonly}
                     value={
-                      demandeur.cin?.date
-                        ? demandeur.cin.date.toISOString().substring(0, 10)
+                      physique.cin?.date
+                        ? physique.cin.date.toISOString().substring(0, 10)
                         : ""
                     }
                     onIonInput={(e) =>
-                      setDemandeur({
-                        ...demandeur,
+                      setPhysique({
+                        ...physique,
                         cin: {
-                          ...demandeur.cin,
+                          ...physique.cin,
                           date: e.detail.value
                             ? new Date(e.detail.value)
                             : null,
@@ -341,11 +346,11 @@ const Physique: React.FC<PhysiqueProps> = ({
                     label="Lieu"
                     placeholder="Lieu du délivrance du CIN"
                     readonly={readonly}
-                    value={demandeur.cin?.lieu || ""}
+                    value={physique.cin?.lieu || ""}
                     onIonInput={(e) =>
-                      setDemandeur({
-                        ...demandeur,
-                        cin: { ...demandeur.cin, lieu: e.detail.value! },
+                      setPhysique({
+                        ...physique,
+                        cin: { ...physique.cin, lieu: e.detail.value! },
                       })
                     }
                   />
@@ -356,7 +361,7 @@ const Physique: React.FC<PhysiqueProps> = ({
         </div>
       )}
 
-      {demandeur.piece === 1 && (
+      {pieceType === 1 && (
         <>
           <h5 className="mt-4" style={{ marginLeft: "20px" }}>
             Acte de naissance
@@ -368,12 +373,12 @@ const Physique: React.FC<PhysiqueProps> = ({
                   <IonInput
                     label="Numéro"
                     readonly={readonly}
-                    value={demandeur.acte?.numero || ""}
+                    value={physique.acte?.numero || ""}
                     placeholder="N154648464169"
                     onIonInput={(e) =>
-                      setDemandeur({
-                        ...demandeur,
-                        acte: { ...demandeur.acte, numero: e.detail.value! },
+                      setPhysique({
+                        ...physique,
+                        acte: { ...physique.acte, numero: e.detail.value! },
                       })
                     }
                   />
@@ -389,11 +394,11 @@ const Physique: React.FC<PhysiqueProps> = ({
                     label="Lieu"
                     placeholder="Lieu de l'acte de naissance"
                     readonly={readonly}
-                    value={demandeur.acte?.lieu}
+                    value={physique.acte?.lieu}
                     onIonInput={(e) =>
-                      setDemandeur({
-                        ...demandeur,
-                        acte: { ...demandeur.acte, lieu: e.detail.value || "" },
+                      setPhysique({
+                        ...physique,
+                        acte: { ...physique.acte, lieu: e.detail.value || "" },
                       })
                     }
                   />
@@ -404,15 +409,15 @@ const Physique: React.FC<PhysiqueProps> = ({
                     type="date"
                     readonly={readonly}
                     value={
-                      demandeur.acte?.date
-                        ? demandeur.acte.date.toISOString().substring(0, 10)
+                      physique.acte?.date
+                        ? physique.acte.date.toISOString().substring(0, 10)
                         : ""
                     }
                     onIonInput={(e) =>
-                      setDemandeur({
-                        ...demandeur,
+                      setPhysique({
+                        ...physique,
                         acte: {
-                          ...demandeur.acte,
+                          ...physique.acte,
                           date: e.detail.value
                             ? new Date(e.detail.value)
                             : null,

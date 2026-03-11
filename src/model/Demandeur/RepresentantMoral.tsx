@@ -1,4 +1,6 @@
+import { PersonnePhysique } from "./PersonnePhysique"
+
 export class RepresentantMoral {
-  personneId!: string
+  personnePhysique!: PersonnePhysique
   role!: "dirigeant" | "gerant" | "mandataire"
 }

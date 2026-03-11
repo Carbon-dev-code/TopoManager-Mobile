@@ -222,19 +222,19 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                 </IonCheckbox>
               </IonCol>
               {parcelle.oppossition && (
-                  <IonTextarea
-                    placeholder="Détails sur l'opposition..."
-                    labelPlacement="stacked"
-                    label="Observation opposition"
-                    autoGrow
-                    disabled={isDisabled}
-                    value={parcelle.observationOpposition}
-                    onIonInput={(e) =>
-                      updateField("observationOpposition", e.detail.value ?? "")
-                    }
-                    className="textarea-cool"
-                  />
-                )}
+                <IonTextarea
+                  placeholder="Détails sur l'opposition..."
+                  labelPlacement="stacked"
+                  label="Observation opposition"
+                  autoGrow
+                  disabled={isDisabled}
+                  value={parcelle.observationOpposition}
+                  onIonInput={(e) =>
+                    updateField("observationOpposition", e.detail.value ?? "")
+                  }
+                  className="textarea-cool"
+                />
+              )}
               <IonCol size="12">
                 <IonCheckbox
                   disabled={isDisabled}
@@ -248,62 +248,62 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                 </IonCheckbox>
               </IonCol>
               {parcelle.revandication && (
-                  <IonTextarea
-                    placeholder="Détails sur la revendication..."
-                    labelPlacement="stacked"
-                    label="Observation revendication"
-                    autoGrow
-                    disabled={isDisabled}
-                    value={parcelle.observationRevendication}
-                    onIonInput={(e) =>
-                      updateField(
-                        "observationRevendication",
-                        e.detail.value ?? "",
-                      )
-                    }
-                    className="textarea-cool"
-                  />
-                )}
+                <IonTextarea
+                  placeholder="Détails sur la revendication..."
+                  labelPlacement="stacked"
+                  label="Observation revendication"
+                  autoGrow
+                  disabled={isDisabled}
+                  value={parcelle.observationRevendication}
+                  onIonInput={(e) =>
+                    updateField(
+                      "observationRevendication",
+                      e.detail.value ?? "",
+                    )
+                  }
+                  className="textarea-cool"
+                />
+              )}
             </IonRow>
           </IonGrid>
         </IonItem>
 
         {/* Boutons d'action */}
         <IonItem>
-            <IonGrid>
-              <IonRow className="justify-content-between text-center">
-                <IonCol size="12" size-md="4">
-                  <IonButton
-                    expand="full"
-                    onClick={onShowDemandeurModal}
-                    disabled={isDisabled}
-                  >
-                    Ajout demandeur
-                  </IonButton>
-                </IonCol>
-                <IonCol size="12" size-md="4">
-                  <IonButton
-                    expand="full"
-                    color="tertiary"
-                    onClick={onShowSearchModal}
-                    disabled={isDisabled}
-                  >
-                    Recherche demandeur
-                  </IonButton>
-                </IonCol>
-                <IonCol size="12" size-md="4">
-                  <IonButton
-                    expand="full"
-                    color="tertiary"
-                    onClick={onShowRiverinModal}
-                    disabled={isDisabled}
-                  >
-                    Ajout riverain
-                  </IonButton>
-                </IonCol>
-              </IonRow>
-            </IonGrid>
-          </IonItem>
+          <IonGrid>
+            <IonRow className="justify-content-between text-center">
+              <IonCol size="12" size-md="4">
+                <IonButton
+                  expand="full"
+                  onClick={onShowDemandeurModal}
+                  disabled={isDisabled}
+                >
+                  Ajout demandeur
+                </IonButton>
+              </IonCol>
+              <IonCol size="12" size-md="4">
+                <IonButton
+                  expand="full"
+                  color="tertiary"
+                  onClick={onShowSearchModal}
+                  disabled={isDisabled}
+                >
+                  Recherche demandeur
+                </IonButton>
+              </IonCol>
+              <IonCol size="12" size-md="4">
+                <IonButton
+                  expand="full"
+                  color="tertiary"
+                  onClick={onShowRiverinModal}
+                  disabled={isDisabled}
+                >
+                  Ajout riverain
+                </IonButton>
+              </IonCol>
+            </IonRow>
+          </IonGrid>
+        </IonItem>
 
         {/* Tabs Demandeurs/Riverains */}
         <div className="tabs-wrapper">
@@ -329,16 +329,21 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
                 {parcelle.demandeurs?.length === 0 && (
                   <div className="empty-state">Aucun demandeur enregistré</div>
                 )}
-                {parcelle.demandeurs.map((d, i) => (
-                  <DemandeurView
-                    key={i}
-                    demandeur={d}
-                    swipeEnabled={mode !== "view"}
-                    onDelete={
-                      mode !== "view" ? () => removeDemandeur(i) : undefined
-                    }
-                  />
-                ))}
+                {parcelle.demandeurs.map((d, i) => {
+                  const personne = d.type === 0 ? d.personnePhysique : d.personneMorale;
+                  return (
+                    <DemandeurView
+                      key={i}
+                      personne={personne}
+                      type={d.type ?? 0}
+                      representanType={d.representanType}
+                      swipeEnabled={mode !== "view"}
+                      onDelete={
+                        mode !== "view" ? () => removeDemandeur(i) : undefined
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
 

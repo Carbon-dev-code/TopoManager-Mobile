@@ -15,7 +15,8 @@ import {
   calendar,
   trash,
 } from "ionicons/icons";
-import { Demandeur } from "../../model/parcelle/DemandeurDTO";
+import { PersonnePhysique } from "../../model/Demandeur/PersonnePhysique";
+import { PersonneMorale } from "../../model/Demandeur/PersonneMorale";
 import "./DemandeurView.css";
 import { useRef, useState, useEffect } from "react";
 import DropDownDemandeur from "../../components/dropdown/DropDownDemandeur";
@@ -23,7 +24,9 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 
 interface DemandeurViewProps {
-  demandeur: Demandeur;
+  personne: PersonnePhysique | PersonneMorale;
+  type: 0 | 1;
+  representanType?: string | null; // ← optionnel, seulement si type=0
   onDelete?: () => void;
   onView?: () => void;
   onEdit?: () => void;
@@ -33,16 +36,13 @@ interface DemandeurViewProps {
 
 const LONG_PRESS_DELAY = 1000;
 
-// ─── Hook photo de profil ────────────────────────────────────────────
 const useProfilePhoto = (fileName: string | null | undefined) => {
   const [src, setSrc] = useState<string | null>(null);
-
   useEffect(() => {
     if (!fileName) {
       setSrc(null);
       return;
     }
-
     const load = async () => {
       try {
         if (Capacitor.isNativePlatform()) {
@@ -62,10 +62,8 @@ const useProfilePhoto = (fileName: string | null | undefined) => {
         setSrc(null);
       }
     };
-
     load();
   }, [fileName]);
-
   return src;
 };
 
@@ -77,36 +75,41 @@ function formatRole(role: string): string {
 }
 
 const DemandeurView: React.FC<DemandeurViewProps> = ({
-  demandeur,
+  personne,
+  type,
+  representanType,
   onDelete,
   onView,
   onEdit,
   swipeEnabled = false,
   longPressEnabled = false,
 }) => {
-  const isPhysique = demandeur.type === 0;
+  const isPhysique = type === 0;
+  const pp = isPhysique ? (personne as PersonnePhysique) : null;
+  const pm = !isPhysique ? (personne as PersonneMorale) : null;
+
   const [showDropdown, setShowDropdown] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
   const triggerId = `demandeur-trigger-${
-    demandeur.id ?? Math.random().toString(36).slice(2)
+    personne?.id ?? Math.random().toString(36).slice(2)
   }`;
 
   // ─── Photo de profil ─────────────────────────────────────────────
-  const profileFileName =
-    demandeur.indexPhoto !== null && demandeur.photos?.length
-      ? demandeur.photos[demandeur.indexPhoto!]
-      : null;
+  const profileFileName = pp
+    ? pp.indexPhoto !== null && pp.photos?.length
+      ? pp.photos[pp.indexPhoto!]
+      : null
+    : null;
   const profileSrc = useProfilePhoto(profileFileName);
 
   const formatDate = (d: Date | string | null) => {
     if (!d) return "-";
     const dateObj = d instanceof Date ? d : new Date(d);
     if (isNaN(dateObj.getTime())) return "-";
-    const year = dateObj.getFullYear();
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
-    const day = dateObj.getDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    return `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${dateObj.getDate().toString().padStart(2, "0")}`;
   };
 
   const handlePressStart = () => {
@@ -117,12 +120,10 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
       setShowDropdown(true);
     }, LONG_PRESS_DELAY);
   };
-
   const handlePressEnd = () => {
     if (!longPressEnabled) return;
     if (timerRef.current) clearTimeout(timerRef.current);
   };
-
   const handleClick = () => {
     if (didLongPress.current) didLongPress.current = false;
   };
@@ -131,12 +132,10 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
   const avatarContent = profileSrc ? (
     <img src={profileSrc} alt="Profil" className="person-avatar-img" />
   ) : isPhysique ? (
-    demandeur.nom?.[0]?.toUpperCase() ?? "?"
+    pp?.nom?.[0]?.toUpperCase() ?? "?"
   ) : (
-    demandeur.denomination?.[0]?.toUpperCase() ?? "?"
+    pm?.denomination?.[0]?.toUpperCase() ?? "?"
   );
-
-  const typeIcon = isPhysique ? person : business;
 
   const cardContent = (
     <div
@@ -150,56 +149,67 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
       onTouchCancel={handlePressEnd}
       onClick={handleClick}
     >
-      <IonIcon icon={typeIcon} className="person-bg-icon" color="primary" />
-
+      <IonIcon
+        icon={isPhysique ? person : business}
+        className="person-bg-icon"
+        color="primary"
+      />
       <IonAvatar className="person-avatar">{avatarContent}</IonAvatar>
 
       <div className="person-info">
-        {isPhysique ? (
+        {isPhysique && pp ? (
           <>
             <div className="line1">
-              <span className="prenom">{demandeur.prenom}</span>
-              <span className="nom">{demandeur.nom}</span>
+              <span className="prenom">{pp.prenom}</span>
+              <span className="nom">{pp.nom}</span>
             </div>
             <div className="line2">
-              {!demandeur.representanType && (
-                <IonChip className="chip row g-0" color="secondary">
-                  <div className="col-auto d-flex me-1">
-                    <IonIcon icon={calendar} />
-                  </div>
-                  <div className="col">
-                    <span>{formatDate(demandeur.dateNaissance)}</span>
-                  </div>
-                </IonChip>
-              )}
-              {demandeur.representanType && (
+              <IonChip className="chip row g-0" color="secondary">
+                <div className="col-auto d-flex me-1">
+                  <IonIcon icon={calendar} />
+                </div>
+                <div className="col">
+                  <span>{formatDate(pp.dateNaissance)}</span>
+                </div>
+              </IonChip>
+              {representanType && (
                 <IonChip className="chip" color="warning">
-                  {formatRole(demandeur.representanType)}
+                  {formatRole(representanType)}
                 </IonChip>
               )}
               <IonChip className="chip row g-0" color="tertiary">
                 <div className="col-auto d-flex me-1">
-                  <IonIcon
-                    icon={Number(demandeur.sexe) === 1 ? male : female}
-                  />
+                  <IonIcon icon={Number(pp.sexe) === 1 ? male : female} />
+                </div>
+                <div className="col">{Number(pp.sexe) === 1 ? "M" : "F"}</div>
+              </IonChip>
+            </div>
+          </>
+        ) : pm ? (
+          <>
+            <div className="line1">
+              <span className="denomination">{pm.denomination}</span>
+            </div>
+            <div className="line2">
+              <IonChip className="chip row g-0" color="secondary">
+                <div className="col-auto d-flex me-1">
+                  <IonIcon icon={calendar} />
                 </div>
                 <div className="col">
-                  {Number(demandeur.sexe) === 1 ? "M" : "F"}
+                  <span>{pm.dateCreation}</span>
+                </div>
+              </IonChip>
+              <IonChip className="chip row g-0" color="medium">
+                <div className="col-auto d-flex me-1">
+                  <IonIcon icon={business} />
+                </div>
+                <div className="col">
+                  <span>{pm.siege}</span>
                 </div>
               </IonChip>
             </div>
           </>
-        ) : (
-          <>
-            <div className="line1">
-              <span className="denomination">{demandeur.denomination}</span>
-            </div>
-            <div className="line2">
-              <IonIcon icon={calendar} /> {demandeur.dateCreation}
-              <IonIcon icon={business} /> {demandeur.siege}
-            </div>
-          </>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -234,7 +244,6 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
           </IonItemOption>
         </IonItemOptions>
       </IonItemSliding>
-
       {longPressEnabled && (
         <DropDownDemandeur
           show={showDropdown}

@@ -1,7 +1,7 @@
 import { Preferences } from "@capacitor/preferences";
 import { ParametreTerritoire } from "../ParametreTerritoire";
 import { Polygone } from "../vecteur/Polygone";
-import { checkDemandeur, Demandeur } from "./DemandeurDTO";
+import { Demandeur } from "../Demandeur/Demandeur";
 import { Riverin } from "./Riverin";
 
 export async function checkParcelle(parcelle: Parcelle): Promise<void> {
@@ -19,16 +19,7 @@ export async function checkParcelle(parcelle: Parcelle): Promise<void> {
     if (!parcelle.anneeOccup) throw new Error("Veuillez insérer l'année d'occupation");
     if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 demandeur");
     if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");
-
-    parcelle.demandeurs = JSON.parse(JSON.stringify(parcelle.demandeurs));
-    
-    parcelle.demandeurs.forEach((demandeur, i) => {
-        try {
-            checkDemandeur(demandeur);
-        } catch (error) {
-            throw new Error(`Demandeur ${i + 1}: ${error instanceof Error ? error.message : 'Erreur'}`);
-        }
-    });
+    if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 Demandeur");    
 }
 
 

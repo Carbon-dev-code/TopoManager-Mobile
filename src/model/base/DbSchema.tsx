@@ -1,13 +1,12 @@
 // DbSchema.tsx
 import { checkParcelle, Parcelle } from "../parcelle/Parcelle";
-import { checkDemandeur, Demandeur } from "../parcelle/DemandeurDTO";
-import { Demandeur as DemandeurDTO } from "../Demandeur/Demandeur";
 import { Preferences } from "@capacitor/preferences";
 import { DashboardStats } from "../dashbord/dashbord";
 import { initDatabase } from "./Database";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { PersonnePhysique } from "../Demandeur/PersonnePhysique";
 import { PersonneMorale } from "../Demandeur/PersonneMorale";
+import { Demandeur } from "../Demandeur/Demandeur";
 
 // ─── Photos ───────────────────────────────────────────────────────────────────
 export async function deletePhotos(photos: string[]): Promise<void> {
@@ -52,7 +51,9 @@ export async function clearDatabase(): Promise<void> {
   try {
     const database = await initDatabase();
     await database.parcelle.find().remove();
-    await database.demandeur.find().remove();
+    await database.personnephysique.find().remove();
+    await database.personnemorale.find().remove();
+    // ← supprimer database.demandeur.find().remove() si la collection n'existe plus
     console.log("✅ Base de données RxDB vidée avec succès");
   } catch (error) {
     console.error("❌ Erreur clearDatabase:", error);
@@ -142,43 +143,59 @@ export async function deleteParcelle(code: string): Promise<boolean> {
   }
 }
 
-// ─── Demandeurs ───────────────────────────────────────────────────────────────
-function departagerTypePersonne(
-  demandeur: Demandeur,
-):
-  | { table: "personnephysique"; data: PersonnePhysique }
-  | { table: "personnemoral"; data: PersonneMorale } {
-  if (demandeur.type === 0) {
-    const personne: PersonnePhysique = {
-      id: demandeur.id,
-      nom: demandeur.nom,
-      prenom: demandeur.prenom,
-      neVers: demandeur.neVers,
-      dateNaissance: demandeur.dateNaissance,
-      lieuNaissance: demandeur.lieuNaissance,
-      sexe: demandeur.sexe,
-      adresse: demandeur.adresse,
-      nomPere: demandeur.nomPere,
-      nomMere: demandeur.nomMere,
-      situation: demandeur.situation,
-      nomConjoint: demandeur.nomConjoint,
-      cin: demandeur.cin ?? null,
-      acte: demandeur.acte ?? null,
-      photos: demandeur.photos,
-      indexPhoto: demandeur.indexPhoto ?? null,
-    };
-    return { table: "personnephysique", data: personne };
-  } else {
-    const morale: PersonneMorale = {
-      id: demandeur.id,
-      denomination: demandeur.denomination,
-      typeMorale: demandeur.typeMorale,
-      dateCreation: demandeur.dateCreation,
-      siege: demandeur.siege,
-      observations: demandeur.observations,
-      representant: [],
-    };
-    return { table: "personnemoral", data: morale };
+// ─── PersonnePhysique ─────────────────────────────────────────────────────────
+
+export async function insertPersonnePhysique(
+  personne: PersonnePhysique,
+): Promise<PersonnePhysique> {
+  try {
+    const database = await initDatabase();
+    const cleanData = JSON.parse(JSON.stringify(personne));
+    await database.personnephysique.upsert(cleanData);
+    console.log("✅ PersonnePhysique upsert avec succès");
+    return personne;
+  } catch (error) {
+    console.error("❌ Erreur insertPersonnePhysique:", error);
+    throw error;
+  }
+}
+
+export async function getAllPersonnesPhysiques(): Promise<PersonnePhysique[]> {
+  try {
+    const database = await initDatabase();
+    const docs = await database.personnephysique.find().exec();
+    return docs.map((doc) => doc.toJSON() as PersonnePhysique);
+  } catch (error) {
+    console.error("❌ Erreur getAllPersonnesPhysiques:", error);
+    return [];
+  }
+}
+
+// ─── PersonneMorale ───────────────────────────────────────────────────────────
+
+export async function insertPersonneMorale(
+  personne: PersonneMorale,
+): Promise<PersonneMorale> {
+  try {
+    const database = await initDatabase();
+    const cleanData = JSON.parse(JSON.stringify(personne));
+    await database.personnemorale.upsert(cleanData);
+    console.log("✅ PersonneMorale upsert avec succès");
+    return personne;
+  } catch (error) {
+    console.error("❌ Erreur insertPersonneMorale:", error);
+    throw error;
+  }
+}
+
+export async function getAllPersonnesMorales(): Promise<PersonneMorale[]> {
+  try {
+    const database = await initDatabase();
+    const docs = await database.personnemorale.find().exec();
+    return docs.map((doc) => doc.toJSON() as PersonneMorale);
+  } catch (error) {
+    console.error("❌ Erreur getAllPersonnesMorales:", error);
+    return [];
   }
 }
 
@@ -186,12 +203,11 @@ export async function insertDemandeur(
   demandeur: Demandeur,
 ): Promise<Demandeur> {
   try {
-    checkDemandeur(demandeur);
-    const database = await initDatabase();
-
-    const { table, data } = departagerTypePersonne(demandeur);
-    await database[table].upsert(JSON.parse(JSON.stringify(data)));
-
+    if (demandeur.type === 0) {
+      await insertPersonnePhysique(demandeur.personnePhysique);
+    } else {
+      await insertPersonneMorale(demandeur.personneMorale);
+    }
     console.log("✅ Demandeur upsert avec succès");
     return demandeur;
   } catch (error) {
@@ -200,81 +216,17 @@ export async function insertDemandeur(
   }
 }
 
-export async function insertDemandeurParcelle(demandeur: DemandeurDTO) {
-  try {
-    const database = await initDatabase();
-    const cleanDemandeur = JSON.parse(
-      JSON.stringify({
-        id: demandeur.id,
-        type: demandeur.type,
-        personnePhysiqueId: demandeur.personnePhysiqueId,
-        personneMoraleId: demandeur.personneMoraleId,
-        representants: demandeur.representants ?? [],
-      }),
-    );
-    await database.demandeur.upsert(cleanDemandeur);
-    console.log("✅ DemandeurParcelle upsert avec succès");
-  } catch (error) {
-    console.error("❌ Erreur insertDemandeurParcelle:", error);
-    throw error;
-  }
-}
-
-export async function getAllDemandeurs(): Promise<Demandeur[]> {
-  try {
-    const database = await initDatabase();
-    const docs = await database.personnephysique.find().exec();
-    const docsM = await database.personnemorale.find().exec();
-
-    const physiques: Demandeur[] = docs.map((doc) => {
-      const pp = doc.toJSON() as PersonnePhysique;
-      const dto = Demandeur.init();
-      dto.id = pp.id;
-      dto.type = 0;
-      dto.nom = pp.nom;
-      dto.prenom = pp.prenom;
-      dto.neVers = pp.neVers;
-      dto.dateNaissance = pp.dateNaissance;
-      dto.lieuNaissance = pp.lieuNaissance;
-      dto.sexe = pp.sexe;
-      dto.adresse = pp.adresse;
-      dto.nomPere = pp.nomPere;
-      dto.nomMere = pp.nomMere;
-      dto.situation = pp.situation;
-      dto.nomConjoint = pp.nomConjoint;
-      dto.cin = pp.cin;
-      dto.acte = pp.acte;
-      dto.photos = pp.photos;
-      dto.indexPhoto = pp.indexPhoto;
-      return dto;
-    });
-
-    const morales: Demandeur[] = docsM.map((doc) => {
-      const pm = doc.toJSON() as PersonneMorale;
-      const dto = Demandeur.init();
-      dto.id = pm.id;
-      dto.type = 1;
-      dto.denomination = pm.denomination;
-      dto.typeMorale = pm.typeMorale;
-      dto.dateCreation = pm.dateCreation;
-      dto.siege = pm.siege;
-      dto.observations = pm.observations;
-      return dto;
-    });
-
-    return [...physiques, ...morales];
-  } catch (error) {
-    console.error("❌ Erreur getAllDemandeurs:", error);
-    return [];
-  }
-}
-
 // ─── Statistiques ─────────────────────────────────────────────────────────────
 
 export async function statisiqueParcelles(): Promise<DashboardStats> {
   try {
     const { data: parcelles, total } = await getAllParcelles();
-    const totalDemandeurs = (await getAllDemandeurs()).length;
+
+    const [physiques, morales] = await Promise.all([
+      getAllPersonnesPhysiques(),
+      getAllPersonnesMorales(),
+    ]);
+    const totalDemandeurs = physiques.length + morales.length;
 
     return {
       parcellesCreeParUser: total,

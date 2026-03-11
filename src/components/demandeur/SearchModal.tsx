@@ -9,25 +9,32 @@ import {
 } from "@ionic/react";
 import { arrowBack } from "ionicons/icons";
 import { useEffect, useState } from "react";
-import { Demandeur } from "../../model/parcelle/DemandeurDTO";
-
 import "./SearchModal.css";
 import DemandeurView from "./DemandeurView";
-import { getAllDemandeurs } from "../../model/base/DbSchema";
+import {
+  getAllPersonnesPhysiques,
+  getAllPersonnesMorales,
+} from "../../model/base/DbSchema";
+import { PersonnePhysique } from "../../model/Demandeur/PersonnePhysique";
+import { PersonneMorale } from "../../model/Demandeur/PersonneMorale";
+import { Demandeur } from "../../model/Demandeur/Demandeur";
+import { v4 as uuidv4 } from "uuid";
+
+type PersonneWithType =
+  | { type: 0; personne: PersonnePhysique }
+  | { type: 1; personne: PersonneMorale };
 
 interface SearchModalProps {
   showSearchModal: boolean;
   setShowSearchModal: (b: boolean) => void;
-  onSelect: (d: Demandeur) => void;
-  withRole?: boolean; // ← nouveau : si true, demande le rôle après sélection
-  onSelectWithRole?: (d: Demandeur, role: string) => void; // ← nouveau
+  onSelect: (d: Demandeur, role?: string) => void;
+  withRole?: boolean;
+  roles?: { text: string; data: string }[];
 }
 
-const ROLES = [
-  { text: "Propriétaire", data: "Propriétaire" },
-  { text: "Tuteur légal", data: "tuteurLegal" },
-  { text: "Mandataire", data: "mandataire" },
-  { text: "Representant", data: "mandataire" },
+const ROLES_PHYSIQUE = [
+  { text: "Propriétaire", data: "proprietaire" }, // ← null = propriétaire
+  { text: "Tuteur légal", data: "tuteurLegal" }
 ];
 
 const SearchModal: React.FC<SearchModalProps> = ({
@@ -35,70 +42,97 @@ const SearchModal: React.FC<SearchModalProps> = ({
   setShowSearchModal,
   onSelect,
   withRole = false,
+  roles = ROLES_PHYSIQUE,
 }) => {
   const [query, setQuery] = useState("");
-  const [localDemandeurs, setLocalDemandeurs] = useState<Demandeur[]>([]);
-  const [recentSearches, setRecentSearches] = useState<Demandeur[]>([]);
+  const [allPersonnes, setAllPersonnes] = useState<PersonneWithType[]>([]);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
   const [showRoleSheet, setShowRoleSheet] = useState(false);
-  const [selectedDemandeur, setSelectedDemandeur] = useState<Demandeur | null>(
-    null,
-  );
+  const [selected, setSelected] = useState<PersonneWithType | null>(null);
 
   useEffect(() => {
     if (!showSearchModal) return;
     const load = async () => {
-      setLocalDemandeurs(await getAllDemandeurs());
-    };
-    load();
-  }, [showSearchModal]);
+      const [physiques, morales] = await Promise.all([
+        getAllPersonnesPhysiques(),
+        getAllPersonnesMorales(),
+      ]);
+      const combined: PersonneWithType[] = [
+        ...physiques.map((p) => ({ type: 0 as const, personne: p })),
+        ...morales.map((p) => ({ type: 1 as const, personne: p })),
+      ];
+      setAllPersonnes(combined);
 
-  useEffect(() => {
-    if (!showSearchModal) return;
-    const load = async () => {
-      const allDemandeurs = await getAllDemandeurs();
-      setLocalDemandeurs(allDemandeurs);
+      // ─── Recherches récentes ─────────────────────────────────
       const saved = localStorage.getItem("recentSearches");
-      if (saved) {
-        const savedIds: string[] = JSON.parse(saved).map(
-          (d: Demandeur) => d.id,
-        );
-        const fresh = savedIds
-          .map((id) => allDemandeurs.find((d) => d.id === id))
-          .filter(Boolean) as Demandeur[];
-        setRecentSearches(fresh);
-      }
+      if (saved) setRecentIds(JSON.parse(saved));
     };
     load();
   }, [showSearchModal]);
 
-  const filtered = query
-    ? localDemandeurs.filter((d) =>
-        `${d.prenom ?? ""} ${d.nom ?? ""} ${d.denomination ?? ""}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-      )
-    : recentSearches;
+  // ─── Filtrage ────────────────────────────────────────────────
+  const filtered = (() => {
+    const pool = query
+      ? allPersonnes
+      : allPersonnes.filter((p) => recentIds.includes(p.personne.id));
 
-  const saveRecent = (d: Demandeur) => {
-    setRecentSearches((prev) => {
-      const exists = prev.find((r) => r.id === d.id);
+    if (!query) return pool;
+
+    const q = query.toLowerCase();
+    return pool.filter((p) => {
+      if (p.type === 0) {
+        const pp = p.personne as PersonnePhysique;
+        return `${pp.prenom ?? ""} ${pp.nom ?? ""}`.toLowerCase().includes(q);
+      } else {
+        const pm = p.personne as PersonneMorale;
+        return (pm.denomination ?? "").toLowerCase().includes(q);
+      }
+    });
+  })();
+
+  const saveRecent = (id: string) => {
+    setRecentIds((prev) => {
+      const exists = prev.includes(id);
       if (exists) return prev;
-      const updated = [d, ...prev].slice(0, 5);
+      const updated = [id, ...prev].slice(0, 5);
       localStorage.setItem("recentSearches", JSON.stringify(updated));
       return updated;
     });
   };
 
-  const handleSelect = (d: Demandeur) => {
-    if (withRole) {
-      // ← stocker la sélection et ouvrir l'ActionSheet
-      setSelectedDemandeur(d);
-      setShowRoleSheet(true);
-    } else {
-      onSelect({ ...d });
+  const buildDemandeur = (
+    p: PersonneWithType,
+    role: string | null,
+  ): Demandeur => {
+    return new Demandeur(
+      uuidv4(),
+      p.type,
+      p.type === 0 ? (p.personne as PersonnePhysique) : PersonnePhysique.init(),
+      p.type === 1 ? (p.personne as PersonneMorale) : PersonneMorale.init(),
+      role,
+    );
+  };
+
+  const handleSelect = (p: PersonneWithType) => {
+    if (!withRole) {
+      // ─── Pas de rôle → propriétaire par défaut ───────────────
+      onSelect(buildDemandeur(p, null));
+      saveRecent(p.personne.id);
       setShowSearchModal(false);
-      saveRecent(d);
+      return;
     }
+
+    if (p.type === 1) {
+      // ─── PersonneMorale → toujours representant, pas de choix ─
+      onSelect(buildDemandeur(p, "representant"));
+      saveRecent(p.personne.id);
+      setShowSearchModal(false);
+      return;
+    }
+
+    // ─── PersonnePhysique → ActionSheet pour choisir le rôle ──
+    setSelected(p);
+    setShowRoleSheet(true);
   };
 
   return (
@@ -118,13 +152,13 @@ const SearchModal: React.FC<SearchModalProps> = ({
               value={query}
               debounce={300}
               onIonInput={(e) => setQuery(e.detail.value!)}
-              placeholder="Search..."
+              placeholder="Recherche..."
               animated
             />
           </div>
 
           <div className="search-results">
-            {query === "" && recentSearches.length > 0 && (
+            {query === "" && recentIds.length > 0 && (
               <div
                 className="recent-label"
                 style={{ padding: "10px", fontWeight: "bold", color: "#666" }}
@@ -133,9 +167,9 @@ const SearchModal: React.FC<SearchModalProps> = ({
               </div>
             )}
             {filtered.length > 0 ? (
-              filtered.map((d, idx) => (
-                <div key={idx} onClick={() => handleSelect(d)}>
-                  <DemandeurView demandeur={d} />
+              filtered.map((p, idx) => (
+                <div key={idx} onClick={() => handleSelect(p)}>
+                  <DemandeurView personne={p.personne} type={p.type} />
                 </div>
               ))
             ) : (
@@ -147,21 +181,24 @@ const SearchModal: React.FC<SearchModalProps> = ({
         </IonContent>
       </IonModal>
 
-      {/* ─── ActionSheet rôle ─── */}
+      {/* ─── ActionSheet rôle — uniquement pour PersonnePhysique ── */}
       <IonActionSheet
         isOpen={showRoleSheet}
         header="Choisir le rôle"
         onDidDismiss={() => {
           setShowRoleSheet(false);
-          setSelectedDemandeur(null);
+          setSelected(null);
         }}
         buttons={[
-          ...ROLES.map((role) => ({
+          ...roles.map((role) => ({
             text: role.text,
             handler: () => {
-              if (selectedDemandeur) {
-                onSelect({ ...selectedDemandeur, representanType: role.data });
-                saveRecent(selectedDemandeur);
+              if (selected) {
+                onSelect(
+                  buildDemandeur(selected, role.data),
+                  role.data ?? undefined,
+                );
+                saveRecent(selected.personne.id);
                 setShowSearchModal(false);
               }
             },

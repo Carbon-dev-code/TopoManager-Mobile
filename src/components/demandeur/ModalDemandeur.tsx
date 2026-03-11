@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import {
   IonModal,
   IonHeader,
@@ -14,7 +14,6 @@ import {
   IonLabel,
   IonRadio,
   IonRadioGroup,
-  IonAlert,
   IonSelect,
   IonSelectOption,
 } from "@ionic/react";
@@ -22,19 +21,22 @@ import { close, createOutline } from "ionicons/icons";
 import "./ModalDemandeur.css";
 import Physique from "./Physique";
 import Moral from "./Moral";
-import { Demandeur } from "../../model/parcelle/DemandeurDTO";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import Photo from "../photo/Photo";
 import { deletePhotos } from "../../model/base/DbSchema";
+import { PersonnePhysique } from "../../model/Demandeur/PersonnePhysique";
+import { PersonneMorale } from "../../model/Demandeur/PersonneMorale";
 
 type ModalMode = "create" | "view" | "edit";
 
 interface ModalDemandeurProps {
   showCreateModal: boolean;
   setShowCreateModal: (b: boolean) => void;
-  demandeur: Demandeur;
-  setDemandeur: React.Dispatch<React.SetStateAction<Demandeur>>;
+  personnePhysique: PersonnePhysique;
+  setPersonnePhysique: React.Dispatch<React.SetStateAction<PersonnePhysique>>;
+  personneMorale: PersonneMorale;
+  setPersonneMorale: React.Dispatch<React.SetStateAction<PersonneMorale>>;
   addDemandeur: () => void;
   toastMessage?: string | null;
   setToastMessage?: (msg: string | null) => void;
@@ -44,6 +46,8 @@ interface ModalDemandeurProps {
   setDecomposed: (d: boolean) => void;
   mode?: ModalMode;
   withRepresentants?: boolean;
+  representanType?: string | null;
+  setRepresentanType?: (role: string | null) => void;
 }
 
 const TITLES: Record<ModalMode, string> = {
@@ -55,8 +59,10 @@ const TITLES: Record<ModalMode, string> = {
 const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   showCreateModal,
   setShowCreateModal,
-  demandeur,
-  setDemandeur,
+  personnePhysique,
+  setPersonnePhysique,
+  personneMorale,
+  setPersonneMorale,
   addDemandeur,
   toastMessage,
   setToastMessage,
@@ -66,9 +72,9 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   setDecomposed,
   mode = "create",
   withRepresentants = false,
+  representanType,
+  setRepresentanType,
 }) => {
-  const [showConfirmProfile, setShowConfirmProfile] = useState(false);
-  const [lastPhotoIndex] = useState<number | null>(null);
   const isReadOnly = mode === "view";
 
   // ─── Compression ────────────────────────────────────────────────
@@ -100,8 +106,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 
   // ─── Prise de photo ─────────────────────────────────────────────
   const takePhoto = useCallback(async () => {
-    if ((demandeur.photos?.length ?? 0) >= 1) {
-      // ← 5 devient 1
+    if ((personnePhysique.photos?.length ?? 0) >= 1) {
       setToastMessage?.("1 photo maximum pour le demandeur");
       return;
     }
@@ -114,9 +119,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         height: 512,
         correctOrientation: true,
       });
-
       if (!photo.base64String) throw new Error("Pas de photo");
-
       const compressed = await compressImage(photo.base64String, 512, 0.7);
       const fileName = `demandeur/${Date.now()}.jpeg`;
       await Filesystem.writeFile({
@@ -125,19 +128,16 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         directory: Directory.Data,
         recursive: true,
       });
-
-      setDemandeur((prev: Demandeur) => ({
+      setPersonnePhysique((prev) => ({
         ...prev,
-        photos: [fileName], // ← remplace au lieu d'ajouter
+        photos: [fileName],
         indexPhoto: 0,
       }));
-
-      // Plus besoin de demander si photo de profil — c'est automatiquement index 0
     } catch (err) {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
     }
-  }, [demandeur.photos, setDemandeur, setToastMessage]);
+  }, [personnePhysique.photos, setPersonnePhysique, setToastMessage]);
 
   return (
     <IonModal
@@ -168,6 +168,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
       </IonHeader>
 
       <IonContent className="ion-padding">
+        {/* ─── Type physique / morale ─────────────────────────────── */}
         <IonList>
           <IonItem>
             <IonLabel className="me-3 truncate">Type :</IonLabel>
@@ -175,18 +176,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
               value={isPhysique.toString()}
               onIonChange={(e) => {
                 if (isReadOnly) return;
-                const value = Number(e.detail.value);
-                setIsPhysique(value);
-                const fresh = Demandeur.init();
-                setDemandeur({
-                  ...fresh,
-                  type: value,
-                  id: demandeur.id,
-                  photos: demandeur.photos,
-                  indexPhoto: demandeur.indexPhoto,
-                  observations: demandeur.observations,
-                  adresse: demandeur.adresse,
-                });
+                setIsPhysique(Number(e.detail.value));
               }}
             >
               <div
@@ -212,84 +202,62 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             {withRepresentants && (
               <IonItem>
                 <IonSelect
-                  label="Type de demandeur :"
-                  placeholder="Type"
+                  label="Rôle :"
                   interface="alert"
-                  className="pb-2"
+                  disabled={isReadOnly}
+                  value={representanType ?? "proprietaire"} // ← défaut propriétaire
+                  onIonChange={(e) => setRepresentanType?.(e.detail.value)}
                 >
-                  <IonSelectOption>Proprietaire</IonSelectOption>
-                  <IonSelectOption>Representant</IonSelectOption>
+                  <IonSelectOption value="proprietaire">
+                    Propriétaire
+                  </IonSelectOption>
+                  <IonSelectOption value="tuteurLegal">
+                    Tuteur légal
+                  </IonSelectOption>
                 </IonSelect>
               </IonItem>
             )}
             <Physique
-              demandeur={demandeur}
-              setDemandeur={setDemandeur}
+              physique={personnePhysique}
+              setPhysique={setPersonnePhysique}
               readonly={isReadOnly}
             />
+            <IonItem lines="none">
+              <Photo
+                photos={personnePhysique.photos ?? []}
+                decomposed={decomposed}
+                setDecomposed={setDecomposed}
+                takePhoto={takePhoto}
+                viewOnly={isReadOnly}
+                maxPhotos={1}
+                clearPhotos={async () => {
+                  await deletePhotos(personnePhysique.photos ?? []);
+                  setPersonnePhysique((prev) => ({
+                    ...prev,
+                    photos: [],
+                    indexPhoto: null,
+                  }));
+                }}
+                onDeletePhoto={async (idx) => {
+                  await deletePhotos([personnePhysique.photos[idx]]);
+                  setPersonnePhysique((prev) => ({
+                    ...prev,
+                    photos: prev.photos.filter((_, i) => i !== idx),
+                    indexPhoto: null,
+                  }));
+                }}
+                name="Photo du demandeur"
+              />
+            </IonItem>
           </>
         ) : (
           <Moral
-            demandeur={demandeur}
-            setDemandeur={setDemandeur}
+            personne={personneMorale}
+            setPersonne={setPersonneMorale}
             readonly={isReadOnly}
           />
         )}
-
-        {/* ─── Photos ─────────────────────────────────────────────── */}
-        <IonItem lines="none">
-          <Photo
-            photos={demandeur.photos ?? []}
-            decomposed={decomposed}
-            setDecomposed={setDecomposed}
-            takePhoto={takePhoto}
-            viewOnly={isReadOnly}
-            maxPhotos={1} // ← ajout
-            clearPhotos={async () => {
-              await deletePhotos(demandeur.photos ?? []);
-              setDemandeur((prev: Demandeur) => ({
-                ...prev,
-                photos: [],
-                indexPhoto: null,
-              }));
-            }}
-            onDeletePhoto={async (idx) => {
-              await deletePhotos([demandeur.photos[idx]]);
-              setDemandeur((prev: Demandeur) => ({
-                ...prev,
-                photos: prev.photos.filter((_, i) => i !== idx),
-                indexPhoto: null,
-              }));
-            }}
-            name="Photo du demandeur"
-          />
-        </IonItem>
       </IonContent>
-
-      <IonAlert
-        isOpen={showConfirmProfile}
-        header="Photo de profil"
-        message="Voulez-vous définir cette photo comme photo de profil ?"
-        buttons={[
-          {
-            text: "Non",
-            role: "cancel",
-            handler: () => setShowConfirmProfile(false),
-          },
-          {
-            text: "Oui",
-            handler: () => {
-              if (lastPhotoIndex !== null) {
-                setDemandeur((prev: Demandeur) => ({
-                  ...prev,
-                  indexPhoto: lastPhotoIndex,
-                }));
-              }
-              setShowConfirmProfile(false);
-            },
-          },
-        ]}
-      />
 
       {toastMessage && setToastMessage && (
         <IonToast

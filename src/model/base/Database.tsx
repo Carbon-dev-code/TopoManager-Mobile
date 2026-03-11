@@ -88,8 +88,8 @@ export async function initDatabase(): Promise<RxDatabase> {
           properties: {
             id: { type: "string", maxLength: 100 },
             type: { type: "number" },
-            personnePhysiqueId : { type: "string" },
-            personneMoraleId : { type: "string" },
+            personnePhysiqueId: { type: "string" },
+            personneMoraleId: { type: "string" },
           },
           required: ["id", "type"],
           additionalProperties: false,
@@ -142,7 +142,11 @@ export async function initDatabase(): Promise<RxDatabase> {
             typeMorale: { type: "number" },
             dateCreation: { type: "string" },
             siege: { type: "string" },
-            observations: { type: "string" }
+            observations: { type: "string" },
+            representant: {
+              type: "array",
+              items: { type: "object", additionalProperties: true },
+            },
           },
           required: ["id", "denomination", "dateCreation", "siege"],
           additionalProperties: false,

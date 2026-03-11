@@ -37,13 +37,13 @@ import {
   ellipsisVerticalOutline,
 } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 import "../assets/dist/css/bootstrap.min.css";
 import "./Tab1.css";
 import { ParametreTerritoire } from "../model/ParametreTerritoire";
 import { Categorie } from "../model/Categorie";
 import { Status } from "../model/Status";
 import { Parcelle } from "../model/parcelle/Parcelle";
-import { checkDemandeur, Demandeur } from "../model/parcelle/DemandeurDTO";
 import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
@@ -54,7 +54,6 @@ import DemandeurView from "../components/demandeur/DemandeurView";
 import ParcelleForm from "../components/parcelle/ParcelleForm";
 import {
   deleteParcelle,
-  getAllDemandeurs,
   getAllParcelles,
   insertDemandeur,
   insertParcelle,
@@ -65,6 +64,9 @@ import DropDown from "../components/dropdown/DropDown";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import ScrollToTop from "../components/ScrollTop/ScrollToTop";
 import { ToastType } from "../components/toast/Toast";
+import { Demandeur } from "../model/Demandeur/Demandeur";
+import { PersonnePhysique } from "../model/Demandeur/PersonnePhysique";
+import { PersonneMorale } from "../model/Demandeur/PersonneMorale";
 
 // Hook personnalisé pour la gestion des données de référence
 const useReferenceData = () => {
@@ -78,7 +80,6 @@ const useReferenceData = () => {
       Preferences.get({ key: "statusData" }),
       Preferences.get({ key: "repereData" }),
     ]);
-
     if (categorieData.value) setCategorie(JSON.parse(categorieData.value));
     if (statusData.value) setStatus(JSON.parse(statusData.value));
     if (repereData.value) setRepere(JSON.parse(repereData.value));
@@ -99,13 +100,11 @@ const useParcelleCode = () => {
         Preferences.get({ key: "parametreActuel" }),
         Preferences.get({ key: "device_id" }),
       ]);
-
       if (!parametrePref.value || !devicePref.value) return null;
 
       const parametreActuel = JSON.parse(parametrePref.value);
       const deviceId = JSON.parse(devicePref.value);
       const newIncrement = (parametreActuel.increment || 0) + 1;
-
       const { region, district, commune, fokontany, hameau } = parametreActuel;
       const code = `${deviceId}-${region.coderegion}-${district.codedistrict}-${commune.codecommune}-${fokontany.codefokontany}-${hameau?.codehameau}-${newIncrement}`;
 
@@ -141,7 +140,6 @@ const useParcelleCode = () => {
     try {
       const parametrePref = await Preferences.get({ key: "parametreActuel" });
       if (!parametrePref.value) throw new Error("Paramètres non configurés");
-
       const parametreActuel = JSON.parse(parametrePref.value);
       await Preferences.set({
         key: "parametreActuel",
@@ -180,7 +178,6 @@ const Tab1: React.FC = () => {
   const [tempAlertMessage, setTempAlertMessage] = useState("");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mode, setMode] = useState<"view" | "edit" | "create">("create");
-
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
     "demandeur",
@@ -190,10 +187,15 @@ const Tab1: React.FC = () => {
 
   // États données
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
-  const [demandeurList, setDemandeurList] = useState<Demandeur[]>([]);
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
-  const [demandeur, setDemandeur] = useState<Demandeur>(Demandeur.init());
-  const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init);
+  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(
+    PersonnePhysique.init(),
+  );
+  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(
+    PersonneMorale.init(),
+  );
+  const [representanType, setRepresentanType] = useState<string | null>(null);
+  const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init());
   const [riverinMess, setRiverinMess] = useState<ToastType | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, setSelectedParcelle] = useState<Parcelle | null>(null);
@@ -209,24 +211,18 @@ const Tab1: React.FC = () => {
 
   // Chargement initial
   const loadData = useCallback(async (page: number = 1) => {
-    const [{ data, total }, demandeursData] = await Promise.all([
-      getAllParcelles(page, ITEMS_PER_PAGE),
-      getAllDemandeurs(),
-    ]);
+    const { data, total } = await getAllParcelles(page, ITEMS_PER_PAGE);
     setParcelles(data);
     setTotalParcelles(total);
-    setDemandeurList(demandeursData);
   }, []);
 
   useEffect(() => {
     loadData(currentPage);
   }, [currentPage]);
-
   useIonViewWillEnter(() => {
     loadData(currentPage);
   });
 
-  //Avant de cree une parcelle une verification de data s'impose
   const verifyDataBeforeCreate = useCallback(async () => {
     try {
       await verifyDatabase();
@@ -244,42 +240,56 @@ const Tab1: React.FC = () => {
     }
   }, []);
 
-  // Initialisation modal création
   useEffect(() => {
     if (showCreateModal && mode === "create") {
       (async () => {
         const codeData = await generateNextCode();
-        if (codeData) {
-          setParcelle((prev) => ({ ...prev, ...codeData }));
-        }
+        if (codeData) setParcelle((prev) => ({ ...prev, ...codeData }));
         await loadReferenceData();
       })();
     }
-
-    if (showCreateModal && mode !== "create") {
-      loadReferenceData();
-    }
+    if (showCreateModal && mode !== "create") loadReferenceData();
   }, [showCreateModal, mode, generateNextCode, loadReferenceData]);
 
-  // totalPages calculé depuis le serveur
   const totalPages = Math.ceil(totalParcelles / ITEMS_PER_PAGE);
 
-  // filteredParcelles reste local (sur la page courante seulement)
   const filteredParcelles = useMemo(() => {
     if (!searchQuery) return parcelles;
     const q = searchQuery.toLowerCase();
-    return parcelles.filter(
-      (p) =>
-        p.code?.toLowerCase().includes(q) ||
-        p.demandeurs.some(
-          (d) =>
-            d.nom?.toLowerCase().includes(q) ||
-            d.prenom?.toLowerCase().includes(q),
-        ),
-    );
+    return parcelles.filter((p) => p.code?.toLowerCase().includes(q));
   }, [searchQuery, parcelles]);
 
-  // Handlers
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // ─── Ajouter demandeur à la parcelle ────────────────────────────
+  const addDemandeur = useCallback(async () => {
+    try {
+      const newDemandeur = new Demandeur(
+        uuidv4(),
+        isPhysique === 0 ? 0 : 1,
+        personnePhysique,
+        personneMorale,
+        isPhysique === 0 ? representanType ?? "proprietaire" : null,
+      );
+      setParcelle((prev) => ({
+        ...prev,
+        demandeurs: [...prev.demandeurs, newDemandeur],
+      }));
+      setPersonnePhysique(PersonnePhysique.init());
+      setPersonneMorale(PersonneMorale.init());
+      setRepresentanType("proprietaire");
+      setIsPhysique(0);
+      setShowDemandeurModal(false);
+    } catch (error) {
+      setTempAlertMessage(
+        error instanceof Error ? error.message : "Erreur inconnue",
+      );
+      setShowTempAlert(true);
+    }
+  }, [personnePhysique, personneMorale, isPhysique, representanType]);
+
   const handleCardClick = useCallback(
     (codeParcelle: string) => {
       history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
@@ -287,42 +297,16 @@ const Tab1: React.FC = () => {
     [history],
   );
 
-  const addDemandeur = useCallback(async () => {
-    try {
-      checkDemandeur(demandeur);
-      setParcelle((prev) => ({
-        ...prev,
-        demandeurs: [...prev.demandeurs, demandeur],
-      }));
-      setDemandeur(Demandeur.init());
-      setShowDemandeurModal(false);
-    } catch (error) {
-      setTempAlertMessage(
-        error instanceof Error
-          ? error.message
-          : "Erreur inconnue veuillez vous adresse au administrateur",
-      );
-      setShowTempAlert(true);
-    }
-  }, [demandeur]);
-
-  // Reset page quand la recherche change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
   const addRiverin = useCallback(() => {
     if (!newRiverin.repere) {
       setRiverinMess("error");
       return;
     }
-
-    // ← validation selon le type
-    if (newRiverin.type === "personne" && !newRiverin.demandeur) {
+    if ( newRiverin.type === "personne" && !newRiverin.personnePhysique && !newRiverin.personneMorale
+    ) {
       setRiverinMess("error");
       return;
     }
-
     if (newRiverin.type === "autre" && !newRiverin.nom?.trim()) {
       setRiverinMess("error");
       return;
@@ -332,6 +316,8 @@ const Tab1: React.FC = () => {
       ...prev,
       riverin: [...prev.riverin, newRiverin],
     }));
+    console.log(newRiverin);
+    console.log(parcelle);
     setNewRiverin(Riverin.init());
     setRiverinMess("success");
   }, [newRiverin]);
@@ -348,46 +334,29 @@ const Tab1: React.FC = () => {
     setShowAlertRemove(true);
   }, []);
 
-  const createParcelle = useCallback(async () => {
+  const createParcelle = useCallback(async () => { // correction be
     try {
-      //Insert Parcelle
+      for (const d of parcelle.demandeurs) {
+        await insertDemandeur(d);
+      }
+      for (const r of parcelle.riverin) {
+        if (r.demandeur) await insertDemandeur(r.demandeur);
+      }
       await insertParcelle(parcelle);
+      if (mode === "create") await saveIncrement();
 
-      //Insert Demandeur ?? Aona ra efa ao ??
-      for (let i = 0; i < parcelle.demandeurs.length; i++) {
-        await insertDemandeur(parcelle.demandeurs[i]);
-      }
-
-      // Insert Demandeur de Riverin ra to ka tsiss ko
-      for (let i = 0; i < parcelle.riverin.length; i++) {
-        if (parcelle.riverin[i].demandeur != null) {
-          await insertDemandeur(parcelle.riverin[i].demandeur!);
-        }
-      }
-
-      if (mode === "create") {
-        // augmenter l'incrementation
-        await saveIncrement();
-      }
-
-      // Mise à jour de la liste selon le mode
       if (mode === "edit") {
-        // Mode édition : remplacer la parcelle existante
         setParcelles((prev) =>
           prev.map((p) => (p.code === parcelle.code ? parcelle : p)),
         );
       } else {
-        // Mode création : ajouter la nouvelle parcelle
         setParcelles((prev) => [...prev, parcelle]);
       }
-
       setParcelle(Parcelle.init());
       setShowCreateModal(false);
     } catch (error) {
       setTempAlertMessage(
-        error instanceof Error
-          ? error.message
-          : "Erreur inconnue veuillez vous adresse au administrateur",
+        error instanceof Error ? error.message : "Erreur inconnue",
       );
       setShowTempAlert(true);
     }
@@ -395,16 +364,14 @@ const Tab1: React.FC = () => {
 
   async function compressImage(
     base64: string,
-    maxSize: number = 1024,
-    quality: number = 0.6,
+    maxSize = 1024,
+    quality = 0.6,
   ): Promise<string> {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = `data:image/jpeg;base64,${base64}`;
       img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
+        let { width, height } = img;
         if (width > height && width > maxSize) {
           height = (height * maxSize) / width;
           width = maxSize;
@@ -412,27 +379,21 @@ const Tab1: React.FC = () => {
           width = (width * maxSize) / height;
           height = maxSize;
         }
-
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Retourne le base64 compressé sans le préfixe
-        const compressed = canvas.toDataURL("image/jpeg", quality);
-        resolve(compressed.split(",")[1]); // ← base64 pur
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
       };
     });
   }
+
   const takePhotoParcelle = useCallback(async () => {
     try {
       if (parcelle.photos?.length >= 5) {
         setToastMessage("Maximum 5 photos");
         return;
       }
-
       const photo = await Camera.getPhoto({
         quality: 60,
         resultType: CameraResultType.Base64,
@@ -441,12 +402,8 @@ const Tab1: React.FC = () => {
         height: 1024,
         correctOrientation: true,
       });
-
       if (!photo.base64String) throw new Error("Pas de photo");
-
-      // ← compression réelle avant stockage
       const compressed = await compressImage(photo.base64String, 1024, 0.6);
-
       const fileName = `parcelle/${Date.now()}.jpeg`;
       await Filesystem.writeFile({
         path: fileName,
@@ -454,13 +411,9 @@ const Tab1: React.FC = () => {
         directory: Directory.Data,
         recursive: true,
       });
-
       setParcelle((prev) => {
         if (prev.photos?.length >= 5) return prev;
-        return {
-          ...prev,
-          photos: [...prev.photos, fileName],
-        };
+        return { ...prev, photos: [...prev.photos, fileName] };
       });
     } catch (err) {
       console.error(err);
@@ -546,7 +499,7 @@ const Tab1: React.FC = () => {
         duration={5000}
         message={
           verifMessageError ||
-          "Une erreur est survenue lors de la vérification des données. Veuillez vous adresser à l'administrateur."
+          "Une erreur est survenue lors de la vérification des données."
         }
         onClose={() => setShowAlertVerif(false)}
       />
@@ -566,7 +519,6 @@ const Tab1: React.FC = () => {
           </div>
         ) : (
           <div className="parcelle-layout">
-            {/* Zone scrollable */}
             <div className="parcelle-scroll">
               <div className="cardContent">
                 {filteredParcelles.map((p) => (
@@ -598,7 +550,6 @@ const Tab1: React.FC = () => {
                           setOpenDropdown(null);
                           setMode("view");
                           setParcelle(p);
-
                           setSelectedParcelle(p);
                           setShowCreateModal(true);
                         }}
@@ -645,7 +596,16 @@ const Tab1: React.FC = () => {
                     <IonCardContent className="p-0">
                       <div className="scrollable-list">
                         {p.demandeurs.map((d) => (
-                          <DemandeurView key={`dem${d.id}`} demandeur={d} />
+                          <DemandeurView
+                            key={`dem${d.id}`}
+                            personne={
+                              d.type === 0
+                                ? d.personnePhysique
+                                : d.personneMorale
+                            }
+                            type={d.type ?? 0}
+                            representanType={d.representanType}
+                          />
                         ))}
                       </div>
                     </IonCardContent>
@@ -654,7 +614,6 @@ const Tab1: React.FC = () => {
               </div>
             </div>
 
-            {/* Pagination fixe en bas */}
             {totalPages > 1 && (
               <div className="pagination-footer">
                 <div className="pagination-bar">
@@ -666,7 +625,6 @@ const Tab1: React.FC = () => {
                   >
                     ‹ Préc
                   </IonButton>
-
                   <div className="pagination-pages">
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
                       .filter((page) => Math.abs(page - currentPage) <= 2)
@@ -682,7 +640,6 @@ const Tab1: React.FC = () => {
                         </IonButton>
                       ))}
                   </div>
-
                   <IonButton
                     fill="clear"
                     size="small"
@@ -692,7 +649,6 @@ const Tab1: React.FC = () => {
                     Suiv ›
                   </IonButton>
                 </div>
-
                 <p className="pagination-info">
                   {totalParcelles} parcelle{totalParcelles > 1 ? "s" : ""}
                   {searchQuery && ` — filtre actif`}
@@ -723,7 +679,6 @@ const Tab1: React.FC = () => {
             </IonTitle>
           </IonToolbar>
         </IonHeader>
-
         <IonContent className="ion-padding">
           <ParcelleForm
             mode={mode}
@@ -749,6 +704,7 @@ const Tab1: React.FC = () => {
           />
         </IonContent>
       </IonModal>
+
       <Alert
         show={showTempAlert}
         type={0}
@@ -757,7 +713,6 @@ const Tab1: React.FC = () => {
         onClose={() => setShowTempAlert(false)}
       />
 
-      {/* Modals */}
       <ModalRiverin
         showRiverin={showRiverin}
         setShowRiverin={setShowRiverin}
@@ -766,27 +721,22 @@ const Tab1: React.FC = () => {
         repereL={repereL}
         newRiverin={newRiverin}
         setNewRiverin={setNewRiverin}
-        demandeurs={demandeurList}
       />
 
       <SeacrhModal
         showSearchModal={showSearchDemandeurModal}
         setShowSearchModal={setShowSearchDemandeurModal}
-        onSelect={(d) => {
-          setParcelle((prev) => {
-            const exists = prev.demandeurs.find((r) => r.id === d.id);
-            if (exists) return prev;
-            return { ...prev, demandeurs: [...prev.demandeurs, d] };
-          });
-        }}
         withRole={true}
-        onSelectWithRole={(d, role) => {
+        onSelect={(d, role) => {
           setParcelle((prev) => {
             const exists = prev.demandeurs.find((r) => r.id === d.id);
             if (exists) return prev;
             return {
               ...prev,
-              demandeurs: [...prev.demandeurs, { ...d, representanType: role }],
+              demandeurs: [
+                ...prev.demandeurs,
+                { ...d, representanType: role ?? "" },
+              ],
             };
           });
         }}
@@ -795,8 +745,10 @@ const Tab1: React.FC = () => {
       <ModalDemandeur
         showCreateModal={showDemandeurModal}
         setShowCreateModal={setShowDemandeurModal}
-        demandeur={demandeur}
-        setDemandeur={setDemandeur}
+        personnePhysique={personnePhysique}
+        setPersonnePhysique={setPersonnePhysique}
+        personneMorale={personneMorale}
+        setPersonneMorale={setPersonneMorale}
         addDemandeur={addDemandeur}
         toastMessage={toastMessage}
         setToastMessage={setToastMessage}
@@ -805,8 +757,11 @@ const Tab1: React.FC = () => {
         decomposed={decomposed}
         setDecomposed={setDecomposed}
         withRepresentants={true}
+        representanType={representanType}
+        setRepresentanType={setRepresentanType}
       />
     </IonPage>
   );
 };
+
 export default Tab1;
