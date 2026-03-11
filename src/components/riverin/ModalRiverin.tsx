@@ -23,7 +23,7 @@ import {
 import { close } from "ionicons/icons";
 import { Riverin, TypeRiverin } from "../../model/parcelle/Riverin";
 import SeacrhModal from "../demandeur/SearchModal";
-import { Demandeur } from "../../model/parcelle/Demandeur";
+import { Demandeur } from "../../model/parcelle/DemandeurDTO";
 import DemandeurView from "../demandeur/DemandeurView";
 import "./ModalRiverin.css";
 import ModalDemandeur from "../demandeur/ModalDemandeur";

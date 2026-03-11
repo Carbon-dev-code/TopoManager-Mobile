@@ -15,12 +15,14 @@ import {
   IonRadio,
   IonRadioGroup,
   IonAlert,
+  IonSelect,
+  IonSelectOption,
 } from "@ionic/react";
 import { close, createOutline } from "ionicons/icons";
 import "./ModalDemandeur.css";
 import Physique from "./Physique";
 import Moral from "./Moral";
-import { Demandeur } from "../../model/parcelle/Demandeur";
+import { Demandeur } from "../../model/parcelle/DemandeurDTO";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import Photo from "../photo/Photo";
@@ -41,6 +43,7 @@ interface ModalDemandeurProps {
   decomposed: boolean;
   setDecomposed: (d: boolean) => void;
   mode?: ModalMode;
+  withRepresentants?: boolean;
 }
 
 const TITLES: Record<ModalMode, string> = {
@@ -62,6 +65,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   decomposed,
   setDecomposed,
   mode = "create",
+  withRepresentants = false,
 }) => {
   const [showConfirmProfile, setShowConfirmProfile] = useState(false);
   const [lastPhotoIndex] = useState<number | null>(null);
@@ -204,11 +208,26 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         </IonList>
 
         {isPhysique === 0 ? (
-          <Physique
-            demandeur={demandeur}
-            setDemandeur={setDemandeur}
-            readonly={isReadOnly}
-          />
+          <>
+            {withRepresentants && (
+              <IonItem>
+                <IonSelect
+                  label="Type de demandeur :"
+                  placeholder="Type"
+                  interface="alert"
+                  className="pb-2"
+                >
+                  <IonSelectOption>Proprietaire</IonSelectOption>
+                  <IonSelectOption>Representant</IonSelectOption>
+                </IonSelect>
+              </IonItem>
+            )}
+            <Physique
+              demandeur={demandeur}
+              setDemandeur={setDemandeur}
+              readonly={isReadOnly}
+            />
+          </>
         ) : (
           <Moral
             demandeur={demandeur}

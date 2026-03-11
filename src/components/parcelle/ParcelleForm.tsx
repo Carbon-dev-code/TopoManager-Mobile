@@ -269,8 +269,7 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
         </IonItem>
 
         {/* Boutons d'action */}
-        {mode != "view" && (
-          <IonItem>
+        <IonItem>
             <IonGrid>
               <IonRow className="justify-content-between text-center">
                 <IonCol size="12" size-md="4">
@@ -305,7 +304,6 @@ const ParcelleForm: React.FC<ParcelleFormProps> = ({
               </IonRow>
             </IonGrid>
           </IonItem>
-        )}
 
         {/* Tabs Demandeurs/Riverains */}
         <div className="tabs-wrapper">

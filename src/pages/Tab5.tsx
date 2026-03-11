@@ -14,7 +14,7 @@ import {
 } from "@ionic/react";
 import "./Tab5.css";
 import { searchSharp, create, close, informationCircle } from "ionicons/icons";
-import { Demandeur } from "../model/parcelle/Demandeur";
+import { Demandeur } from "../model/parcelle/DemandeurDTO";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import { useState } from "react";
 import DemandeurView from "../components/demandeur/DemandeurView";

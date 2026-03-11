@@ -6,10 +6,14 @@ import {
   IonSelectOption,
   IonInput,
   IonTextarea,
+  IonGrid,
+  IonButton,
+  IonCol,
+  IonRow,
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import { TypeMoral } from "../../model/TypeMoral";
-import { Demandeur } from "../../model/parcelle/Demandeur";
+import { Demandeur } from "../../model/parcelle/DemandeurDTO";
 
 interface MoralProps {
   demandeur: Demandeur;
@@ -17,7 +21,11 @@ interface MoralProps {
   readonly?: boolean; // optionnel, false par défaut
 }
 
-const Moral: React.FC<MoralProps> = ({ demandeur, setDemandeur, readonly = false }) => {
+const Moral: React.FC<MoralProps> = ({
+  demandeur,
+  setDemandeur,
+  readonly = false,
+}) => {
   const [typeMoral, setTypeMoral] = useState<TypeMoral[]>([]);
 
   useEffect(() => {
@@ -116,6 +124,27 @@ const Moral: React.FC<MoralProps> = ({ demandeur, setDemandeur, readonly = false
             })
           }
         />
+      </IonItem>
+      <IonItem>
+        <IonGrid>
+          <IonRow className="justify-content-between text-center">
+            <IonCol size="12" size-md="4">
+              <IonButton
+                expand="full"
+              >
+                Ajout representant
+              </IonButton>
+            </IonCol>
+            <IonCol size="12" size-md="4">
+              <IonButton
+                expand="full"
+                color="tertiary"
+              >
+                Recherche representant
+              </IonButton>
+            </IonCol>
+          </IonRow>
+        </IonGrid>
       </IonItem>
     </IonList>
   );

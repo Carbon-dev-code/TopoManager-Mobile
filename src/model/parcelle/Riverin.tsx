@@ -1,4 +1,4 @@
-import { Demandeur } from "./Demandeur";
+import { Demandeur } from "./DemandeurDTO";
 
 export type TypeRiverin = "personne" | "autre";
 

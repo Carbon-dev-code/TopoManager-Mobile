@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { RepresentantMoral } from "./RepresentantMoral";
 
 export class PersonneMorale {
   id: string;
@@ -6,10 +7,8 @@ export class PersonneMorale {
   typeMorale: number;
   dateCreation: string;
   siege: string;
-  adresse: string;
   observations: string;
-  photos: string[];
-  indexPhoto: number | null;
+  representant: RepresentantMoral[];
 
   constructor(
     id: string,
@@ -17,26 +16,19 @@ export class PersonneMorale {
     typeMorale: number,
     dateCreation: string,
     siege: string,
-    adresse: string,
     observations: string,
-    photos: string[],
-    indexPhoto: number | null,
+    representant: RepresentantMoral[],
   ) {
     this.id = id;
     this.denomination = denomination;
     this.typeMorale = typeMorale;
     this.dateCreation = dateCreation;
     this.siege = siege;
-    this.adresse = adresse;
     this.observations = observations;
-    this.photos = photos;
-    this.indexPhoto = indexPhoto;
+    this.representant = representant;
   }
 
   static init(): PersonneMorale {
-    return new PersonneMorale(
-      uuidv4(),
-      "", 0, "", "", "", "", [], null,
-    );
+    return new PersonneMorale( uuidv4(),  "", 0, "", "", "", []);
   }
 }

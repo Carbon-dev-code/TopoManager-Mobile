@@ -1,11 +1,13 @@
 // DbSchema.tsx
 import { checkParcelle, Parcelle } from "../parcelle/Parcelle";
-import { checkDemandeur, Demandeur } from "../parcelle/Demandeur";
+import { checkDemandeur, Demandeur } from "../parcelle/DemandeurDTO";
+import { Demandeur as DemandeurDTO } from "../Demandeur/Demandeur";
 import { Preferences } from "@capacitor/preferences";
 import { DashboardStats } from "../dashbord/dashbord";
 import { initDatabase } from "./Database";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { Riverin } from "../parcelle/Riverin";
+import { PersonnePhysique } from "../Demandeur/PersonnePhysique";
+import { PersonneMorale } from "../Demandeur/PersonneMorale";
 
 // ─── Photos ───────────────────────────────────────────────────────────────────
 export async function deletePhotos(photos: string[]): Promise<void> {
@@ -141,16 +143,54 @@ export async function deleteParcelle(code: string): Promise<boolean> {
 }
 
 // ─── Demandeurs ───────────────────────────────────────────────────────────────
+function departagerTypePersonne(
+  demandeur: Demandeur,
+):
+  | { table: "personnephysique"; data: PersonnePhysique }
+  | { table: "personnemoral"; data: PersonneMorale } {
+  if (demandeur.type === 0) {
+    const personne: PersonnePhysique = {
+      id: demandeur.id,
+      nom: demandeur.nom,
+      prenom: demandeur.prenom,
+      neVers: demandeur.neVers,
+      dateNaissance: demandeur.dateNaissance,
+      lieuNaissance: demandeur.lieuNaissance,
+      sexe: demandeur.sexe,
+      adresse: demandeur.adresse,
+      nomPere: demandeur.nomPere,
+      nomMere: demandeur.nomMere,
+      situation: demandeur.situation,
+      nomConjoint: demandeur.nomConjoint,
+      cin: demandeur.cin ?? null,
+      acte: demandeur.acte ?? null,
+      photos: demandeur.photos,
+      indexPhoto: demandeur.indexPhoto ?? null,
+    };
+    return { table: "personnephysique", data: personne };
+  } else {
+    const morale: PersonneMorale = {
+      id: demandeur.id,
+      denomination: demandeur.denomination,
+      typeMorale: demandeur.typeMorale,
+      dateCreation: demandeur.dateCreation,
+      siege: demandeur.siege,
+      observations: demandeur.observations,
+      representant: [],
+    };
+    return { table: "personnemoral", data: morale };
+  }
+}
 
-export async function insertDemandeur(demandeur: Demandeur,): Promise<Demandeur> {
+export async function insertDemandeur(
+  demandeur: Demandeur,
+): Promise<Demandeur> {
   try {
     checkDemandeur(demandeur);
     const database = await initDatabase();
-    const cleanData = JSON.parse(JSON.stringify(demandeur));
-    await database.demandeur.upsert(cleanData);
 
-    // Dénormalisation : mettre à jour le demandeur dans sa parcelle parente
-    await syncDemandeurInParcelles(demandeur);
+    const { table, data } = departagerTypePersonne(demandeur);
+    await database[table].upsert(JSON.parse(JSON.stringify(data)));
 
     console.log("✅ Demandeur upsert avec succès");
     return demandeur;
@@ -160,52 +200,69 @@ export async function insertDemandeur(demandeur: Demandeur,): Promise<Demandeur>
   }
 }
 
-async function syncDemandeurInParcelles(demandeur: Demandeur): Promise<void> {
+export async function insertDemandeurParcelle(demandeur: DemandeurDTO) {
   try {
     const database = await initDatabase();
-    const allDocs = await database.parcelle.find().exec();
-
-    for (const doc of allDocs) {
-      const json = doc.toJSON();
-      let updated = false;
-
-      // ─── Sync dans demandeurs[] ──────────────────────────────────
-      const demandeurs: Demandeur[] = JSON.parse(JSON.stringify(json.demandeurs ?? []));
-      const idxD = demandeurs.findIndex((d) => d.id === demandeur.id);
-      if (idxD !== -1) {
-        demandeurs[idxD] = demandeur;
-        updated = true;
-      }
-
-      // ─── Sync dans riverin[].demandeur ───────────────────────────
-      const riverins: Riverin[] = JSON.parse(JSON.stringify(json.riverin ?? []));
-      let riverinUpdated = false;
-      for (const r of riverins) {
-        if (r.demandeur?.id === demandeur.id) {
-          r.demandeur = demandeur;
-          riverinUpdated = true;
-        }
-      }
-      if (riverinUpdated) updated = true;
-
-      // ─── Patch seulement si changement ──────────────────────────
-      if (updated) {
-        await doc.patch({
-          ...(idxD !== -1 && { demandeurs }),
-          ...(riverinUpdated && { riverin: riverins }),
-        });
-      }
-    }
+    const cleanDemandeur = JSON.parse(
+      JSON.stringify({
+        id: demandeur.id,
+        type: demandeur.type,
+        personnePhysiqueId: demandeur.personnePhysiqueId,
+        personneMoraleId: demandeur.personneMoraleId,
+        representants: demandeur.representants ?? [],
+      }),
+    );
+    await database.demandeur.upsert(cleanDemandeur);
+    console.log("✅ DemandeurParcelle upsert avec succès");
   } catch (error) {
-    console.error("❌ Erreur syncDemandeurInParcelles:", error);
+    console.error("❌ Erreur insertDemandeurParcelle:", error);
+    throw error;
   }
 }
 
 export async function getAllDemandeurs(): Promise<Demandeur[]> {
   try {
     const database = await initDatabase();
-    const docs = await database.demandeur.find().exec();
-    return docs.map((doc) => doc.toJSON() as Demandeur);
+    const docs = await database.personnephysique.find().exec();
+    const docsM = await database.personnemorale.find().exec();
+
+    const physiques: Demandeur[] = docs.map((doc) => {
+      const pp = doc.toJSON() as PersonnePhysique;
+      const dto = Demandeur.init();
+      dto.id = pp.id;
+      dto.type = 0;
+      dto.nom = pp.nom;
+      dto.prenom = pp.prenom;
+      dto.neVers = pp.neVers;
+      dto.dateNaissance = pp.dateNaissance;
+      dto.lieuNaissance = pp.lieuNaissance;
+      dto.sexe = pp.sexe;
+      dto.adresse = pp.adresse;
+      dto.nomPere = pp.nomPere;
+      dto.nomMere = pp.nomMere;
+      dto.situation = pp.situation;
+      dto.nomConjoint = pp.nomConjoint;
+      dto.cin = pp.cin;
+      dto.acte = pp.acte;
+      dto.photos = pp.photos;
+      dto.indexPhoto = pp.indexPhoto;
+      return dto;
+    });
+
+    const morales: Demandeur[] = docsM.map((doc) => {
+      const pm = doc.toJSON() as PersonneMorale;
+      const dto = Demandeur.init();
+      dto.id = pm.id;
+      dto.type = 1;
+      dto.denomination = pm.denomination;
+      dto.typeMorale = pm.typeMorale;
+      dto.dateCreation = pm.dateCreation;
+      dto.siege = pm.siege;
+      dto.observations = pm.observations;
+      return dto;
+    });
+
+    return [...physiques, ...morales];
   } catch (error) {
     console.error("❌ Erreur getAllDemandeurs:", error);
     return [];

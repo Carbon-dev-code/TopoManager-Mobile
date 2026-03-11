@@ -11,7 +11,7 @@ import {
   IonRadioGroup,
   IonRadio,
 } from "@ionic/react";
-import { Demandeur } from "../../model/parcelle/Demandeur";
+import { Demandeur } from "../../model/parcelle/DemandeurDTO";
 
 interface PhysiqueProps {
   demandeur: Demandeur;

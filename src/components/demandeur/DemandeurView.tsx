@@ -15,7 +15,7 @@ import {
   calendar,
   trash,
 } from "ionicons/icons";
-import { Demandeur } from "../../model/parcelle/Demandeur";
+import { Demandeur } from "../../model/parcelle/DemandeurDTO";
 import "./DemandeurView.css";
 import { useRef, useState, useEffect } from "react";
 import DropDownDemandeur from "../../components/dropdown/DropDownDemandeur";
@@ -68,6 +68,13 @@ const useProfilePhoto = (fileName: string | null | undefined) => {
 
   return src;
 };
+
+function formatRole(role: string): string {
+  return role
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
 
 const DemandeurView: React.FC<DemandeurViewProps> = ({
   demandeur,
@@ -155,14 +162,21 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
               <span className="nom">{demandeur.nom}</span>
             </div>
             <div className="line2">
-              <IonChip className="chip row g-0" color="secondary">
-                <div className="col-auto d-flex me-1">
-                  <IonIcon icon={calendar} />
-                </div>
-                <div className="col">
-                  <span>{formatDate(demandeur.dateNaissance)}</span>
-                </div>
-              </IonChip>
+              {!demandeur.representanType && (
+                <IonChip className="chip row g-0" color="secondary">
+                  <div className="col-auto d-flex me-1">
+                    <IonIcon icon={calendar} />
+                  </div>
+                  <div className="col">
+                    <span>{formatDate(demandeur.dateNaissance)}</span>
+                  </div>
+                </IonChip>
+              )}
+              {demandeur.representanType && (
+                <IonChip className="chip" color="warning">
+                  {formatRole(demandeur.representanType)}
+                </IonChip>
+              )}
               <IonChip className="chip row g-0" color="tertiary">
                 <div className="col-auto d-flex me-1">
                   <IonIcon

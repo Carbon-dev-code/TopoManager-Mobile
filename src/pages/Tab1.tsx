@@ -43,7 +43,7 @@ import { ParametreTerritoire } from "../model/ParametreTerritoire";
 import { Categorie } from "../model/Categorie";
 import { Status } from "../model/Status";
 import { Parcelle } from "../model/parcelle/Parcelle";
-import { checkDemandeur, Demandeur } from "../model/parcelle/Demandeur";
+import { checkDemandeur, Demandeur } from "../model/parcelle/DemandeurDTO";
 import { Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
@@ -113,10 +113,18 @@ const useParcelleCode = () => {
       setParametreTerritoire(parametreActuel);
 
       const now = new Date();
-      const dateTime = now.toLocaleString("fr-FR", {
-          timeZone: "Indian/Antananarivo",year: "numeric",
-          month: "2-digit",day: "2-digit",hour: "2-digit",minute: "2-digit",second: "2-digit", hour12: false,
-        }).replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
+      const dateTime = now
+        .toLocaleString("fr-FR", {
+          timeZone: "Indian/Antananarivo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+        .replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
 
       return {
         code,
@@ -771,6 +779,17 @@ const Tab1: React.FC = () => {
             return { ...prev, demandeurs: [...prev.demandeurs, d] };
           });
         }}
+        withRole={true}
+        onSelectWithRole={(d, role) => {
+          setParcelle((prev) => {
+            const exists = prev.demandeurs.find((r) => r.id === d.id);
+            if (exists) return prev;
+            return {
+              ...prev,
+              demandeurs: [...prev.demandeurs, { ...d, representanType: role }],
+            };
+          });
+        }}
       />
 
       <ModalDemandeur
@@ -785,6 +804,7 @@ const Tab1: React.FC = () => {
         setIsPhysique={setIsPhysique}
         decomposed={decomposed}
         setDecomposed={setDecomposed}
+        withRepresentants={true}
       />
     </IonPage>
   );

@@ -61,11 +61,9 @@ export class Demandeur {
   dateCreation: string;
   siege: string;
   observations: string;
-
-  // 🔹 Nouvelle propriété pour stocker les photos
-  // On stocke une liste d'URI ou Base64 pour gérer plusieurs photos
   photos: string[];
-  indexPhoto: number | null; // Indice de la photo profil affichée
+  indexPhoto: number | null;
+  representanType: string | null;
 
   constructor(
     id: string,
@@ -90,7 +88,8 @@ export class Demandeur {
     siege: string,
     observations: string,
     photos: string[] = [],
-    indexPhoto: number | null
+    indexPhoto: number | null,
+    representanType: string | null,
   ) {
     this.id = id;
     this.type = type;
@@ -115,14 +114,14 @@ export class Demandeur {
     this.observations = observations;
     this.photos = photos;
     this.indexPhoto = indexPhoto;
+    this.representanType = representanType ;
   }
 
-  // 🔹 Méthode statique pour initialiser un Demandeur vide
   static init(): Demandeur {
     return new Demandeur(
       uuidv4(), 0, '', '', false, null, '', 0, '', '', '', '0', '', 2,
       null, null, '', 0, '', '', '',
-      [], null
+      [], null, null
     );
   }
 }

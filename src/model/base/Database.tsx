@@ -49,13 +49,12 @@ export async function initDatabase(): Promise<RxDatabase> {
             },
             demandeurs: {
               type: "array",
-              items: { type: "object", additionalProperties: true}, // Demandeur object, même logique
-              
+              items: { type: "object", additionalProperties: true }, // Demandeur object, même logique
             },
             parametreTerritoire: { type: ["object", "null"] },
             riverin: {
               type: "array",
-              items: { type: "object", additionalProperties: true }, // Riverin object 
+              items: { type: "object", additionalProperties: true }, // Riverin object
             },
             synchronise: { type: ["number", "null"] },
             syncError: { type: ["string", "null"] },
@@ -89,6 +88,24 @@ export async function initDatabase(): Promise<RxDatabase> {
           properties: {
             id: { type: "string", maxLength: 100 },
             type: { type: "number" },
+            personnePhysiqueId : { type: "string" },
+            personneMoraleId : { type: "string" },
+          },
+          required: ["id", "type"],
+          additionalProperties: false,
+        },
+      },
+    });
+
+    await database.addCollections({
+      personnephysique: {
+        schema: {
+          title: "Personne physique schema",
+          version: 0,
+          type: "object",
+          primaryKey: "id",
+          properties: {
+            id: { type: "string", maxLength: 100 },
             nom: { type: ["string", "null"] },
             prenom: { type: ["string", "null"] },
             neVers: { type: "boolean" },
@@ -103,15 +120,31 @@ export async function initDatabase(): Promise<RxDatabase> {
             piece: { type: "number" },
             cin: { type: ["object", "null"] },
             acte: { type: ["object", "null"] },
+            photos: { type: "array", items: { type: "string" } },
+            indexPhoto: { type: ["number", "null"] },
+          },
+          required: ["id", "adresse", "nomPere", "nomMere"],
+          additionalProperties: false,
+        },
+      },
+    });
+
+    await database.addCollections({
+      personnemorale: {
+        schema: {
+          title: "personne moral schema",
+          version: 0,
+          type: "object",
+          primaryKey: "id",
+          properties: {
+            id: { type: "string", maxLength: 100 },
             denomination: { type: "string" },
             typeMorale: { type: "number" },
             dateCreation: { type: "string" },
             siege: { type: "string" },
-            observations: { type: "string" },
-            photos: { type: "array", items: { type: "string" } },
-            indexPhoto: { type: ["number", "null"] },
+            observations: { type: "string" }
           },
-          required: ["id", "type", "adresse", "nomPere", "nomMere"],
+          required: ["id", "denomination", "dateCreation", "siege"],
           additionalProperties: false,
         },
       },

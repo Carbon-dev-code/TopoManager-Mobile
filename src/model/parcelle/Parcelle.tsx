@@ -1,7 +1,7 @@
 import { Preferences } from "@capacitor/preferences";
 import { ParametreTerritoire } from "../ParametreTerritoire";
 import { Polygone } from "../vecteur/Polygone";
-import { checkDemandeur, Demandeur } from "./Demandeur";
+import { checkDemandeur, Demandeur } from "./DemandeurDTO";
 import { Riverin } from "./Riverin";
 
 export async function checkParcelle(parcelle: Parcelle): Promise<void> {

@@ -15,10 +15,8 @@ export class PersonnePhysique {
   nomMere: string;
   situation: string;
   nomConjoint: string;
-  piece: number; // 0 cin, 1 acte, 2 neant
   cin: CIN | null;
   acte: ActeNaissance | null;
-  observations: string;
   photos: string[];
   indexPhoto: number | null;
 
@@ -35,10 +33,8 @@ export class PersonnePhysique {
     nomMere: string,
     situation: string,
     nomConjoint: string,
-    piece: number,
     cin: CIN | null,
     acte: ActeNaissance | null,
-    observations: string,
     photos: string[],
     indexPhoto: number | null,
   ) {
@@ -54,17 +50,15 @@ export class PersonnePhysique {
     this.nomMere = nomMere;
     this.situation = situation;
     this.nomConjoint = nomConjoint;
-    this.piece = piece;
     this.cin = cin;
     this.acte = acte;
-    this.observations = observations;
     this.photos = photos;
     this.indexPhoto = indexPhoto;
   }
 
   static init(): PersonnePhysique {
     return new PersonnePhysique(
-      uuidv4(), null, null, false, null, null, 0, "", "", "", "0", "", 2, null, null, "", [], null,
+      uuidv4(), null, null, false, null, null, 0, "", "", "", "0", "", null, null, [], null,
     );
   }
 }
