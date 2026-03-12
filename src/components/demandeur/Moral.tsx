@@ -135,6 +135,7 @@ const Moral: React.FC<MoralProps> = ({
       <IonItem>
         <IonTextarea
           label="Observations"
+          labelPlacement="stacked"
           rows={4}
           value={personne.observations}
           readonly={readonly}
@@ -162,7 +163,7 @@ const Moral: React.FC<MoralProps> = ({
       )}
 
       {dirigeants.map((d) => (
-        <div className="p-2">
+        <div className="p-2 bg-light">
           <DemandeurView
             personne={d.personnePhysique}
             type={0}
@@ -245,6 +246,7 @@ const Moral: React.FC<MoralProps> = ({
         decomposed={decomposed}
         setDecomposed={setDecomposed}
         withRepresentants={false}
+        forcePhysique={true}
       />
     </IonList>
   );

@@ -18,7 +18,13 @@ import {
   IonToast,
   IonLoading,
   IonCardHeader,
-  IonCardSubtitle,IonChip,IonCardTitle,useIonViewWillEnter,IonRefresher,IonRefresherContent,} from "@ionic/react";
+  IonCardSubtitle,
+  IonChip,
+  IonCardTitle,
+  useIonViewWillEnter,
+  IonRefresher,
+  IonRefresherContent,
+} from "@ionic/react";
 import { sync, checkmark, settings, wifi } from "ionicons/icons";
 import "./Tab3.css";
 import { ConfigService } from "../model/ConfigService";
@@ -436,10 +442,14 @@ const Tab3: React.FC = () => {
 
                 <IonCardContent className="p-0">
                   <div className="scrollable-list">
-                    {(parcelle.demandeurs ?? []).map((demandeur) => (
+                    {(parcelle.demandeurs ?? []).map((d) => (
                       <DemandeurView
-                        key={`dem${demandeur.id}`}
-                        demandeur={demandeur}
+                        key={`dem${d.id}`}
+                        personne={
+                          d.type === 0 ? d.personnePhysique : d.personneMorale
+                        }
+                        type={d.type ?? 0}
+                        representanType={d.representanType}
                       />
                     ))}
                   </div>

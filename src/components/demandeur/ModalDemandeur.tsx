@@ -48,6 +48,7 @@ interface ModalDemandeurProps {
   withRepresentants?: boolean;
   representanType?: string | null;
   setRepresentanType?: (role: string | null) => void;
+  forcePhysique?: boolean;
 }
 
 const TITLES: Record<ModalMode, string> = {
@@ -74,6 +75,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
   withRepresentants = false,
   representanType,
   setRepresentanType,
+  forcePhysique = false,
 }) => {
   const isReadOnly = mode === "view";
 
@@ -170,7 +172,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
             <IonRadioGroup
               value={isPhysique.toString()}
               onIonChange={(e) => {
-                if (isReadOnly) return;
+                if (isReadOnly || forcePhysique) return; // ← AJOUTER forcePhysique
                 setIsPhysique(Number(e.detail.value));
               }}
             >
@@ -178,12 +180,12 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
                 style={{ display: "flex", gap: "1rem", alignItems: "center" }}
               >
                 <IonItem lines="none">
-                  <IonRadio justify="end" value="0" disabled={isReadOnly}>
+                  <IonRadio justify="end" value="0" disabled={isReadOnly || forcePhysique} >
                     Physique
                   </IonRadio>
                 </IonItem>
                 <IonItem lines="none">
-                  <IonRadio justify="end" value="1" disabled={isReadOnly}>
+                  <IonRadio justify="end" value="1"disabled={isReadOnly || forcePhysique} >
                     Morale
                   </IonRadio>
                 </IonItem>
