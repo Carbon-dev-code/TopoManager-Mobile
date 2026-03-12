@@ -4,8 +4,14 @@ import { Preferences } from "@capacitor/preferences";
 import { DashboardStats } from "../dashbord/dashbord";
 import { initDatabase } from "./Database";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { PersonnePhysique } from "../Demandeur/PersonnePhysique";
-import { PersonneMorale } from "../Demandeur/PersonneMorale";
+import {
+  checkPersonnePhysique,
+  PersonnePhysique,
+} from "../Demandeur/PersonnePhysique";
+import {
+  checkPersonneMorale,
+  PersonneMorale,
+} from "../Demandeur/PersonneMorale";
 import { Demandeur } from "../Demandeur/Demandeur";
 import { RepresentantMoral } from "../Demandeur/RepresentantMoral";
 import { Riverin } from "../parcelle/Riverin";
@@ -251,6 +257,7 @@ export async function insertPersonnePhysique(
   personne: PersonnePhysique,
 ): Promise<PersonnePhysique> {
   try {
+    checkPersonnePhysique(personne); // ← avant tout
     const database = await initDatabase();
     const cleanData = JSON.parse(JSON.stringify(personne));
     await database.personnephysique.upsert(cleanData);
@@ -262,12 +269,35 @@ export async function insertPersonnePhysique(
   }
 }
 
-// ─── PersonneMorale ───────────────────────────────────────────────────────────
+export async function deletePersonnePhysique(id: string): Promise<void> {
+  try {
+    const database = await initDatabase();
+    const doc = await database.personnephysique.findOne(id).exec();
+    await doc?.remove();
+    console.log("✅ PersonnePhysique supprimée");
+  } catch (error) {
+    console.error("❌ Erreur deletePersonnePhysique:", error);
+    throw error;
+  }
+}
 
+// ─── PersonneMorale ───────────────────────────────────────────────────────────
+export async function deletePersonneMorale(id: string): Promise<void> {
+  try {
+    const database = await initDatabase();
+    const doc = await database.personnemorale.findOne(id).exec();
+    await doc?.remove();
+    console.log("✅ PersonneMorale supprimée");
+  } catch (error) {
+    console.error("❌ Erreur deletePersonneMorale:", error);
+    throw error;
+  }
+}
 export async function insertPersonneMorale(
   personne: PersonneMorale,
 ): Promise<PersonneMorale> {
   try {
+    checkPersonneMorale(personne);
     const database = await initDatabase();
     // 1. Insérer les PersonnePhysique des représentants si présents
     if (personne.representant?.length > 0) {

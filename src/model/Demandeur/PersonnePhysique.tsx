@@ -1,6 +1,24 @@
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import { CIN } from "../parcelle/CIN";
 import { ActeNaissance } from "../parcelle/ActeNaissance";
+
+export function checkPersonnePhysique(personne: PersonnePhysique): void {
+  if (!personne.nom?.trim())
+    throw new Error("Le nom est requis");
+  if (!personne.prenom?.trim())
+    throw new Error("Le prénom est requis");
+  if (!personne.dateNaissance && !personne.neVers)
+    throw new Error("La date de naissance est requise");
+  if (!personne.lieuNaissance?.trim())
+    throw new Error("Le lieu de naissance est requis");
+  if (!personne.adresse?.trim())
+    throw new Error("l'adresse requis");
+  if (!personne.nomPere && !personne.nomMere)
+    throw new Error("Le nom de vos parent sont requis");
+  // if (!personne.cin && !personne.acte)
+  //   throw new Error("Une pièce d'identité est requise (CIN ou acte de naissance)");
+  
+}
 
 export class PersonnePhysique {
   id: string;
@@ -58,7 +76,22 @@ export class PersonnePhysique {
 
   static init(): PersonnePhysique {
     return new PersonnePhysique(
-      uuidv4(), null, null, false, null, null, 0, "", "", "", "0", "", null, null, [], null,
+      uuidv4(),
+      null,
+      null,
+      false,
+      null,
+      null,
+      0,
+      "",
+      "",
+      "",
+      "0",
+      "",
+      null,
+      null,
+      [],
+      null,
     );
   }
 }

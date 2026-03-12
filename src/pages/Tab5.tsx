@@ -1,14 +1,30 @@
 import {
-  IonButton, IonButtons, IonContent, IonHeader, IonIcon,
-  IonList, IonMenuButton, IonPage, IonSearchbar, IonTitle,
-  IonToolbar, useIonViewWillEnter,
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonList,
+  IonMenuButton,
+  IonPage,
+  IonSearchbar,
+  IonTitle,
+  IonToolbar,
+  useIonViewWillEnter,
 } from "@ionic/react";
 import "./Tab5.css";
 import { searchSharp, create, close, informationCircle } from "ionicons/icons";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
 import { useState } from "react";
 import DemandeurView from "../components/demandeur/DemandeurView";
-import { insertPersonnePhysique, insertPersonneMorale, getAllPersonnesPhysiques, getAllPersonnesMorales } from "../model/base/DbSchema";
+import {
+  insertPersonnePhysique,
+  insertPersonneMorale,
+  getAllPersonnesPhysiques,
+  getAllPersonnesMorales,
+  deletePersonneMorale,
+  deletePersonnePhysique,
+} from "../model/base/DbSchema";
 import Alert from "../components/alert/Alert";
 import Toast, { ToastType } from "../components/toast/Toast";
 import { PersonnePhysique } from "../model/Demandeur/PersonnePhysique";
@@ -21,13 +37,21 @@ const Tab5: React.FC = () => {
   const [search, setSearch] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [modalMode, setModalMode] = useState<ModalMode>("create");
-  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(PersonnePhysique.init());
-  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(PersonneMorale.init());
+  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(
+    PersonnePhysique.init(),
+  );
+  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(
+    PersonneMorale.init(),
+  );
   const [isPhysique, setIsPhysique] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [decomposed, setDecomposed] = useState(false);
-  const [personnePhysiqueList, setPersonnePhysiqueList] = useState<PersonnePhysique[]>([]);
-  const [personneMoraleList, setPersonneMoraleList] = useState<PersonneMorale[]>([]);
+  const [personnePhysiqueList, setPersonnePhysiqueList] = useState<
+    PersonnePhysique[]
+  >([]);
+  const [personneMoraleList, setPersonneMoraleList] = useState<
+    PersonneMorale[]
+  >([]);
   const [showTempAlert, setShowTempAlert] = useState(false);
   const [tempAlertMessage, setTempAlertMessage] = useState("");
   const [toast, setToast] = useState({
@@ -35,6 +59,11 @@ const Tab5: React.FC = () => {
     message: "",
     type: "success" as ToastType,
   });
+  const [showAlertRemove, setShowAlertRemove] = useState(false);
+  const [idToRemove, setIdToRemove] = useState<{
+    id: string;
+    type: 0 | 1;
+  } | null>(null);
 
   const load = async () => {
     const [physiques, morales] = await Promise.all([
@@ -43,7 +72,7 @@ const Tab5: React.FC = () => {
     ]);
 
     console.log(morales);
-    
+
     setPersonnePhysiqueList(physiques);
     setPersonneMoraleList(morales);
   };
@@ -87,7 +116,7 @@ const Tab5: React.FC = () => {
 
   // ===== Ouvrir en mode édition — morale =====
   const handleOpenEditMorale = (p: PersonneMorale) => {
-    setPersonneMorale(p); 
+    setPersonneMorale(p);
     setIsPhysique(1);
     setModalMode("edit");
     setShowCreateModal(true);
@@ -106,12 +135,15 @@ const Tab5: React.FC = () => {
       setShowCreateModal(false);
       setToast({
         visible: true,
-        message: modalMode === "edit" ? "Modifié avec succès" : "Ajouté avec succès",
+        message:
+          modalMode === "edit" ? "Modifié avec succès" : "Ajouté avec succès",
         type: "success",
       });
     } catch (error) {
       setTempAlertMessage(
-        error instanceof Error ? error.message : "Erreur inconnue veuillez vous adresse au administrateur",
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue veuillez vous adresse au administrateur",
       );
       setShowTempAlert(true);
     }
@@ -147,8 +179,13 @@ const Tab5: React.FC = () => {
               onIonInput={(e) => setSearchQuery(e.detail.value!)}
             />
             <IonButtons slot="end">
-              <IonButton fill="clear" size="large"
-                onClick={() => { setSearch(false); setSearchQuery(""); }}
+              <IonButton
+                fill="clear"
+                size="large"
+                onClick={() => {
+                  setSearch(false);
+                  setSearchQuery("");
+                }}
               >
                 <IonIcon icon={close} slot="icon-only" color="light" />
               </IonButton>
@@ -156,7 +193,9 @@ const Tab5: React.FC = () => {
           </IonToolbar>
         ) : (
           <IonToolbar color="primary">
-            <IonButtons slot="start"><IonMenuButton /></IonButtons>
+            <IonButtons slot="start">
+              <IonMenuButton />
+            </IonButtons>
             <IonTitle>Création de demandeur</IonTitle>
             <IonButtons slot="end">
               <IonButton onClick={() => setSearch(true)}>
@@ -173,9 +212,15 @@ const Tab5: React.FC = () => {
       <IonContent>
         {filteredPhysiques.length === 0 && filteredMorales.length === 0 ? (
           <div className="text-center py-5">
-            <IonIcon icon={informationCircle} size="large" className="text-muted mb-3" />
+            <IonIcon
+              icon={informationCircle}
+              size="large"
+              className="text-muted mb-3"
+            />
             <h4 className="text-muted">Aucun demandeur enregistré</h4>
-            <IonButton onClick={handleOpenCreate}>Créer des demandeurs</IonButton>
+            <IonButton onClick={handleOpenCreate}>
+              Créer des demandeurs
+            </IonButton>
           </div>
         ) : (
           <>
@@ -187,7 +232,10 @@ const Tab5: React.FC = () => {
                   longPressEnabled={true}
                   onView={() => handleOpenViewPhysique(p)}
                   onEdit={() => handleOpenEditPhysique(p)}
-                  onDelete={() => console.log(p.id)}
+                  onDelete={() => {
+                    setIdToRemove({ id: p.id, type: 0 });
+                    setShowAlertRemove(true);
+                  }}
                 />
               </IonList>
             ))}
@@ -199,12 +247,52 @@ const Tab5: React.FC = () => {
                   longPressEnabled={true}
                   onView={() => handleOpenViewMorale(p)}
                   onEdit={() => handleOpenEditMorale(p)}
-                  onDelete={() => console.log(p.id)}
+                  onDelete={() => {
+                    setIdToRemove({ id: p.id, type: 1 });
+                    setShowAlertRemove(true);
+                  }}
                 />
               </IonList>
             ))}
           </>
         )}
+
+        <Alert
+          show={showAlertRemove}
+          type={1}
+          title="Suppression"
+          message="Êtes-vous sûr de vouloir supprimer ce demandeur ?"
+          onCancel={() => {
+            setShowAlertRemove(false);
+            setIdToRemove(null);
+          }}
+          onConfirm={async () => {
+            if (idToRemove) {
+              if (idToRemove.type === 0) {
+                await deletePersonnePhysique(idToRemove.id);
+                setPersonnePhysiqueList((prev) =>
+                  prev.filter((p) => p.id !== idToRemove.id),
+                );
+              } else {
+                await deletePersonneMorale(idToRemove.id);
+                setPersonneMoraleList((prev) =>
+                  prev.filter((p) => p.id !== idToRemove.id),
+                );
+              }
+              setToast({
+                visible: true,
+                message: "Supprimé avec succès",
+                type: "success",
+              });
+            }
+            setShowAlertRemove(false);
+            setIdToRemove(null);
+          }}
+          onClose={() => {
+            setShowAlertRemove(false);
+            setIdToRemove(null);
+          }}
+        />
 
         <ModalDemandeur
           showCreateModal={showCreateModal}
@@ -223,11 +311,20 @@ const Tab5: React.FC = () => {
           mode={modalMode}
         />
 
-        <Alert show={showTempAlert} type={0} title="Information"
-          message={tempAlertMessage} onClose={() => setShowTempAlert(false)} />
+        <Alert
+          show={showTempAlert}
+          type={0}
+          title="Information"
+          message={tempAlertMessage}
+          onClose={() => setShowTempAlert(false)}
+        />
 
-        <Toast visible={toast.visible} message={toast.message}
-          type={toast.type} onClose={() => setToast((t) => ({ ...t, visible: false }))} />
+        <Toast
+          visible={toast.visible}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast((t) => ({ ...t, visible: false }))}
+        />
       </IonContent>
     </IonPage>
   );

@@ -115,17 +115,10 @@ const useParcelleCode = () => {
 
       const now = new Date();
       const dateTime = now
-        .toLocaleString("fr-FR", {
-          timeZone: "Indian/Antananarivo",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        })
-        .replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
+        .toLocaleString("fr-FR", { timeZone: "Indian/Antananarivo",
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+        }).replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
 
       return {
         code,
@@ -166,36 +159,27 @@ const Tab1: React.FC = () => {
   // États UI
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
-    useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
   const [showRiverin, setShowRiverin] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
   const [showAlertRemove, setShowAlertRemove] = useState(false);
   const [showAlertVerif, setShowAlertVerif] = useState(false);
-  const [verifMessageError, setVerifMessageError] = useState<string | null>(
-    null,
-  );
+  const [verifMessageError, setVerifMessageError] = useState<string | null>(null,);
   const [codeToRemove, setCodeToRemove] = useState<string | null>(null);
   const [showTempAlert, setShowTempAlert] = useState(false);
   const [tempAlertMessage, setTempAlertMessage] = useState("");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mode, setMode] = useState<"view" | "edit" | "create">("create");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
-    "demandeur",
-  );
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur",);
   const [decomposed, setDecomposed] = useState(false);
   const [isPhysique, setIsPhysique] = useState(0);
 
   // États données
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
-  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(
-    PersonnePhysique.init(),
-  );
-  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(
-    PersonneMorale.init(),
-  );
+  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(PersonnePhysique.init(),);
+  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(PersonneMorale.init(),);
   const [representanType, setRepresentanType] = useState<string | null>(null);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init());
   const [riverinMess, setRiverinMess] = useState<ToastType | null>(null);
@@ -330,7 +314,7 @@ const Tab1: React.FC = () => {
   const removeParcelle = useCallback((code: string, synchronise?: number) => {
     // ahintsy malaky
     deleteParcelle(code);
-    
+
     if (synchronise === 1) {
       setTempAlertMessage(
         "Cette parcelle est déjà synchronisée et ne peut pas être supprimée.",
@@ -344,24 +328,15 @@ const Tab1: React.FC = () => {
 
   const createParcelle = useCallback(async () => {
     try {
-      // 1. Insérer demandeurs (personne + collection demandeur)
-      for (const d of parcelle.demandeurs) {
-        await insertDemandeur(d);
-      }
-
-      // 2. Insérer personnes des riverins
+      for (const d of parcelle.demandeurs) await insertDemandeur(d);
       for (const r of parcelle.riverin) {
-        if (r.typePersonne === 0 && r.personnePhysique) {
+        if (r.typePersonne === 0 && r.personnePhysique)
           await insertPersonnePhysique(r.personnePhysique);
-        }
-        if (r.typePersonne === 1 && r.personneMorale) {
+        if (r.typePersonne === 1 && r.personneMorale)
           await insertPersonneMorale(r.personneMorale);
-        }
       }
 
-      // 3. Insérer parcelle avec IDs
       await insertParcelle(parcelle);
-
       if (mode === "create") await saveIncrement();
 
       if (mode === "edit") {
@@ -369,7 +344,14 @@ const Tab1: React.FC = () => {
           prev.map((p) => (p.code === parcelle.code ? parcelle : p)),
         );
       } else {
-        setParcelles((prev) => [...prev, parcelle]);
+        const newTotal = totalParcelles + 1;
+        const lastPage = Math.ceil(newTotal / ITEMS_PER_PAGE);
+        setTotalParcelles(newTotal);
+        if (lastPage !== currentPage) {
+          setCurrentPage(lastPage); // ← useEffect loadData se déclenche automatiquement
+        } else {
+          setParcelles((prev) => [...prev, parcelle]);
+        }
       }
 
       setParcelle(Parcelle.init());
@@ -380,7 +362,7 @@ const Tab1: React.FC = () => {
       );
       setShowTempAlert(true);
     }
-  }, [parcelle, saveIncrement, mode]);
+  }, [parcelle, saveIncrement, mode, currentPage, totalParcelles]);
 
   async function compressImage(
     base64: string,
@@ -498,10 +480,14 @@ const Tab1: React.FC = () => {
           setShowAlertRemove(false);
           setCodeToRemove(null);
         }}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (codeToRemove) {
-            deleteParcelle(codeToRemove);
+            await deleteParcelle(codeToRemove);
+            const newTotal = totalParcelles - 1;
+            const maxPage = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1;
+            setTotalParcelles(newTotal);
             setParcelles((prev) => prev.filter((p) => p.code !== codeToRemove));
+            if (currentPage > maxPage) setCurrentPage(maxPage); // ← useEffect loadData se déclenche
           }
           setShowAlertRemove(false);
           setCodeToRemove(null);
