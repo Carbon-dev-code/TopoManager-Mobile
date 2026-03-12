@@ -3,7 +3,6 @@
   align-items: center;
   justify-content: flex-start;
   padding: 0.5rem;
-  margin: 0.3rem !important;
   border-radius: 12px;
   background-color: #ffffff;
   position: relative;
@@ -147,6 +146,7 @@
   border-radius: 0 12px 12px 0;
 }
 
+/*---CHIP----*/
 .chip {
   padding: 2px 8px !important;
   margin: 0px;

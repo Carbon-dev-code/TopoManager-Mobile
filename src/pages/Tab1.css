@@ -73,6 +73,7 @@ ion-content {
   max-height: 110px;
   overflow-y: auto;
   padding: 4px;
+  margin: 0.4em;
 }
 
 .cardContent {

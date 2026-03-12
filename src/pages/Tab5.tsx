@@ -41,6 +41,9 @@ const Tab5: React.FC = () => {
       getAllPersonnesPhysiques(),
       getAllPersonnesMorales(),
     ]);
+
+    console.log(morales);
+    
     setPersonnePhysiqueList(physiques);
     setPersonneMoraleList(morales);
   };
@@ -84,7 +87,7 @@ const Tab5: React.FC = () => {
 
   // ===== Ouvrir en mode édition — morale =====
   const handleOpenEditMorale = (p: PersonneMorale) => {
-    setPersonneMorale(p);
+    setPersonneMorale(p); 
     setIsPhysique(1);
     setModalMode("edit");
     setShowCreateModal(true);

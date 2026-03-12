@@ -17,7 +17,7 @@ import {
   IonSelect,
   IonSelectOption,
 } from "@ionic/react";
-import { close, createOutline } from "ionicons/icons";
+import { close } from "ionicons/icons";
 import "./ModalDemandeur.css";
 import Physique from "./Physique";
 import Moral from "./Moral";
@@ -51,9 +51,9 @@ interface ModalDemandeurProps {
 }
 
 const TITLES: Record<ModalMode, string> = {
-  create: "Ajouter Demandeur",
-  view: "Détails Demandeur",
-  edit: "Modifier Demandeur",
+  create: "Ajouter Personne",
+  view: "Détails Personne",
+  edit: "Modifier Personne",
 };
 
 const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
@@ -153,11 +153,6 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
           </IonButtons>
           <IonTitle>{TITLES[mode]}</IonTitle>
           <IonButtons slot="end">
-            {mode === "view" && (
-              <IonButton onClick={() => setShowCreateModal(false)}>
-                <IonIcon icon={createOutline} slot="icon-only" />
-              </IonButton>
-            )}
             {mode !== "view" && (
               <IonButton strong={true} onClick={addDemandeur}>
                 {mode === "edit" ? "Mettre à jour" : "Ajouter"}

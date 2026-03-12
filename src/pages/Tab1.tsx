@@ -57,6 +57,8 @@ import {
   getAllParcelles,
   insertDemandeur,
   insertParcelle,
+  insertPersonneMorale,
+  insertPersonnePhysique,
   verifyDatabase,
 } from "../model/base/DbSchema";
 import Alert from "../components/alert/Alert";
@@ -302,7 +304,10 @@ const Tab1: React.FC = () => {
       setRiverinMess("error");
       return;
     }
-    if ( newRiverin.type === "personne" && !newRiverin.personnePhysique && !newRiverin.personneMorale
+    if (
+      newRiverin.type === "personne" &&
+      !newRiverin.personnePhysique &&
+      !newRiverin.personneMorale
     ) {
       setRiverinMess("error");
       return;
@@ -323,6 +328,9 @@ const Tab1: React.FC = () => {
   }, [newRiverin]);
 
   const removeParcelle = useCallback((code: string, synchronise?: number) => {
+    // ahintsy malaky
+    deleteParcelle(code);
+    
     if (synchronise === 1) {
       setTempAlertMessage(
         "Cette parcelle est déjà synchronisée et ne peut pas être supprimée.",
@@ -334,15 +342,26 @@ const Tab1: React.FC = () => {
     setShowAlertRemove(true);
   }, []);
 
-  const createParcelle = useCallback(async () => { // correction be
+  const createParcelle = useCallback(async () => {
     try {
+      // 1. Insérer demandeurs (personne + collection demandeur)
       for (const d of parcelle.demandeurs) {
         await insertDemandeur(d);
       }
+
+      // 2. Insérer personnes des riverins
       for (const r of parcelle.riverin) {
-        if (r.demandeur) await insertDemandeur(r.demandeur);
+        if (r.typePersonne === 0 && r.personnePhysique) {
+          await insertPersonnePhysique(r.personnePhysique);
+        }
+        if (r.typePersonne === 1 && r.personneMorale) {
+          await insertPersonneMorale(r.personneMorale);
+        }
       }
+
+      // 3. Insérer parcelle avec IDs
       await insertParcelle(parcelle);
+
       if (mode === "create") await saveIncrement();
 
       if (mode === "edit") {
@@ -352,6 +371,7 @@ const Tab1: React.FC = () => {
       } else {
         setParcelles((prev) => [...prev, parcelle]);
       }
+
       setParcelle(Parcelle.init());
       setShowCreateModal(false);
     } catch (error) {

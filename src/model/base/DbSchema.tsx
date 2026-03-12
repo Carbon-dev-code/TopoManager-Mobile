@@ -7,6 +7,8 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { PersonnePhysique } from "../Demandeur/PersonnePhysique";
 import { PersonneMorale } from "../Demandeur/PersonneMorale";
 import { Demandeur } from "../Demandeur/Demandeur";
+import { RepresentantMoral } from "../Demandeur/RepresentantMoral";
+import { Riverin } from "../parcelle/Riverin";
 
 // ─── Photos ───────────────────────────────────────────────────────────────────
 export async function deletePhotos(photos: string[]): Promise<void> {
@@ -67,7 +69,34 @@ export async function insertParcelle(parcelle: Parcelle): Promise<Parcelle> {
   try {
     await checkParcelle(parcelle);
     const database = await initDatabase();
-    const cleanData = JSON.parse(JSON.stringify(parcelle));
+
+    // ─── Mapper demandeurs → IDs ─────────────────────────────────
+    const demandeursClean = parcelle.demandeurs.map((d) => ({
+      id: d.id,
+      type: Number(d.type),
+      representantType: d.representanType ?? "proprietaire",
+      personnePhysiqueId: d.type === 0 ? d.personnePhysique.id : "",
+      personneMoraleId: d.type === 1 ? d.personneMorale.id : "",
+    }));
+
+    // ─── Mapper riverin → IDs ────────────────────────────────────
+    const riverinClean = parcelle.riverin.map((r) => ({
+      repere: r.repere ?? "",
+      type: r.type,
+      nom: r.nom ?? null,
+      typePersonne: r.typePersonne ?? null,
+      personnePhysiqueId:
+        r.typePersonne === 0 ? r.personnePhysique?.id ?? "" : "",
+      personneMoraleId: r.typePersonne === 1 ? r.personneMorale?.id ?? "" : "",
+      observation: r.observation ?? "",
+    }));
+
+    const cleanData = {
+      ...JSON.parse(JSON.stringify(parcelle)),
+      demandeurs: demandeursClean,
+      riverin: riverinClean,
+    };
+
     await database.parcelle.upsert(cleanData);
     console.log(`✅ Parcelle ${parcelle.code} upsert dans RxDB`);
     return parcelle;
@@ -79,37 +108,100 @@ export async function insertParcelle(parcelle: Parcelle): Promise<Parcelle> {
 
 export async function getAllParcelles(
   page?: number,
-  limit: number = 2,
+  limit: number = 10,
 ): Promise<{ data: Parcelle[]; total: number }> {
   try {
     const database = await initDatabase();
     const { value: sessionId } = await Preferences.get({ key: "id_session" });
-
     const selector = sessionId === "0" ? {} : { id_personne: sessionId };
 
-    // Sans paramètre → tout retourner
-    if (page === undefined) {
-      const docs = await database.parcelle.find({ selector }).exec();
-      const data = docs.map((doc) => doc.toJSON() as Parcelle);
-      return { data, total: data.length };
+    let docs: any[];
+    let total: number;
+
+    if (page !== undefined) {
+      [docs, total] = await Promise.all([
+        database.parcelle
+          .find({ selector, skip: (page - 1) * limit, limit })
+          .exec(),
+        database.parcelle.count({ selector }).exec(),
+      ]);
+    } else {
+      docs = await database.parcelle.find({ selector }).exec();
+      total = docs.length;
     }
 
-    // Avec pagination
-    const [docs, total] = await Promise.all([
-      database.parcelle
-        .find({
-          selector,
-          skip: (page - 1) * limit,
-          limit,
-        })
-        .exec(),
-      database.parcelle.count({ selector }).exec(),
-    ]);
+    // ─── Reconstituer Parcelle avec objets complets ──────────────
+    const data: Parcelle[] = await Promise.all(
+      docs.map(async (doc) => {
+        const raw = doc.toJSON();
 
-    return {
-      data: docs.map((doc) => doc.toJSON() as Parcelle),
-      total,
-    };
+        // ─── Reconstituer demandeurs ─────────────────────────────
+        const demandeurs: Demandeur[] = await Promise.all(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (raw.demandeurs ?? []).map(async (d: any) => {
+            let pp = PersonnePhysique.init();
+            let pm = PersonneMorale.init();
+
+            if (d.type === 0 && d.personnePhysiqueId) {
+              const ppDoc = await database.personnephysique
+                .findOne(d.personnePhysiqueId)
+                .exec();
+              if (ppDoc) pp = ppDoc.toJSON() as PersonnePhysique;
+            }
+            if (d.type === 1 && d.personneMoraleId) {
+              const pmDoc = await database.personnemorale
+                .findOne(d.personneMoraleId)
+                .exec();
+              if (pmDoc) pm = pmDoc.toJSON() as PersonneMorale;
+            }
+
+            return new Demandeur(
+              d.id,
+              d.type,
+              pp,
+              pm,
+              d.representantType || null,
+            );
+          }),
+        );
+
+        // ─── Reconstituer riverin ────────────────────────────────
+        const riverin: Riverin[] = await Promise.all(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (raw.riverin ?? []).map(async (r: any) => {
+            let pp: PersonnePhysique | null = null;
+            let pm: PersonneMorale | null = null;
+
+            if (r.typePersonne === 0 && r.personnePhysiqueId) {
+              const ppDoc = await database.personnephysique
+                .findOne(r.personnePhysiqueId)
+                .exec();
+              if (ppDoc) pp = ppDoc.toJSON() as PersonnePhysique;
+            }
+            if (r.typePersonne === 1 && r.personneMoraleId) {
+              const pmDoc = await database.personnemorale
+                .findOne(r.personneMoraleId)
+                .exec();
+              if (pmDoc) pm = pmDoc.toJSON() as PersonneMorale;
+            }
+
+            return new Riverin(
+              r.repere,
+              r.type,
+              r.nom,
+              pp,
+              pm,
+              r.typePersonne,
+              r.observation,
+            );
+          }),
+        );
+
+        return { ...raw, demandeurs, riverin } as Parcelle;
+      }),
+    );
+
+    return { data, total };
   } catch (error) {
     console.error("❌ Erreur récupération parcelles RxDB:", error);
     return { data: [], total: 0 };
@@ -144,6 +236,16 @@ export async function deleteParcelle(code: string): Promise<boolean> {
 }
 
 // ─── PersonnePhysique ─────────────────────────────────────────────────────────
+export async function getAllPersonnesPhysiques(): Promise<PersonnePhysique[]> {
+  try {
+    const database = await initDatabase();
+    const docs = await database.personnephysique.find().exec();
+    return docs.map((doc) => doc.toJSON() as PersonnePhysique);
+  } catch (error) {
+    console.error("❌ Erreur getAllPersonnesPhysiques:", error);
+    return [];
+  }
+}
 
 export async function insertPersonnePhysique(
   personne: PersonnePhysique,
@@ -160,17 +262,6 @@ export async function insertPersonnePhysique(
   }
 }
 
-export async function getAllPersonnesPhysiques(): Promise<PersonnePhysique[]> {
-  try {
-    const database = await initDatabase();
-    const docs = await database.personnephysique.find().exec();
-    return docs.map((doc) => doc.toJSON() as PersonnePhysique);
-  } catch (error) {
-    console.error("❌ Erreur getAllPersonnesPhysiques:", error);
-    return [];
-  }
-}
-
 // ─── PersonneMorale ───────────────────────────────────────────────────────────
 
 export async function insertPersonneMorale(
@@ -178,7 +269,22 @@ export async function insertPersonneMorale(
 ): Promise<PersonneMorale> {
   try {
     const database = await initDatabase();
-    const cleanData = JSON.parse(JSON.stringify(personne));
+    // 1. Insérer les PersonnePhysique des représentants si présents
+    if (personne.representant?.length > 0) {
+      for (const r of personne.representant) {
+        await insertPersonnePhysique(r.personnePhysique);
+      }
+    }
+    // 2. Insérer PersonneMorale avec représentants réduits à id + role
+    const cleanData = {
+      ...JSON.parse(JSON.stringify(personne)),
+      typeMorale: Number(personne.typeMorale),
+      representant: personne.representant.map((r) => ({
+        personnePhysiqueId: r.personnePhysique.id,
+        role: r.role,
+      })),
+    };
+
     await database.personnemorale.upsert(cleanData);
     console.log("✅ PersonneMorale upsert avec succès");
     return personne;
@@ -192,7 +298,38 @@ export async function getAllPersonnesMorales(): Promise<PersonneMorale[]> {
   try {
     const database = await initDatabase();
     const docs = await database.personnemorale.find().exec();
-    return docs.map((doc) => doc.toJSON() as PersonneMorale);
+
+    const morales = await Promise.all(
+      docs.map(async (doc) => {
+        const data = doc.toJSON();
+
+        // ─── Reconstruire les représentants avec PersonnePhysique ──
+        const representant: RepresentantMoral[] = await Promise.all(
+          (data.representant ?? []).map(
+            async (r: { personnePhysiqueId: string; role: string }) => {
+              const ppDoc = await database.personnephysique
+                .findOne(r.personnePhysiqueId)
+                .exec();
+              const pp = ppDoc
+                ? (ppDoc.toJSON() as PersonnePhysique)
+                : PersonnePhysique.init();
+              return new RepresentantMoral(pp, r.role as "representant");
+            },
+          ),
+        );
+        return new PersonneMorale(
+          data.id,
+          data.denomination,
+          data.typeMorale,
+          data.dateCreation,
+          data.siege,
+          data.observations,
+          representant,
+        );
+      }),
+    );
+
+    return morales;
   } catch (error) {
     console.error("❌ Erreur getAllPersonnesMorales:", error);
     return [];

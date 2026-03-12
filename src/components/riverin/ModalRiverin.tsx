@@ -203,13 +203,13 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
                   <IonRow className="justify-content-between text-center">
                     <IonCol size="12" size-md="6">
                       <IonButton expand="full" onClick={() => setShowDemandeurModal(true)}>
-                        Ajout demandeur
+                        Ajout voisin
                       </IonButton>
                     </IonCol>
                     <IonCol size="12" size-md="6">
                       <IonButton expand="full" color="tertiary"
                         onClick={() => setShowSearchDemandeurModal(true)}>
-                        Recherche demandeur
+                        Recherche voisin
                       </IonButton>
                     </IonCol>
                   </IonRow>

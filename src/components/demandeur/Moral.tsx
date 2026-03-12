@@ -19,6 +19,7 @@ import SearchModal from "./SearchModal";
 import ModalDemandeur from "./ModalDemandeur";
 import DemandeurView from "./DemandeurView";
 import { PersonnePhysique } from "../../model/Demandeur/PersonnePhysique";
+import { RepresentantMoral } from "../../model/Demandeur/RepresentantMoral";
 
 interface MoralProps {
   personne: PersonneMorale;
@@ -32,7 +33,7 @@ const Moral: React.FC<MoralProps> = ({
   readonly = false,
 }) => {
   const [typeMoral, setTypeMoral] = useState<TypeMoral[]>([]);
-  const [dirigeants, setDirigeants] = useState<PersonnePhysique[]>([]);
+  const [dirigeants, setDirigeants] = useState<RepresentantMoral[]>([]);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showPersonneModal, setShowPersonneModal] = useState(false);
   const [decomposed, setDecomposed] = useState(false);
@@ -52,17 +53,25 @@ const Moral: React.FC<MoralProps> = ({
 
   const addDirigeant = () => {
     try {
-      setDirigeants((prev) => {
-        const exists = prev.find((d) => d.id === newDirigeant.id);
-        if (exists) return prev;
-        return [...prev, { ...newDirigeant, representanType: "dirigeant" }];
-      });
+      const exists = dirigeants.find(
+        (d) => d.personnePhysique.id === newDirigeant.id,
+      );
+      if (!exists) {
+        const newRep = new RepresentantMoral(newDirigeant, "representant");
+        const updated = [...dirigeants, newRep];
+        setDirigeants(updated);
+        setPersonne({ ...personne, representant: updated }); // ← sync PersonneMorale
+      }
       setNewDirigeant(PersonnePhysique.init());
       setShowPersonneModal(false);
     } catch (error) {
       console.error(error);
     }
   };
+
+  useEffect(() => {
+    setDirigeants(personne.representant ?? []);
+  }, [personne.id, personne.representant]);
 
   return (
     <IonList>
@@ -74,11 +83,11 @@ const Moral: React.FC<MoralProps> = ({
           placeholder="Type de personne morale"
           disabled={readonly}
           onIonChange={(e) =>
-            setPersonne({ ...personne, typeMorale: e.detail.value! })
+            setPersonne({ ...personne, typeMorale: Number(e.detail.value) })
           }
         >
           {typeMoral.map((type, index) => (
-            <IonSelectOption key={`type-${index}`} value={type.id}>
+            <IonSelectOption key={`type-${index}`} value={Number(type.id)}>
               {type.labetypemoral}
             </IonSelectOption>
           ))}
@@ -146,36 +155,33 @@ const Moral: React.FC<MoralProps> = ({
                 marginBottom: "8px",
               }}
             >
-              Dirigeants ({dirigeants.length})
+              Représentant ({dirigeants.length})
             </h3>
           </IonLabel>
         </IonItem>
       )}
 
       {dirigeants.map((d) => (
-        <IonItem
-          key={d.id}
-          lines="none"
-          style={{
-            marginBottom: "6px",
-            borderRadius: "8px",
-            backgroundColor: "var(--ion-color-light)",
-          }}
-        >
+        <div className="p-2">
           <DemandeurView
-            personne={d}
+            personne={d.personnePhysique}
             type={0}
-            onDelete={() =>
-              setDirigeants((prev) => prev.filter((r) => r.id !== d.id))
-            }
+            representanType={d.role} // ← dynamique
+            onDelete={() => {
+              const updated = dirigeants.filter(
+                (r) => r.personnePhysique.id !== d.personnePhysique.id,
+              );
+              setDirigeants(updated);
+              setPersonne({ ...personne, representant: updated }); // ← sync PersonneMorale
+            }}
             swipeEnabled={!readonly}
           />
-        </IonItem>
+        </div>
       ))}
 
       {/* ─── Section dirigeants ─── */}
       {!readonly && (
-        <IonItem>
+        <IonItem lines="none">
           <IonGrid>
             <IonRow className="justify-content-between text-center">
               <IonCol size="12" size-md="4">
@@ -186,7 +192,7 @@ const Moral: React.FC<MoralProps> = ({
                     setShowPersonneModal(true);
                   }}
                 >
-                  Ajout dirigeant
+                  Ajout Représentant
                 </IonButton>
               </IonCol>
               <IonCol size="12" size-md="4">
@@ -195,7 +201,7 @@ const Moral: React.FC<MoralProps> = ({
                   color="tertiary"
                   onClick={() => setShowSearchModal(true)}
                 >
-                  Recherche dirigeant
+                  Recherche Représentant
                 </IonButton>
               </IonCol>
             </IonRow>
@@ -211,12 +217,15 @@ const Moral: React.FC<MoralProps> = ({
         roles={[{ text: "Representant", data: "representant" }]}
         onSelect={(d) => {
           if (d.type !== 0) return;
-          const exists = dirigeants.find((r) => r.id === d.id);
+          const pp = d.personnePhysique;
+          const exists = dirigeants.find(
+            (r) => r.personnePhysique.id === pp.id,
+          );
           if (!exists) {
-            setDirigeants((prev) => [
-              ...prev,
-              { ...d, representanType: "Representant" },
-            ]);
+            const newRep = new RepresentantMoral(pp, "representant");
+            const updated = [...dirigeants, newRep];
+            setDirigeants(updated);
+            setPersonne({ ...personne, representant: updated }); // ← sync PersonneMorale
           }
         }}
       />
