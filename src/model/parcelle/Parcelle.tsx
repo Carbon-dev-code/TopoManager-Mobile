@@ -15,8 +15,12 @@ export async function checkParcelle(parcelle: Parcelle): Promise<void> {
 
     if (!parcelle.code) throw new Error("Code parcelle requis");
     if (!parcelle.dateCreation) throw new Error("Date de création vide");
+    
     if (!parcelle.origine) throw new Error("Origine require !");
+    
     if (!parcelle.anneeOccup) throw new Error("Veuillez insérer l'année d'occupation");
+    else if (parcelle.anneeOccup<= 1) throw new Error("l'année d'occupation doit etre superieur a 1 an minimun");
+
     if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 demandeur");
     if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");  
 }

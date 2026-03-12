@@ -44,7 +44,7 @@ import { ParametreTerritoire } from "../model/ParametreTerritoire";
 import { Categorie } from "../model/Categorie";
 import { Status } from "../model/Status";
 import { Parcelle } from "../model/parcelle/Parcelle";
-import { Riverin } from "../model/parcelle/Riverin";
+import { checkRiverin, Riverin } from "../model/parcelle/Riverin";
 import { Repere } from "../model/Repere";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
@@ -65,10 +65,10 @@ import Alert from "../components/alert/Alert";
 import DropDown from "../components/dropdown/DropDown";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import ScrollToTop from "../components/ScrollTop/ScrollToTop";
-import { ToastType } from "../components/toast/Toast";
 import { Demandeur } from "../model/Demandeur/Demandeur";
 import { PersonnePhysique } from "../model/Demandeur/PersonnePhysique";
 import { PersonneMorale } from "../model/Demandeur/PersonneMorale";
+import Toast, { ToastType } from "../components/toast/Toast";
 
 // Hook personnalisé pour la gestion des données de référence
 const useReferenceData = () => {
@@ -115,10 +115,17 @@ const useParcelleCode = () => {
 
       const now = new Date();
       const dateTime = now
-        .toLocaleString("fr-FR", { timeZone: "Indian/Antananarivo",
-          year: "numeric", month: "2-digit", day: "2-digit",
-          hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-        }).replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
+        .toLocaleString("fr-FR", {
+          timeZone: "Indian/Antananarivo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+        .replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
 
       return {
         code,
@@ -159,34 +166,43 @@ const Tab1: React.FC = () => {
   // États UI
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
+    useState(false);
   const [showRiverin, setShowRiverin] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
   const [showAlertRemove, setShowAlertRemove] = useState(false);
   const [showAlertVerif, setShowAlertVerif] = useState(false);
-  const [verifMessageError, setVerifMessageError] = useState<string | null>(null,);
+  const [verifMessageError, setVerifMessageError] = useState<string | null>(
+    null,
+  );
   const [codeToRemove, setCodeToRemove] = useState<string | null>(null);
   const [showTempAlert, setShowTempAlert] = useState(false);
   const [tempAlertMessage, setTempAlertMessage] = useState("");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mode, setMode] = useState<"view" | "edit" | "create">("create");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">("demandeur",);
+  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
+    "demandeur",
+  );
   const [decomposed, setDecomposed] = useState(false);
   const [isPhysique, setIsPhysique] = useState(0);
 
   // États données
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
-  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(PersonnePhysique.init(),);
-  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(PersonneMorale.init(),);
+  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(
+    PersonnePhysique.init(),
+  );
+  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(
+    PersonneMorale.init(),
+  );
   const [representanType, setRepresentanType] = useState<string | null>(null);
   const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init());
-  const [riverinMess, setRiverinMess] = useState<ToastType | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, setSelectedParcelle] = useState<Parcelle | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalParcelles, setTotalParcelles] = useState(0);
+  const [toast, setToast] = useState({visible: false, message: "",type: "success" as ToastType,});
   const ITEMS_PER_PAGE = 10;
 
   // Hooks personnalisés
@@ -205,9 +221,27 @@ const Tab1: React.FC = () => {
   useEffect(() => {
     loadData(currentPage);
   }, [currentPage]);
+
   useIonViewWillEnter(() => {
     loadData(currentPage);
   });
+
+  useEffect(() => {
+    if (showCreateModal && mode === "create") {
+      (async () => {
+        const codeData = await generateNextCode();
+        const lastOrigine = await Preferences.get({ key: "lastOrigine" });
+        if (codeData)
+          setParcelle((prev) => ({
+            ...prev,
+            ...codeData,
+            origine: lastOrigine.value ?? null,
+          }));
+        await loadReferenceData();
+      })();
+    }
+    if (showCreateModal && mode !== "create") loadReferenceData();
+  }, [showCreateModal, mode, generateNextCode, loadReferenceData]);
 
   const verifyDataBeforeCreate = useCallback(async () => {
     try {
@@ -284,31 +318,18 @@ const Tab1: React.FC = () => {
   );
 
   const addRiverin = useCallback(() => {
-    if (!newRiverin.repere) {
-      setRiverinMess("error");
-      return;
+    try {
+      checkRiverin(newRiverin);
+      setParcelle((prev) => ({
+        ...prev,
+        riverin: [...prev.riverin, newRiverin],
+      }));
+      setNewRiverin(Riverin.init());
+      setToast({ visible: true, message: "Riverin ajouté avec success", type: "success", });
+    } catch (error) {
+      setTempAlertMessage(error instanceof Error ? error.message : "Erreur inconnue", );
+      setShowTempAlert(true);
     }
-    if (
-      newRiverin.type === "personne" &&
-      !newRiverin.personnePhysique &&
-      !newRiverin.personneMorale
-    ) {
-      setRiverinMess("error");
-      return;
-    }
-    if (newRiverin.type === "autre" && !newRiverin.nom?.trim()) {
-      setRiverinMess("error");
-      return;
-    }
-
-    setParcelle((prev) => ({
-      ...prev,
-      riverin: [...prev.riverin, newRiverin],
-    }));
-    console.log(newRiverin);
-    console.log(parcelle);
-    setNewRiverin(Riverin.init());
-    setRiverinMess("success");
   }, [newRiverin]);
 
   const removeParcelle = useCallback((code: string, synchronise?: number) => {
@@ -337,7 +358,14 @@ const Tab1: React.FC = () => {
       }
 
       await insertParcelle(parcelle);
-      if (mode === "create") await saveIncrement();
+      if (mode === "create") {
+        await saveIncrement();
+        if (parcelle.origine)
+          await Preferences.set({
+            key: "lastOrigine",
+            value: parcelle.origine,
+          });
+      }
 
       if (mode === "edit") {
         setParcelles((prev) =>
@@ -348,14 +376,14 @@ const Tab1: React.FC = () => {
         const lastPage = Math.ceil(newTotal / ITEMS_PER_PAGE);
         setTotalParcelles(newTotal);
         if (lastPage !== currentPage) {
-          setCurrentPage(lastPage); // ← useEffect loadData se déclenche automatiquement
+          setCurrentPage(lastPage);
         } else {
           setParcelles((prev) => [...prev, parcelle]);
         }
       }
-
       setParcelle(Parcelle.init());
       setShowCreateModal(false);
+      setToast({ visible: true, message: "Parcelle ajouté avec success", type: "success", });
     } catch (error) {
       setTempAlertMessage(
         error instanceof Error ? error.message : "Erreur inconnue",
@@ -723,7 +751,6 @@ const Tab1: React.FC = () => {
         showRiverin={showRiverin}
         setShowRiverin={setShowRiverin}
         addRiverin={addRiverin}
-        riverinMess={riverinMess}
         repereL={repereL}
         newRiverin={newRiverin}
         setNewRiverin={setNewRiverin}
@@ -765,6 +792,13 @@ const Tab1: React.FC = () => {
         withRepresentants={true}
         representanType={representanType}
         setRepresentanType={setRepresentanType}
+      />
+
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((t) => ({ ...t, visible: false }))}
       />
     </IonPage>
   );

@@ -15,7 +15,7 @@ import {
 import "./Tab5.css";
 import { searchSharp, create, close, informationCircle } from "ionicons/icons";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DemandeurView from "../components/demandeur/DemandeurView";
 import {
   insertPersonnePhysique,
@@ -29,10 +29,12 @@ import Alert from "../components/alert/Alert";
 import Toast, { ToastType } from "../components/toast/Toast";
 import { PersonnePhysique } from "../model/Demandeur/PersonnePhysique";
 import { PersonneMorale } from "../model/Demandeur/PersonneMorale";
+import ScrollToTop from "../components/ScrollTop/ScrollToTop";
 
 type ModalMode = "create" | "view" | "edit";
 
 const Tab5: React.FC = () => {
+  const contentRef = useRef<HTMLIonContentElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [search, setSearch] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -76,7 +78,6 @@ const Tab5: React.FC = () => {
     setPersonnePhysiqueList(physiques);
     setPersonneMoraleList(morales);
   };
-
 
   useIonViewWillEnter(() => {
     load();
@@ -232,7 +233,7 @@ const Tab5: React.FC = () => {
         )}
       </IonHeader>
 
-      <IonContent>
+      <IonContent ref={contentRef}>
         {paginatedItems.length === 0 ? (
           <div className="text-center py-5">
             <IonIcon
@@ -333,89 +334,89 @@ const Tab5: React.FC = () => {
             )}
           </div>
         )}
-
-        <Alert
-          show={showAlertRemove}
-          type={1}
-          title="Suppression"
-          message="Êtes-vous sûr de vouloir supprimer ce demandeur ?"
-          onCancel={() => {
-            setShowAlertRemove(false);
-            setIdToRemove(null);
-          }}
-          onConfirm={async () => {
-            if (idToRemove) {
-              try {
-                if (idToRemove.type === 0) {
-                  await deletePersonnePhysique(idToRemove.id);
-                  setPersonnePhysiqueList((prev) =>
-                    prev.filter((p) => p.id !== idToRemove.id),
-                  );
-                } else {
-                  await deletePersonneMorale(idToRemove.id);
-                  setPersonneMoraleList((prev) =>
-                    prev.filter((p) => p.id !== idToRemove.id),
-                  );
-                }
-                const newTotal = totalItems - 1;
-                const maxPage = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1;
-                if (currentPage > maxPage) setCurrentPage(maxPage);
-                setToast({
-                  visible: true,
-                  message: "Supprimé avec succès",
-                  type: "success",
-                });
-              } catch (error) {
-                setTempAlertMessage(
-                  error instanceof Error
-                    ? error.message
-                    : "Erreur inconnue veuillez vous adresser à l'administrateur",
-                );
-                setShowTempAlert(true);
-              }
-            }
-            setShowAlertRemove(false);
-            setIdToRemove(null);
-          }}
-          onClose={() => {
-            setShowAlertRemove(false);
-            setIdToRemove(null);
-          }}
-        />
-
-        <ModalDemandeur
-          showCreateModal={showCreateModal}
-          setShowCreateModal={setShowCreateModal}
-          personnePhysique={personnePhysique}
-          setPersonnePhysique={setPersonnePhysique}
-          personneMorale={personneMorale}
-          setPersonneMorale={setPersonneMorale}
-          addDemandeur={addDemandeur}
-          toastMessage={toastMessage}
-          setToastMessage={setToastMessage}
-          isPhysique={isPhysique}
-          setIsPhysique={setIsPhysique}
-          decomposed={decomposed}
-          setDecomposed={setDecomposed}
-          mode={modalMode}
-        />
-
-        <Alert
-          show={showTempAlert}
-          type={0}
-          title="Information"
-          message={tempAlertMessage}
-          onClose={() => setShowTempAlert(false)}
-          duration={5000}
-        />
-
-        <Toast
-          visible={toast.visible}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast((t) => ({ ...t, visible: false }))}
-        />
+        <ScrollToTop contentRef={contentRef} />
       </IonContent>
+      <Alert
+        show={showAlertRemove}
+        type={1}
+        title="Suppression"
+        message="Êtes-vous sûr de vouloir supprimer ce demandeur ?"
+        onCancel={() => {
+          setShowAlertRemove(false);
+          setIdToRemove(null);
+        }}
+        onConfirm={async () => {
+          if (idToRemove) {
+            try {
+              if (idToRemove.type === 0) {
+                await deletePersonnePhysique(idToRemove.id);
+                setPersonnePhysiqueList((prev) =>
+                  prev.filter((p) => p.id !== idToRemove.id),
+                );
+              } else {
+                await deletePersonneMorale(idToRemove.id);
+                setPersonneMoraleList((prev) =>
+                  prev.filter((p) => p.id !== idToRemove.id),
+                );
+              }
+              const newTotal = totalItems - 1;
+              const maxPage = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1;
+              if (currentPage > maxPage) setCurrentPage(maxPage);
+              setToast({
+                visible: true,
+                message: "Supprimé avec succès",
+                type: "success",
+              });
+            } catch (error) {
+              setTempAlertMessage(
+                error instanceof Error
+                  ? error.message
+                  : "Erreur inconnue veuillez vous adresser à l'administrateur",
+              );
+              setShowTempAlert(true);
+            }
+          }
+          setShowAlertRemove(false);
+          setIdToRemove(null);
+        }}
+        onClose={() => {
+          setShowAlertRemove(false);
+          setIdToRemove(null);
+        }}
+      />
+
+      <ModalDemandeur
+        showCreateModal={showCreateModal}
+        setShowCreateModal={setShowCreateModal}
+        personnePhysique={personnePhysique}
+        setPersonnePhysique={setPersonnePhysique}
+        personneMorale={personneMorale}
+        setPersonneMorale={setPersonneMorale}
+        addDemandeur={addDemandeur}
+        toastMessage={toastMessage}
+        setToastMessage={setToastMessage}
+        isPhysique={isPhysique}
+        setIsPhysique={setIsPhysique}
+        decomposed={decomposed}
+        setDecomposed={setDecomposed}
+        mode={modalMode}
+      />
+
+      <Alert
+        show={showTempAlert}
+        type={0}
+        title="Information"
+        message={tempAlertMessage}
+        onClose={() => setShowTempAlert(false)}
+        duration={5000}
+      />
+
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((t) => ({ ...t, visible: false }))}
+      />
     </IonPage>
   );
 };

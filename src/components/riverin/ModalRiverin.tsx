@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {  useState } from "react";
 import {
   IonModal, IonHeader, IonToolbar, IonButtons, IonButton, IonTitle,
   IonContent, IonIcon, IonList, IonItem, IonGrid, IonRow, IonCol,
@@ -18,7 +18,6 @@ interface ModalRiverinProps {
   showRiverin: boolean;
   setShowRiverin: (value: boolean) => void;
   addRiverin: () => void;
-  riverinMess: string | null;
   repereL: { code_repere: number; repere: string }[];
   newRiverin: Riverin;
   setNewRiverin: (value: Riverin) => void;
@@ -26,8 +25,7 @@ interface ModalRiverinProps {
 
 const ModalRiverin: React.FC<ModalRiverinProps> = ({
   showRiverin, setShowRiverin,
-  addRiverin, riverinMess,
-  repereL, newRiverin, setNewRiverin,
+  addRiverin, repereL, newRiverin, setNewRiverin,
 }) => {
   const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
@@ -92,14 +90,6 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
     setShowSearchDemandeurModal(false);
   };
 
-  useEffect(() => {
-    if (!riverinMess) return;
-    const message = riverinMess === "success"
-      ? "Riverin ajouté avec succès"
-      : "Vérifiez le repère et la désignation";
-    setToast({ visible: true, message, type: riverinMess as ToastType });
-  }, [riverinMess]);
-
   // ─── Personne sélectionnée pour affichage ───────────────────────
   const hasPersonne = newRiverin.typePersonne !== null && (
     newRiverin.personnePhysique || newRiverin.personneMorale
@@ -145,7 +135,7 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
           {/* ─── Type ─────────────────────────────────────────────── */}
           <IonItem>
             <IonGrid><IonRow><IonCol size="12">
-              <IonSelect label="Type :" value={newRiverin.type}
+              <IonSelect label="Type de voisin :" value={newRiverin.type}
                 onIonChange={(e) => setNewRiverin({
                   ...newRiverin,
                   type: e.detail.value as TypeRiverin,
