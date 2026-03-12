@@ -272,6 +272,51 @@ export async function insertPersonnePhysique(
 export async function deletePersonnePhysique(id: string): Promise<void> {
   try {
     const database = await initDatabase();
+
+    // ─── Rattaché comme demandeur ─────────────────────────────────
+    const parcellesDemandeur = await database.parcelle
+      .find({
+        selector: { demandeurs: { $elemMatch: { personnePhysiqueId: id } } },
+      })
+      .exec();
+
+    if (parcellesDemandeur.length > 0) {
+      const codes = parcellesDemandeur.map((p) => p.get("code")).join("\n");
+      throw new Error(
+        `Impossible de supprimer \n rattachée comme demandeur aux parcelles :\n${codes}`,
+      );
+    }
+
+    // ─── Rattaché comme riverin ───────────────────────────────────
+    const parcellesRiverin = await database.parcelle
+      .find({
+        selector: { riverin: { $elemMatch: { personnePhysiqueId: id } } },
+      })
+      .exec();
+
+    if (parcellesRiverin.length > 0) {
+      const codes = parcellesRiverin.map((p) => p.get("code")).join("\n");
+      throw new Error(
+        `Impossible de supprimer \n rattachée comme riverin aux parcelles :\n${codes}`,
+      );
+    }
+
+    // ─── Rattaché comme représentant d'une PersonneMorale ─────────
+    const morales = await database.personnemorale
+      .find({
+        selector: { representant: { $elemMatch: { personnePhysiqueId: id } } },
+      })
+      .exec();
+
+    if (morales.length > 0) {
+      const denominations = morales
+        .map((m) => m.get("denomination"))
+        .join("\n");
+      throw new Error(
+        `Impossible de supprimer \n rattachée comme représentant de :\n${denominations}`,
+      );
+    }
+
     const doc = await database.personnephysique.findOne(id).exec();
     await doc?.remove();
     console.log("✅ PersonnePhysique supprimée");
@@ -281,10 +326,40 @@ export async function deletePersonnePhysique(id: string): Promise<void> {
   }
 }
 
-// ─── PersonneMorale ───────────────────────────────────────────────────────────
+//------personne moral
+
 export async function deletePersonneMorale(id: string): Promise<void> {
   try {
     const database = await initDatabase();
+
+    // ─── Rattaché comme demandeur ─────────────────────────────────
+    const parcellesDemandeur = await database.parcelle
+      .find({
+        selector: { demandeurs: { $elemMatch: { personneMoraleId: id } } },
+      })
+      .exec();
+
+    if (parcellesDemandeur.length > 0) {
+      const codes = parcellesDemandeur.map((p) => p.get("code")).join("\n");
+      throw new Error(
+        `Impossible de supprimer \n rattachée comme demandeur aux parcelles :\n${codes}`,
+      );
+    }
+
+    // ─── Rattaché comme riverin ───────────────────────────────────
+    const parcellesRiverin = await database.parcelle
+      .find({
+        selector: { riverin: { $elemMatch: { personneMoraleId: id } } },
+      })
+      .exec();
+
+    if (parcellesRiverin.length > 0) {
+      const codes = parcellesRiverin.map((p) => p.get("code")).join("\n");
+      throw new Error(
+        `Impossible de supprimer \n rattachée comme riverin aux parcelles ${codes}`,
+      );
+    }
+
     const doc = await database.personnemorale.findOne(id).exec();
     await doc?.remove();
     console.log("✅ PersonneMorale supprimée");
@@ -293,6 +368,7 @@ export async function deletePersonneMorale(id: string): Promise<void> {
     throw error;
   }
 }
+
 export async function insertPersonneMorale(
   personne: PersonneMorale,
 ): Promise<PersonneMorale> {

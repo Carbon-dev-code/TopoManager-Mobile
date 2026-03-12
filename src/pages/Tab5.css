@@ -1,6 +1,17 @@
-.custom-list-md{
-    background: #f5f5f5 !important;
-    padding-top: 0px;
-    padding-bottom: 0px;
-    margin: 15px;
+.custom-list-md {
+  background: #f5f5f5 !important;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  margin: 15px;
+}
+
+.demandeur-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.demandeur-scroll {
+  flex: 1;
+  overflow-y: auto;
 }

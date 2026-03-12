@@ -15,7 +15,7 @@ import {
 import "./Tab5.css";
 import { searchSharp, create, close, informationCircle } from "ionicons/icons";
 import ModalDemandeur from "../components/demandeur/ModalDemandeur";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DemandeurView from "../components/demandeur/DemandeurView";
 import {
   insertPersonnePhysique,
@@ -64,6 +64,8 @@ const Tab5: React.FC = () => {
     id: string;
     type: 0 | 1;
   } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   const load = async () => {
     const [physiques, morales] = await Promise.all([
@@ -71,15 +73,52 @@ const Tab5: React.FC = () => {
       getAllPersonnesMorales(),
     ]);
 
-    console.log(morales);
-
     setPersonnePhysiqueList(physiques);
     setPersonneMoraleList(morales);
   };
 
+
   useIonViewWillEnter(() => {
     load();
   });
+
+  // ─── Items paginés ───────────────────────────────────────────────
+  // Filtre recherche — physiques + morales
+  const filteredPhysiques = personnePhysiqueList.filter((p) => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return (
+      (p.nom ?? "").toLowerCase().includes(q) ||
+      (p.prenom ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const filteredMorales = personneMoraleList.filter((p) => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return (p.denomination ?? "").toLowerCase().includes(q);
+  });
+
+  // ─── Pagination ──────────────────────────────────────────────────
+  const allFiltered = useMemo(
+    () => [
+      ...filteredPhysiques.map((p) => ({ type: 0 as const, data: p })),
+      ...filteredMorales.map((p) => ({ type: 1 as const, data: p })),
+    ],
+    [filteredPhysiques, filteredMorales],
+  );
+
+  const totalItems = allFiltered.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const paginatedItems = allFiltered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
+
+  // reset page si recherche change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // ===== Ouvrir en mode création =====
   const handleOpenCreate = () => {
@@ -149,22 +188,6 @@ const Tab5: React.FC = () => {
     }
   };
 
-  // Filtre recherche — physiques + morales
-  const filteredPhysiques = personnePhysiqueList.filter((p) => {
-    const q = searchQuery.toLowerCase();
-    if (!q) return true;
-    return (
-      (p.nom ?? "").toLowerCase().includes(q) ||
-      (p.prenom ?? "").toLowerCase().includes(q)
-    );
-  });
-
-  const filteredMorales = personneMoraleList.filter((p) => {
-    const q = searchQuery.toLowerCase();
-    if (!q) return true;
-    return (p.denomination ?? "").toLowerCase().includes(q);
-  });
-
   return (
     <IonPage>
       <IonHeader>
@@ -210,7 +233,7 @@ const Tab5: React.FC = () => {
       </IonHeader>
 
       <IonContent>
-        {filteredPhysiques.length === 0 && filteredMorales.length === 0 ? (
+        {paginatedItems.length === 0 ? (
           <div className="text-center py-5">
             <IonIcon
               icon={informationCircle}
@@ -223,38 +246,92 @@ const Tab5: React.FC = () => {
             </IonButton>
           </div>
         ) : (
-          <>
-            {filteredPhysiques.map((p) => (
-              <IonList className="custom-list-md" key={p.id}>
-                <DemandeurView
-                  personne={p}
-                  type={0}
-                  longPressEnabled={true}
-                  onView={() => handleOpenViewPhysique(p)}
-                  onEdit={() => handleOpenEditPhysique(p)}
-                  onDelete={() => {
-                    setIdToRemove({ id: p.id, type: 0 });
-                    setShowAlertRemove(true);
-                  }}
-                />
-              </IonList>
-            ))}
-            {filteredMorales.map((p) => (
-              <IonList className="custom-list-md" key={p.id}>
-                <DemandeurView
-                  personne={p}
-                  type={1}
-                  longPressEnabled={true}
-                  onView={() => handleOpenViewMorale(p)}
-                  onEdit={() => handleOpenEditMorale(p)}
-                  onDelete={() => {
-                    setIdToRemove({ id: p.id, type: 1 });
-                    setShowAlertRemove(true);
-                  }}
-                />
-              </IonList>
-            ))}
-          </>
+          <div className="demandeur-layout">
+            <div className="demandeur-scroll">
+              {paginatedItems.map((item) =>
+                item.type === 0 ? (
+                  <IonList className="custom-list-md" key={item.data.id}>
+                    <DemandeurView
+                      personne={item.data as PersonnePhysique}
+                      type={0}
+                      longPressEnabled={true}
+                      onView={() =>
+                        handleOpenViewPhysique(item.data as PersonnePhysique)
+                      }
+                      onEdit={() =>
+                        handleOpenEditPhysique(item.data as PersonnePhysique)
+                      }
+                      onDelete={() => {
+                        setIdToRemove({ id: item.data.id, type: 0 });
+                        setShowAlertRemove(true);
+                      }}
+                    />
+                  </IonList>
+                ) : (
+                  <IonList className="custom-list-md" key={item.data.id}>
+                    <DemandeurView
+                      personne={item.data as PersonneMorale}
+                      type={1}
+                      longPressEnabled={true}
+                      onView={() =>
+                        handleOpenViewMorale(item.data as PersonneMorale)
+                      }
+                      onEdit={() =>
+                        handleOpenEditMorale(item.data as PersonneMorale)
+                      }
+                      onDelete={() => {
+                        setIdToRemove({ id: item.data.id, type: 1 });
+                        setShowAlertRemove(true);
+                      }}
+                    />
+                  </IonList>
+                ),
+              )}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="pagination-footer">
+                <div className="pagination-bar">
+                  <IonButton
+                    fill="clear"
+                    size="small"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
+                    ‹ Préc
+                  </IonButton>
+                  <div className="pagination-pages">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => Math.abs(page - currentPage) <= 2)
+                      .map((page) => (
+                        <IonButton
+                          key={page}
+                          size="small"
+                          fill={page === currentPage ? "solid" : "clear"}
+                          color={page === currentPage ? "primary" : "medium"}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </IonButton>
+                      ))}
+                  </div>
+                  <IonButton
+                    fill="clear"
+                    size="small"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                  >
+                    Suiv ›
+                  </IonButton>
+                </div>
+                <p className="pagination-info">
+                  {totalItems} demandeur{totalItems > 1 ? "s" : ""}
+                  {searchQuery && ` — filtre actif`}
+                  {` — page ${currentPage}/${totalPages}`}
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         <Alert
@@ -268,22 +345,34 @@ const Tab5: React.FC = () => {
           }}
           onConfirm={async () => {
             if (idToRemove) {
-              if (idToRemove.type === 0) {
-                await deletePersonnePhysique(idToRemove.id);
-                setPersonnePhysiqueList((prev) =>
-                  prev.filter((p) => p.id !== idToRemove.id),
+              try {
+                if (idToRemove.type === 0) {
+                  await deletePersonnePhysique(idToRemove.id);
+                  setPersonnePhysiqueList((prev) =>
+                    prev.filter((p) => p.id !== idToRemove.id),
+                  );
+                } else {
+                  await deletePersonneMorale(idToRemove.id);
+                  setPersonneMoraleList((prev) =>
+                    prev.filter((p) => p.id !== idToRemove.id),
+                  );
+                }
+                const newTotal = totalItems - 1;
+                const maxPage = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1;
+                if (currentPage > maxPage) setCurrentPage(maxPage);
+                setToast({
+                  visible: true,
+                  message: "Supprimé avec succès",
+                  type: "success",
+                });
+              } catch (error) {
+                setTempAlertMessage(
+                  error instanceof Error
+                    ? error.message
+                    : "Erreur inconnue veuillez vous adresser à l'administrateur",
                 );
-              } else {
-                await deletePersonneMorale(idToRemove.id);
-                setPersonneMoraleList((prev) =>
-                  prev.filter((p) => p.id !== idToRemove.id),
-                );
+                setShowTempAlert(true);
               }
-              setToast({
-                visible: true,
-                message: "Supprimé avec succès",
-                type: "success",
-              });
             }
             setShowAlertRemove(false);
             setIdToRemove(null);
@@ -317,6 +406,7 @@ const Tab5: React.FC = () => {
           title="Information"
           message={tempAlertMessage}
           onClose={() => setShowTempAlert(false)}
+          duration={5000}
         />
 
         <Toast

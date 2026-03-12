@@ -18,8 +18,7 @@ export async function checkParcelle(parcelle: Parcelle): Promise<void> {
     if (!parcelle.origine) throw new Error("Origine require !");
     if (!parcelle.anneeOccup) throw new Error("Veuillez insérer l'année d'occupation");
     if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 demandeur");
-    if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");
-    if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 Demandeur");    
+    if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");  
 }
 
 

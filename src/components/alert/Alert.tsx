@@ -29,7 +29,7 @@ const Alert: React.FC<AlertProps> = ({
      return createPortal(
           <div className="alert-overlay">
                <div className={`alert-modal ${type === 0 ? 'danger' : ''}`}>                    <h3>{title}</h3>
-                    <p className="m-0">{message}</p>
+                    <p className="m-0" style={{ whiteSpace: "pre-line" }}>{message}</p>
 
                     {type === 1 && (
                          <div className="alert-actions row g-0">
