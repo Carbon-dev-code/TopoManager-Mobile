@@ -33,7 +33,6 @@ import {
   addOutline,
   checkmark,
   closeOutline,
-  createOutline,
   information,
   layersOutline,
   locateOutline,
@@ -528,6 +527,158 @@ const Tab2: React.FC = () => {
     setToastMessage("Mode édition activé - Vous pouvez modifier les points");
   }, [currentParcelle]);
 
+  // ─── Utilitaires pour la gestion des points ────────────────────────────
+  const getRealPointsCount = useCallback((points: [number, number][]): number => {
+    if (points.length === 0) return 0;
+    
+    // Vérifier si le dernier point est une copie du premier (fermeture)
+    const firstPoint = points[0];
+    const lastPoint = points[points.length - 1];
+    
+    return (firstPoint[0] === lastPoint[0] && firstPoint[1] === lastPoint[1])
+      ? points.length - 1  // Exclure le point de fermeture
+      : points.length;     // Pas de fermeture, tous les points sont réels
+  }, []);
+
+  const ensurePolygonClosure = useCallback((points: [number, number][]): [number, number][] => {
+    if (points.length === 0) return points;
+    
+    const firstPoint = points[0];
+    const lastPoint = points[points.length - 1];
+    
+    // Si le polygone n'est pas fermé, ajouter le premier point à la fin
+    if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
+      return [...points, firstPoint];
+    }
+    
+    return points;
+  }, []);
+
+  // ─── Détection de chevauchement avec autres layers (tolérance 5%) ─────────────────
+  const checkOverlapWithLayers = useCallback(
+    (points: Coord[]): { hasOverlap: boolean; conflictingLayers: string[] } => {
+      if (points.length < 3) return { hasOverlap: false, conflictingLayers: [] };
+
+      // Récupérer la position actuelle de la croix (crosshair)
+      const center = mapRef.current?.getView().getCenter();
+      if (!center) return { hasOverlap: false, conflictingLayers: [] };
+
+      // Filtrer les points qui sont accrochés à la croix (très proches du centre)
+      const SNAP_THRESHOLD_PX = 25; // Même seuil que dans le système de snap
+      const centerPixel = mapRef.current?.getPixelFromCoordinate(center);
+      
+      const filteredPoints = points.filter((point) => {
+        if (!centerPixel || !mapRef.current) return true;
+        
+        const pointPixel = mapRef.current.getPixelFromCoordinate(point);
+        if (!pointPixel) return true;
+        
+        const distance = Math.sqrt(
+          Math.pow(pointPixel[0] - centerPixel[0], 2) + 
+          Math.pow(pointPixel[1] - centerPixel[1], 2)
+        );
+        
+        // Garder le point seulement s'il n'est PAS accroché à la croix
+        return distance > SNAP_THRESHOLD_PX;
+      });
+
+      // Si tous les points sont accrochés ou si moins de 3 points restants, pas de validation
+      if (filteredPoints.length < 3) return { hasOverlap: false, conflictingLayers: [] };
+
+      // Créer le polygone avec les points filtrés
+      const newPolygon = new Polygon([filteredPoints]);
+      const newArea = getArea(newPolygon, { projection: "EPSG:3857" });
+      const toleranceArea = newArea * 0.05; // 5% de tolérance
+
+      const conflictingLayers: string[] = [];
+
+      // Fonction utilitaire pour calculer l'intersection entre deux polygones
+      const calculateIntersectionArea = (poly1: Polygon, poly2: Polygon): number => {
+        try {
+          // Utiliser une estimation simple basée sur la superposition des boîtes englobantes
+          const extent1 = poly1.getExtent();
+          const extent2 = poly2.getExtent();
+          
+          if (extent1[0] > extent2[2] || extent2[0] > extent1[2] ||
+              extent1[1] > extent2[3] || extent2[1] > extent1[3]) {
+            return 0; // Pas d'intersection
+          }
+
+          // Pour l'instant, estimation simple basée sur la superposition des boîtes
+          const overlapWidth = Math.min(extent1[2], extent2[2]) - Math.max(extent1[0], extent2[0]);
+          const overlapHeight = Math.min(extent1[3], extent2[3]) - Math.max(extent1[1], extent2[1]);
+          
+          if (overlapWidth <= 0 || overlapHeight <= 0) return 0;
+          
+          // Estimation grossière de l'aire d'intersection
+          return overlapWidth * overlapHeight * 0.7; // Facteur de correction empirique
+        } catch (error) {
+          console.warn("Erreur calcul intersection:", error);
+          return 0;
+        }
+      };
+
+      // Vérifier le chevauchement avec les parcelles existantes
+      if (parcellesSourceRef.current) {
+        const parcelleFeatures = parcellesSourceRef.current.getFeatures();
+        for (const feature of parcelleFeatures) {
+          // Ignorer la parcelle actuelle en mode édition
+          if (isEditMode && currentParcelle) {
+            const featureCode = feature.get("code");
+            if (featureCode === currentParcelle.code) continue;
+          }
+
+          const geom = feature.getGeometry();
+          if (geom && geom.getType() === "Polygon") {
+            const existingPolygon = geom as Polygon;
+            const intersectionArea = calculateIntersectionArea(newPolygon, existingPolygon);
+            
+            // Si l'aire d'intersection dépasse la tolérance de 5%
+            if (intersectionArea > toleranceArea) {
+              conflictingLayers.push("parcelle");
+              break;
+            }
+          }
+        }
+      }
+
+      // Vérifier le chevauchement avec les autres layers GeoJSON
+      const layerTypes = ["ipss", "titre", "requisition", "demandecf", "certificat", "cadastre", "demandefn"];
+      
+      for (const layerType of layerTypes) {
+        const layer = geoJsonLayersRef.current[layerType];
+        if (!layer) continue;
+
+        const source = layer.getSource();
+        if (!source) continue;
+
+        const features = source.getFeatures();
+        for (const feature of features) {
+          const geom = feature.getGeometry();
+          if (geom && geom.getType() === "Polygon") {
+            const existingPolygon = geom as Polygon;
+            const intersectionArea = calculateIntersectionArea(newPolygon, existingPolygon);
+            
+            // Si l'aire d'intersection dépasse la tolérance de 5%
+            if (intersectionArea > toleranceArea) {
+              conflictingLayers.push(layerType);
+              break;
+            }
+          }
+        }
+        
+        // Si on a trouvé un conflit pour ce layer, passer au suivant
+        if (conflictingLayers.includes(layerType)) continue;
+      }
+
+      return {
+        hasOverlap: conflictingLayers.length > 0,
+        conflictingLayers,
+      };
+    },
+    [isEditMode, currentParcelle],
+  );
+
   // ─── Sauvegarder les modifications (remplace addPolygone en mode edit) ───
   const savePolygonEdit = useCallback(async () => {
     if (!currentParcelle) {
@@ -542,6 +693,27 @@ const Tab2: React.FC = () => {
 
     if (isSelfIntersecting(drawPoints)) {
       setToastMessage("Traçage invalide : le polygone se croise lui‑même.");
+      return;
+    }
+
+    // Vérifier le chevauchement avec les autres layers (tolérance 5%)
+    const overlapCheck = checkOverlapWithLayers(drawPoints);
+    if (overlapCheck.hasOverlap) {
+      const layerNames = overlapCheck.conflictingLayers.map(layer => {
+        switch(layer) {
+          case "parcelle": return "parcelle(s)";
+          case "ipss": return "IPSS";
+          case "titre": return "titre(s)";
+          case "requisition": return "réquisition(s)";
+          case "demandecf": return "demande(s) CF";
+          case "certificat": return "karatany";
+          case "cadastre": return "cadastre";
+          case "demandefn": return "demande(s) FN";
+          default: return layer;
+        }
+      }).join(", ");
+      
+      setToastMessage(`Chevauchement détecté avec : ${layerNames}. Tolérance de 5% dépassée.`);
       return;
     }
 
@@ -598,7 +770,7 @@ const Tab2: React.FC = () => {
     }
 
     setToastMessage("Polygone modifié avec succès !");
-  }, [currentParcelle, drawPoints, parcelles]);
+  }, [currentParcelle, drawPoints, parcelles, checkOverlapWithLayers]);
 
   // ─── Annuler l'édition ─────────────────────────────────────────
   const cancelEdit = useCallback(() => {
@@ -622,6 +794,27 @@ const Tab2: React.FC = () => {
 
     if (isSelfIntersecting(drawPoints)) {
       setToastMessage("Traçage invalide : le polygone se croise lui‑même.");
+      return;
+    }
+
+    // Vérifier le chevauchement avec les autres layers (tolérance 5%)
+    const overlapCheck = checkOverlapWithLayers(drawPoints);
+    if (overlapCheck.hasOverlap) {
+      const layerNames = overlapCheck.conflictingLayers.map(layer => {
+        switch(layer) {
+          case "parcelle": return "parcelle(s)";
+          case "ipss": return "IPSS";
+          case "titre": return "titre(s)";
+          case "requisition": return "réquisition(s)";
+          case "demandecf": return "demande(s) CF";
+          case "certificat": return "karatany";
+          case "cadastre": return "cadastre";
+          case "demandefn": return "demande(s) FN";
+          default: return layer;
+        }
+      }).join(", ");
+      
+      setToastMessage(`Chevauchement détecté avec : ${layerNames}. Tolérance de 5% dépassée.`);
       return;
     }
 
@@ -669,7 +862,7 @@ const Tab2: React.FC = () => {
       feature.setStyle((f: FeatureLike) => styleByType(f));
       source!.addFeature(feature);
     }
-  }, [currentParcelle, drawPoints, parcelles, styleByType]);
+  }, [currentParcelle, drawPoints, parcelles, styleByType, checkOverlapWithLayers]);
 
   const addMarkerWithBlink = useCallback(
     (coords: number[], duration = INTERVAL_DURATION) => {
@@ -1034,24 +1227,133 @@ const Tab2: React.FC = () => {
       return;
     }
 
-    setDrawPoints((prev) => prev.filter((_, idx) => idx !== selectedPointIndex));
-    setSelectedPointIndex(null);
-  }, [selectedPointIndex]);
+    // Calculer le nombre de points réels (sans compter le point de fermeture)
+    const realPointsCount = getRealPointsCount(drawPoints);
+
+    // Vérifier si la suppression laisserait moins de 2 points réels
+    // (car il faut au moins 2 points réels + 1 point de fermeture = 3 points affichés)
+    if (realPointsCount <= 2) {
+      setToastMessage("Un polygone doit avoir au minimum 2 points réels (+ point de fermeture)");
+      return;
+    }
+
+    setDrawPoints((prev) => {
+      let newPoints = prev.filter((_, idx) => idx !== selectedPointIndex);
+      
+      // S'assurer que le polygone reste fermé
+      newPoints = ensurePolygonClosure(newPoints);
+      
+      // Forcer la mise à jour de la source de points pour corriger la numérotation
+      // Cela va déclencher useEffect qui recrée les features avec les bons index
+      setTimeout(() => {
+        if (vectorLayerRef.current) {
+          const source = vectorLayerRef.current.getSource();
+          if (source) {
+            source.clear();
+          }
+        }
+      }, 0);
+      
+      // Après suppression, libérer la sélection (désélectionner)
+      setSelectedPointIndex(null);
+      return newPoints;
+    });
+  }, [selectedPointIndex, drawPoints, getRealPointsCount, ensurePolygonClosure]);
 
   const addPointInEditMode = useCallback(() => {
     const center = mapRef.current?.getView().getCenter();
     if (!center) return;
 
     setDrawPoints((prev) => {
-      const insertAt =
-        selectedPointIndex === null ? prev.length : selectedPointIndex + 1;
-      return [...prev.slice(0, insertAt), center as [number, number], ...prev.slice(insertAt)];
+      let insertAt: number;
+      let newPoints: [number, number][];
+      
+      // Si aucun point n'est sélectionné, ajouter avant le point de fermeture
+      if (selectedPointIndex === null) {
+        // Vérifier si le polygone est fermé (dernier point = premier point)
+        const isClosed = prev.length > 0 && 
+          prev[0][0] === prev[prev.length - 1][0] && 
+          prev[0][1] === prev[prev.length - 1][1];
+        
+        if (isClosed) {
+          // Insérer avant le dernier point (point de fermeture)
+          insertAt = prev.length - 1;
+          newPoints = [...prev.slice(0, insertAt), center as [number, number], ...prev.slice(insertAt)];
+        } else {
+          // Polygone non fermé, ajouter à la fin
+          insertAt = prev.length;
+          newPoints = [...prev, center as [number, number]];
+        }
+      } else {
+        // Un point est sélectionné, ajouter après ce point
+        // Mais si le point sélectionné est le point de fermeture, ajouter avant lui
+        const isLastPointClosing = selectedPointIndex === prev.length - 1 && 
+          prev.length > 0 && 
+          prev[0][0] === prev[prev.length - 1][0] && 
+          prev[0][1] === prev[prev.length - 1][1];
+        
+        if (isLastPointClosing) {
+          // Insérer avant le point de fermeture
+          insertAt = selectedPointIndex;
+          newPoints = [...prev.slice(0, insertAt), center as [number, number], ...prev.slice(insertAt)];
+        } else {
+          // Insérer normalement après le point sélectionné
+          insertAt = selectedPointIndex + 1;
+          newPoints = [...prev.slice(0, insertAt), center as [number, number], ...prev.slice(insertAt)];
+        }
+      }
+      
+      // S'assurer que le polygone reste fermé
+      newPoints = ensurePolygonClosure(newPoints);
+      
+      // Sélectionner le nouveau point qui vient d'être ajouté
+      setSelectedPointIndex(insertAt);
+      
+      return newPoints;
     });
+  }, [selectedPointIndex, ensurePolygonClosure]);
 
-    setSelectedPointIndex((prevSelected) =>
-      prevSelected === null ? drawPoints.length : prevSelected + 1,
-    );
-  }, [selectedPointIndex, drawPoints.length]);
+  const addPointInCreateMode = useCallback(() => {
+    const center = mapRef.current?.getView().getCenter();
+    if (!center) return;
+
+    setDrawPoints((prev) => {
+      let newPoints: [number, number][];
+      
+      if (prev.length === 0) {
+        // Premier point
+        newPoints = [center as [number, number]];
+      } else if (prev.length === 1) {
+        // Deuxième point
+        newPoints = [...prev, center as [number, number]];
+      } else {
+        // Vérifier si le polygone est déjà fermé
+        const isClosed = prev.length > 0 && 
+          prev[0][0] === prev[prev.length - 1][0] && 
+          prev[0][1] === prev[prev.length - 1][1];
+        
+        if (isClosed) {
+          // Insérer avant le point de fermeture
+          const insertAt = prev.length - 1;
+          newPoints = [...prev.slice(0, insertAt), center as [number, number], ...prev.slice(insertAt)];
+        } else {
+          // Ajouter à la fin
+          newPoints = [...prev, center as [number, number]];
+        }
+      }
+      
+      // S'assurer que le polygone est fermé (à partir de 3 points réels)
+      if (getRealPointsCount(newPoints) >= 3) {
+        newPoints = ensurePolygonClosure(newPoints);
+      }
+      
+      // Sélectionner le dernier point réel ajouté (pas la fermeture)
+      const realPointsCount = getRealPointsCount(newPoints);
+      setSelectedPointIndex(realPointsCount - 1);
+      
+      return newPoints;
+    });
+  }, [ensurePolygonClosure, getRealPointsCount]);
 
   useEffect(() => {
     if (!mapElement.current || mapRef.current) return;
@@ -1655,7 +1957,7 @@ const Tab2: React.FC = () => {
                     fill={selectedPointIndex !== null ? "solid" : "clear"}
                     color={selectedPointIndex !== null ? "danger" : "medium"}
                     onClick={deleteSelectedPoint}
-                    disabled={selectedPointIndex === null}
+                    disabled={selectedPointIndex === null || getRealPointsCount(drawPoints) <= 2}
                   >
                     <IonIcon icon={removeOutline} />
                   </IonButton>
@@ -1676,14 +1978,7 @@ const Tab2: React.FC = () => {
                   <IonButton
                     className="glass-btn"
                     fill="clear"
-                    onClick={() => {
-                      const center = mapRef.current?.getView().getCenter();
-                      if (center)
-                        setDrawPoints((prev) => [
-                          ...prev,
-                          center as [number, number],
-                        ]);
-                    }}
+                    onClick={addPointInCreateMode}
                   >
                     <IonIcon color="primary" icon={addOutline} />
                   </IonButton>
@@ -1692,8 +1987,37 @@ const Tab2: React.FC = () => {
                   <IonButton
                     className="glass-btn"
                     fill="clear"
-                    onClick={() => setDrawPoints((prev) => prev.slice(0, -1))}
-                    disabled={drawPoints.length === 0}
+                    onClick={() => {
+                      // Calculer le nombre de points réels (sans compter le point de fermeture)
+                      const realPointsCount = getRealPointsCount(drawPoints);
+
+                      // Vérifier si la suppression laisserait moins de 2 points réels
+                      if (realPointsCount <= 2) {
+                        setToastMessage("Un polygone doit avoir au minimum 2 points réels (+ point de fermeture)");
+                        return;
+                      }
+
+                      setDrawPoints((prev) => {
+                        let newPoints = prev.slice(0, -1);
+                        // S'assurer que le polygone reste fermé
+                        newPoints = ensurePolygonClosure(newPoints);
+                        
+                        // Forcer la mise à jour de la source pour corriger la numérotation
+                        setTimeout(() => {
+                          if (vectorLayerRef.current) {
+                            const source = vectorLayerRef.current.getSource();
+                            if (source) {
+                              source.clear();
+                            }
+                          }
+                        }, 0);
+                        
+                        // Libérer la sélection après suppression du dernier point
+                        setSelectedPointIndex(null);
+                        return newPoints;
+                      });
+                    }}
+                    disabled={getRealPointsCount(drawPoints) <= 2}
                   >
                     <IonIcon color="danger" icon={removeOutline} />
                   </IonButton>
