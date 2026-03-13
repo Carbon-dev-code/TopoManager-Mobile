@@ -33,12 +33,15 @@ import {
   addOutline,
   checkmark,
   closeOutline,
+  createOutline,
   information,
   layersOutline,
   locateOutline,
+  magnetOutline,
   navigateSharp,
   pencilOutline,
   removeOutline,
+  handLeftOutline,
   search,
   searchSharp,
   stopSharp,
@@ -112,7 +115,7 @@ const STYLE_CONFIG = {
   fokontany: { stroke: "rgba(0, 250, 0, 1)", fill: "rgba(0, 250, 0, 0.1)" },
   cadastre: { stroke: "rgba(200, 100, 0, 1)", fill: "rgba(200, 100, 0, 0.2)" },
   demandefn: { stroke: "rgba(100, 0, 200, 1)", fill: "rgba(100, 0, 200,0.3)" },
-  parcelle: { stroke: "rgba(5,59,255,1)", fill: "rgba(5,59,255,0.2)" },
+  parcelle: { stroke: "rgb(255, 147, 5)", fill: "rgba(255, 147, 5, 0.2)" },
 };
 
 const LABEL_MAP = {
@@ -150,6 +153,7 @@ const Tab2: React.FC = () => {
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const styleCache = useRef<Record<string, Style>>({});
   const watchId = useRef<string | number | null>(null);
+  const lastAutoZoomCodeRef = useRef<string | null>(null);
   const layerVisibilityRef = useRef({
     fond: true,
     ipss: true,
@@ -186,6 +190,11 @@ const Tab2: React.FC = () => {
     layerVisibilityRef.current,
   );
   const [surface, setSurface] = useState<number>(0);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
+    null,
+  );
 
   const query = useQuery();
   const from = query.get("from");
@@ -452,26 +461,154 @@ const Tab2: React.FC = () => {
     return layers;
   }, [styleByType]);
 
-  const getDrawStyle = useCallback((feature: FeatureLike) => {
-    const geom = feature.getGeometry();
-    if (geom instanceof Point || geom instanceof MultiPoint) {
-      return new Style({
-        image: new CircleStyle({
-          radius: 3,
-          fill: new Fill({ color: "#ff0000" }),
-          stroke: new Stroke({ color: "#fff", width: 1.5 }),
-        }),
-      });
-    } else if (geom instanceof Polygon) {
-      return new Style({
-        stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
-        fill: new Fill({ color: "rgba(0,0,255,0.1)" }),
-      });
-    }
-    return undefined;
-  }, []);
+  const getDrawStyle = useCallback(
+    (feature: FeatureLike) => {
+      const geom = feature.getGeometry();
+      const isPolygon = geom instanceof Polygon;
+      const isPoint = geom instanceof Point || geom instanceof MultiPoint;
+
+      if (isPolygon) {
+        return new Style({
+          stroke: new Stroke({ color: "#0000ff", width: 1.5 }),
+          fill: new Fill({ color: "rgba(0,0,255,0.1)" }),
+        });
+      }
+
+      if (isPoint) {
+        const index = (feature as Feature).get("index") as number | undefined;
+        const isSelected =
+          index !== undefined && selectedPointIndex === index - 1;
+
+        const baseCircle = new Style({
+          image: new CircleStyle({
+            radius: 4,
+            fill: new Fill({ color: isSelected ? "#ff0000" : "#0059ff" }),
+          }),
+        });
+
+        const label =
+          index !== undefined
+            ? new Style({
+                text: new Text({
+                  text: String(index),
+                  font: "bold 12px Arial",
+                  fill: new Fill({ color: "#ffffff" }),
+                  stroke: new Stroke({ color: "#000000", width: 3 }),
+                  offsetY: -14,
+                }),
+              })
+            : null;
+
+        return label ? [baseCircle, label] : baseCircle;
+      }
+
+      return undefined;
+    },
+    [selectedPointIndex],
+  );
 
   // ==================== MAP OPERATIONS ====================
+  // ==================== MAP OPERATIONS ====================
+
+  // ─── Charger le polygone existant en mode édition ─────────────
+  const loadPolygonForEdit = useCallback(() => {
+    if (!currentParcelle || !currentParcelle.polygone?.[0]) {
+      setToastMessage("Aucun polygone à modifier");
+      return;
+    }
+
+    const points = currentParcelle.polygone[0].points.map(
+      (pt) =>
+        transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857") as [number, number],
+    );
+
+    setDrawPoints(points);
+    setIsEditMode(true);
+    setFabOpen(true);
+    setToastMessage("Mode édition activé - Vous pouvez modifier les points");
+  }, [currentParcelle]);
+
+  // ─── Sauvegarder les modifications (remplace addPolygone en mode edit) ───
+  const savePolygonEdit = useCallback(async () => {
+    if (!currentParcelle) {
+      setToastMessage("Aucune parcelle sélectionnée !");
+      return;
+    }
+
+    if (drawPoints.length < 3) {
+      setToastMessage("Un polygone a besoin d'au moins 3 points.");
+      return;
+    }
+
+    if (isSelfIntersecting(drawPoints)) {
+      setToastMessage("Traçage invalide : le polygone se croise lui‑même.");
+      return;
+    }
+
+    const first = drawPoints[0];
+    const last = drawPoints[drawPoints.length - 1];
+    const closedPoints =
+      first[0] === last[0] && first[1] === last[1]
+        ? drawPoints
+        : [...drawPoints, first];
+
+    const points = closedPoints.map(([x, y]) => {
+      const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
+        number,
+        number,
+      ];
+      return new PointC(tx, ty);
+    });
+
+    const newPolygone = new Polygone(points);
+    const updatedParcelle: Parcelle = {
+      ...currentParcelle,
+      polygone: [newPolygone],
+    };
+    const updatedParcelles = parcelles.map((p) =>
+      p.code === updatedParcelle.code ? updatedParcelle : p,
+    );
+
+    setCurrentParcelle(updatedParcelle);
+    setParcelles(updatedParcelles);
+    setDrawPoints([]);
+    setFabOpen(false);
+    setIsEditMode(false); // ← Sortir du mode édition
+
+    await insertParcelle(updatedParcelle);
+
+    // Mettre à jour la couche parcelle
+    if (parcellesSourceRef.current) {
+      parcellesSourceRef.current.clear();
+      const features: Feature[] = [];
+      updatedParcelles.forEach((p) =>
+        p.polygone?.forEach((pg) => {
+          const pts = pg.points.map((pt) =>
+            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
+          );
+          if (pts.length > 2) {
+            const f = new Feature(new Polygon([pts]));
+            f.set("code", p.code);
+            f.set("name", "parcelle");
+            features.push(f);
+          }
+        }),
+      );
+      parcellesSourceRef.current.addFeatures(features);
+    }
+
+    setToastMessage("Polygone modifié avec succès !");
+  }, [currentParcelle, drawPoints, parcelles]);
+
+  // ─── Annuler l'édition ─────────────────────────────────────────
+  const cancelEdit = useCallback(() => {
+    setDrawPoints([]);
+    setFabOpen(false);
+    setIsEditMode(false);
+    setSelectedPointIndex(null);
+    setToastMessage("Modification annulée");
+  }, []);
+
   const addPolygone = useCallback(async () => {
     if (!currentParcelle) {
       setToastMessage("Aucune parcelle sélectionnée !");
@@ -480,6 +617,11 @@ const Tab2: React.FC = () => {
 
     if (drawPoints.length < 3) {
       setToastMessage("Un polygone a besoin d'au moins 3 points.");
+      return;
+    }
+
+    if (isSelfIntersecting(drawPoints)) {
+      setToastMessage("Traçage invalide : le polygone se croise lui‑même.");
       return;
     }
 
@@ -841,7 +983,7 @@ const Tab2: React.FC = () => {
         declutter: true,
         updateWhileAnimating: false,
         updateWhileInteracting: false,
-        renderBuffer: 100, // Réduit la charge de calcul hors-écran
+        renderBuffer: 100,
       });
       mapRef.current.addLayer(vectorLayer);
       vectorLayerRef.current = vectorLayer;
@@ -850,94 +992,66 @@ const Tab2: React.FC = () => {
     const source = vectorLayerRef.current.getSource();
     if (!source) return;
 
-    if (drawPoints.length > 0) {
-      let polygonFeature = source
-        .getFeatures()
-        .find((f) => f.get("type") === "polygon");
-      if (!polygonFeature) {
-        polygonFeature = new Feature(new Polygon([[]]));
-        polygonFeature.set("type", "polygon");
-        source.addFeature(polygonFeature);
-      }
+    source.clear();
 
-      if (drawPoints.length > 2) {
-        const coords = [...drawPoints, drawPoints[0]];
-        polygonFeature.setGeometry(new Polygon([coords]));
-      }
-
-      let pointsFeature = source
-        .getFeatures()
-        .find((f) => f.get("type") === "points");
-      if (!pointsFeature) {
-        pointsFeature = new Feature(new MultiPoint([]));
-        pointsFeature.set("type", "points");
-        source.addFeature(pointsFeature);
-      }
-      pointsFeature.setGeometry(new MultiPoint(drawPoints));
-    } else {
-      source.clear();
+    // Polygone
+    if (drawPoints.length > 2) {
+      const coords = [...drawPoints, drawPoints[0]];
+      const polygonFeature = new Feature(new Polygon([coords]));
+      polygonFeature.set("type", "polygon");
+      source.addFeature(polygonFeature);
     }
+
+    // Points numérotés
+    drawPoints.forEach((pt, index) => {
+      const pointFeature = new Feature(new Point(pt));
+      pointFeature.set("type", "point");
+      pointFeature.set("index", index + 1);
+      source.addFeature(pointFeature);
+    });
   }, [drawPoints, getDrawStyle]);
 
-  useEffect(() => {
-    if (!mapRef.current || !fabOpen) return;
-    const map = mapRef.current;
-    const view = map.getView();
+  const moveSelectedPointToCenter = useCallback(() => {
+    if (!mapRef.current) return;
+    if (selectedPointIndex === null) {
+      setToastMessage("Aucun point sélectionné");
+      return;
+    }
 
-    const snapToClosestFeature = () => {
-      const center = view.getCenter();
-      if (!center) return;
+    const center = mapRef.current.getView().getCenter();
+    if (!center) return;
 
-      let snapPoint: number[] | null = null;
-      let minDistPx = Infinity;
+    setDrawPoints((prev) =>
+      prev.map((p, idx) =>
+        idx === selectedPointIndex ? (center as [number, number]) : p,
+      ),
+    );
+  }, [selectedPointIndex]);
 
-      const sources = [
-        parcellesSourceRef.current,
-        ...Object.values(geoJsonLayersRef.current).map((l) => l.getSource()),
-      ];
+  const deleteSelectedPoint = useCallback(() => {
+    if (selectedPointIndex === null) {
+      setToastMessage("Aucun point sélectionné");
+      return;
+    }
 
-      sources.forEach((source) => {
-        if (!source) return;
+    setDrawPoints((prev) => prev.filter((_, idx) => idx !== selectedPointIndex));
+    setSelectedPointIndex(null);
+  }, [selectedPointIndex]);
 
-        const closestFeature = source.getClosestFeatureToCoordinate(center);
-        if (closestFeature) {
-          const geom = closestFeature.getGeometry();
-          const candidate = geom?.getClosestPoint(center);
+  const addPointInEditMode = useCallback(() => {
+    const center = mapRef.current?.getView().getCenter();
+    if (!center) return;
 
-          if (candidate) {
-            const pixelCandidate = map.getPixelFromCoordinate(candidate);
-            const pixelCenter = map.getPixelFromCoordinate(center);
+    setDrawPoints((prev) => {
+      const insertAt =
+        selectedPointIndex === null ? prev.length : selectedPointIndex + 1;
+      return [...prev.slice(0, insertAt), center as [number, number], ...prev.slice(insertAt)];
+    });
 
-            if (pixelCandidate && pixelCenter) {
-              const distPx = Math.sqrt(
-                Math.pow(pixelCandidate[0] - pixelCenter[0], 2) +
-                  Math.pow(pixelCandidate[1] - pixelCenter[1], 2),
-              );
-
-              if (distPx <= CROSSHAIR_RADIUS_PX && distPx < minDistPx) {
-                minDistPx = distPx;
-                snapPoint = candidate;
-              }
-            }
-          }
-        }
-      });
-
-      if (snapPoint) view.animate({ center: snapPoint, duration: 100 });
-    };
-
-    let lastCall = 0;
-    const throttledSnap = () => {
-      const now = Date.now();
-      if (now - lastCall > THROTTLE_DELAY) {
-        lastCall = now;
-        snapToClosestFeature();
-      }
-    };
-
-    map.on("moveend", throttledSnap);
-    return () => map.un("moveend", throttledSnap);
-  }, [fabOpen]);
+    setSelectedPointIndex((prevSelected) =>
+      prevSelected === null ? drawPoints.length : prevSelected + 1,
+    );
+  }, [selectedPointIndex, drawPoints.length]);
 
   useEffect(() => {
     if (!mapElement.current || mapRef.current) return;
@@ -977,6 +1091,75 @@ const Tab2: React.FC = () => {
       }
     };
   }, [createVectorLayers]);
+
+  useEffect(() => {
+    if (!mapRef.current || !fabOpen || !isEditMode) return;
+
+    const map = mapRef.current;
+
+    const handleClick = (evt: any) => {
+      if (!drawPoints.length) return;
+
+      const clickPixel = evt.pixel as [number, number];
+      let closestIndex: number | null = null;
+      let minDist = Infinity;
+
+      drawPoints.forEach((coord, idx) => {
+        const px = map.getPixelFromCoordinate(coord);
+        if (!px) return;
+        const dx = px[0] - clickPixel[0];
+        const dy = px[1] - clickPixel[1];
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 25 && dist < minDist) {
+          minDist = dist;
+          closestIndex = idx;
+        }
+      });
+
+      setSelectedPointIndex(closestIndex);
+
+      // Si un point est trouvé, on le "snap" directement sur le centre de la croix
+      if (closestIndex !== null) {
+        const center = map.getView().getCenter();
+        if (center) {
+          setDrawPoints((prev) =>
+            prev.map((p, idx) =>
+              idx === closestIndex ? (center as [number, number]) : p,
+            ),
+          );
+        }
+      }
+    };
+
+    map.on("singleclick", handleClick);
+    return () => {
+      map.un("singleclick", handleClick);
+    };
+  }, [fabOpen, isEditMode, drawPoints]);
+
+  useEffect(() => {
+    if (!mapRef.current || !fabOpen || !isEditMode) return;
+    if (selectedPointIndex === null) return;
+
+    const map = mapRef.current;
+
+    const handleMoveEnd = () => {
+      const center = map.getView().getCenter();
+      if (!center) return;
+
+      setDrawPoints((prev) =>
+        prev.map((p, idx) =>
+          idx === selectedPointIndex ? (center as [number, number]) : p,
+        ),
+      );
+    };
+
+    map.on("moveend", handleMoveEnd);
+
+    return () => {
+      map.un("moveend", handleMoveEnd);
+    };
+  }, [fabOpen, isEditMode, selectedPointIndex]);
 
   useEffect(() => {
     if (!mapRef.current || geojsons.length === 0) return;
@@ -1035,6 +1218,235 @@ const Tab2: React.FC = () => {
     return `${ha} ha ${a} a ${ca.toString().padStart(2, "0")} ca`;
   }
 
+  // ==================== MAP OPERATIONS ====================
+
+  // ─── Détection d'auto‑intersection du polygone ─────────────────
+  type Coord = [number, number];
+  const COORD_EPS = 1e-6;
+
+  const sameCoord = (a: Coord, b: Coord) =>
+    Math.abs(a[0] - b[0]) <= COORD_EPS && Math.abs(a[1] - b[1]) <= COORD_EPS;
+
+  const normalizePolygonPoints = (points: Coord[]): Coord[] => {
+    if (points.length === 0) return points;
+
+    // Supprime la fermeture dupliquée si déjà présente (dernier == premier)
+    const trimmed =
+      points.length > 1 && sameCoord(points[0], points[points.length - 1])
+        ? points.slice(0, -1)
+        : points;
+
+    // Supprime les doublons consécutifs (peuvent fausser les tests)
+    const out: Coord[] = [];
+    for (const p of trimmed) {
+      if (!out.length || !sameCoord(out[out.length - 1], p)) out.push(p);
+    }
+    return out;
+  };
+
+  const onSegment = (p: Coord, q: Coord, r: Coord) => {
+    return (
+      q[0] <= Math.max(p[0], r[0]) &&
+      q[0] >= Math.min(p[0], r[0]) &&
+      q[1] <= Math.max(p[1], r[1]) &&
+      q[1] >= Math.min(p[1], r[1])
+    );
+  };
+
+  const orientation = (p: Coord, q: Coord, r: Coord) => {
+    const val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1]);
+    if (Math.abs(val) < 1e-9) return 0;
+    return val > 0 ? 1 : 2;
+  };
+
+  const segmentsIntersect = (p1: Coord, q1: Coord, p2: Coord, q2: Coord) => {
+    const o1 = orientation(p1, q1, p2);
+    const o2 = orientation(p1, q1, q2);
+    const o3 = orientation(p2, q2, p1);
+    const o4 = orientation(p2, q2, q1);
+
+    if (o1 !== o2 && o3 !== o4) return true;
+
+    if (o1 === 0 && onSegment(p1, p2, q1)) return true;
+    if (o2 === 0 && onSegment(p1, q2, q1)) return true;
+    if (o3 === 0 && onSegment(p2, p1, q2)) return true;
+    if (o4 === 0 && onSegment(p2, q1, q2)) return true;
+
+    return false;
+  };
+
+  const isSelfIntersecting = (points: Coord[]): boolean => {
+    const pts = normalizePolygonPoints(points);
+    const n = pts.length;
+    if (n < 4) return false; // un triangle ne peut pas s'auto‑croiser
+
+    // Segments du polygone fermé
+    const segments: { a: Coord; b: Coord }[] = [];
+    for (let i = 0; i < n - 1; i++) {
+      segments.push({ a: pts[i], b: pts[i + 1] });
+    }
+    // Dernier segment (fermeture)
+    segments.push({ a: pts[n - 1], b: pts[0] });
+
+    const segCount = segments.length;
+    for (let i = 0; i < segCount; i++) {
+      for (let j = i + 1; j < segCount; j++) {
+        // ignorer les segments adjacents qui partagent un point
+        if (Math.abs(i - j) === 1) continue;
+        if ((i === 0 && j === segCount - 1) || (j === 0 && i === segCount - 1))
+          continue;
+
+        const s1 = segments[i];
+        const s2 = segments[j];
+
+        // Si deux segments partagent exactement un sommet, on ne considère pas ça comme un croisement
+        const sharesEndpoint =
+          sameCoord(s1.a, s2.a) ||
+          sameCoord(s1.a, s2.b) ||
+          sameCoord(s1.b, s2.a) ||
+          sameCoord(s1.b, s2.b);
+        if (sharesEndpoint) continue;
+
+        if (segmentsIntersect(s1.a, s1.b, s2.a, s2.b)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // ─── Fonction de snap réutilisable ────────────────────────────
+  const performSnap = useCallback(() => {
+    if (!mapRef.current) return false;
+
+    const map = mapRef.current;
+    const view = map.getView();
+    const center = view.getCenter();
+
+    if (!center) return false;
+
+    let snapPoint: number[] | null = null;
+    let minDistPx = Infinity;
+
+    const sources = [
+      parcellesSourceRef.current,
+      ...Object.values(geoJsonLayersRef.current).map((l) => l.getSource()),
+    ];
+
+    sources.forEach((source) => {
+      if (!source) return;
+
+      const closestFeature = source.getClosestFeatureToCoordinate(center);
+      if (closestFeature) {
+        const geom = closestFeature.getGeometry();
+        const candidate = geom?.getClosestPoint(center);
+
+        if (candidate) {
+          const pixelCandidate = map.getPixelFromCoordinate(candidate);
+          const pixelCenter = map.getPixelFromCoordinate(center);
+
+          if (pixelCandidate && pixelCenter) {
+            const distPx = Math.sqrt(
+              Math.pow(pixelCandidate[0] - pixelCenter[0], 2) +
+                Math.pow(pixelCandidate[1] - pixelCenter[1], 2),
+            );
+
+            if (distPx <= CROSSHAIR_RADIUS_PX && distPx < minDistPx) {
+              minDistPx = distPx;
+              snapPoint = candidate;
+            }
+          }
+        }
+      }
+    });
+
+    if (snapPoint) {
+      view.animate({ center: snapPoint, duration: 100 });
+      return true; // Snap effectué
+    }
+
+    return false; // Pas de snap (pas de feature à proximité)
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current || !fabOpen || !snapEnabled) return;
+    const map = mapRef.current;
+
+    let lastCall = 0;
+    const throttledSnap = () => {
+      const now = Date.now();
+      if (now - lastCall > THROTTLE_DELAY) {
+        lastCall = now;
+        performSnap(); // ← Utiliser la fonction
+      }
+    };
+
+    map.on("moveend", throttledSnap);
+    return () => map.un("moveend", throttledSnap);
+  }, [fabOpen, snapEnabled, performSnap]);
+
+  useEffect(() => {
+    // zoom Automatique
+    if (
+      from === "tab1" &&
+      action === "croquis" &&
+      codeParcelle &&
+      parcelles.length > 0 &&
+      mapRef.current
+    ) {
+      const found = parcelles.find((p) => p.code === codeParcelle);
+
+      if (found) {
+        setCurrentParcelle(found);
+        setShowCard(true); // ← Afficher la carte d'info
+
+        // ─── Zoom sur la parcelle si elle a un polygone ─────────
+        const shouldAutoZoom = lastAutoZoomCodeRef.current !== codeParcelle;
+        if (shouldAutoZoom && found.polygone && found.polygone.length > 0) {
+          const firstPolygon = found.polygone[0];
+          const points = firstPolygon.points.map((pt) =>
+            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
+          );
+
+          if (points.length > 2) {
+            const polygon = new Polygon([points]);
+            const extent = polygon.getExtent();
+
+            // Zoom avec animation
+            mapRef.current.getView().fit(extent, {
+              duration: 1000,
+              padding: [100, 100, 100, 100],
+              maxZoom: 19,
+            });
+            lastAutoZoomCodeRef.current = codeParcelle;
+
+            // Highlight avec blink
+            const feature = new Feature(polygon);
+            feature.set("name", "parcelle");
+            feature.set("code", found.code);
+
+            // Attendre la fin du zoom avant le blink
+            setTimeout(() => {
+              blinkFeature(feature, 5000);
+            }, 1000);
+          }
+        } else {
+          // Si pas de polygone, juste montrer le message
+          setToastMessage(`Parcelle ${found.code} trouvée (pas de géométrie)`);
+        }
+      } else {
+        setCurrentParcelle(null);
+        setToastMessage(`Parcelle ${codeParcelle} introuvable`);
+      }
+    } else if (!codeParcelle) {
+      // Si pas de code, reset
+      setCurrentParcelle(null);
+      setFabOpen(false);
+      lastAutoZoomCodeRef.current = null;
+    }
+  }, [from, action, codeParcelle, parcelles, blinkFeature]);
+
   // ==================== RENDER ====================
   return (
     <IonPage>
@@ -1059,6 +1471,30 @@ const Tab2: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        {/* 🎯 BADGE MODE FLOTTANT - Visible même sans crosshair */}
+        {fabOpen && (
+          <div
+            style={{
+              position: "absolute",
+              top: "70px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 1000,
+              backgroundColor: isEditMode ? "rgba(255, 152, 0, 0.95)" : "rgba(5, 59, 255, 0.95)",
+              color: "white",
+              padding: "8px 20px",
+              borderRadius: "25px",
+              fontSize: "11px",
+              fontWeight: "bold",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+              letterSpacing: "0.8px",
+              pointerEvents: "none",
+            }}
+          >
+            {isEditMode ? "MODIFICATION" : "CRÉATION"}
+          </div>
+        )}
+
         <IonLoading
           isOpen={loadingMap}
           message="Initialisation de la carte..."
@@ -1182,44 +1618,114 @@ const Tab2: React.FC = () => {
         <div className="map-controls">
           {fabOpen && (
             <div className="fab">
+              {/* Valider */}
               <IonButton
                 className="glass-btn"
                 fill="clear"
-                onClick={addPolygone}
+                onClick={isEditMode ? savePolygonEdit : addPolygone}
               >
                 <IonIcon color="success" icon={checkmark} />
               </IonButton>
+
+              {isEditMode ? (
+                <>
+                  {/* Ajouter un sommet au centre (après le point sélectionné) */}
+                  <IonButton
+                    className="glass-btn"
+                    fill="clear"
+                    onClick={addPointInEditMode}
+                  >
+                    <IonIcon color="primary" icon={addOutline} />
+                  </IonButton>
+
+                  {/* Déplacer le point sélectionné vers le centre de la croix */}
+                  <IonButton
+                    className="glass-btn"
+                    fill={selectedPointIndex !== null ? "solid" : "clear"}
+                    color={selectedPointIndex !== null ? "primary" : "medium"}
+                    onClick={moveSelectedPointToCenter}
+                    disabled={selectedPointIndex === null}
+                  >
+                    <IonIcon icon={handLeftOutline} />
+                  </IonButton>
+
+                  {/* Supprimer le point sélectionné */}
+                  <IonButton
+                    className="glass-btn"
+                    fill={selectedPointIndex !== null ? "solid" : "clear"}
+                    color={selectedPointIndex !== null ? "danger" : "medium"}
+                    onClick={deleteSelectedPoint}
+                    disabled={selectedPointIndex === null}
+                  >
+                    <IonIcon icon={removeOutline} />
+                  </IonButton>
+
+                  {/* Désélectionner */}
+                  <IonButton
+                    className="glass-btn"
+                    fill="clear"
+                    onClick={() => setSelectedPointIndex(null)}
+                    disabled={selectedPointIndex === null}
+                  >
+                    <IonIcon color="medium" icon={closeOutline} />
+                  </IonButton>
+                </>
+              ) : (
+                <>
+                  {/* Ajouter un point au centre de la croix */}
+                  <IonButton
+                    className="glass-btn"
+                    fill="clear"
+                    onClick={() => {
+                      const center = mapRef.current?.getView().getCenter();
+                      if (center)
+                        setDrawPoints((prev) => [
+                          ...prev,
+                          center as [number, number],
+                        ]);
+                    }}
+                  >
+                    <IonIcon color="primary" icon={addOutline} />
+                  </IonButton>
+
+                  {/* Supprimer le dernier point */}
+                  <IonButton
+                    className="glass-btn"
+                    fill="clear"
+                    onClick={() => setDrawPoints((prev) => prev.slice(0, -1))}
+                    disabled={drawPoints.length === 0}
+                  >
+                    <IonIcon color="danger" icon={removeOutline} />
+                  </IonButton>
+                </>
+              )}
+
+              {/* Toggle Snap/Accrochage */}
               <IonButton
                 className="glass-btn"
-                fill="clear"
+                fill={snapEnabled ? "solid" : "clear"}
+                color={snapEnabled ? "tertiary" : "medium"}
                 onClick={() => {
-                  const center = mapRef.current?.getView().getCenter();
-                  if (center)
-                    setDrawPoints((prev) => [
-                      ...prev,
-                      center as [number, number],
-                    ]);
+                  const newSnapState = !snapEnabled;
+                  setSnapEnabled(newSnapState);
+                  if (newSnapState) {
+                    performSnap();
+                  }
                 }}
               >
-                <IonIcon color="primary" icon={addOutline} />
+                <IonIcon icon={magnetOutline} />
               </IonButton>
+
+              {/* Annuler */}
               <IonButton
                 className="glass-btn"
                 fill="clear"
-                onClick={() => setDrawPoints((prev) => prev.slice(0, -1))}
-              >
-                <IonIcon color="danger" icon={removeOutline} />
-              </IonButton>
-              <IonButton
-                className="glass-btn"
-                fill="clear"
-                onClick={() => {
-                  setDrawPoints([]);
-                  setFabOpen(false);
-                }}
+                onClick={cancelEdit}
               >
                 <IonIcon color="dark" icon={closeOutline} />
               </IonButton>
+
+              {/* GPS */}
               <IonButton
                 className="glass-btn"
                 fill={tracking ? "solid" : "clear"}
@@ -1233,13 +1739,56 @@ const Tab2: React.FC = () => {
 
           {currentParcelle && (
             <>
+              {/* Bouton Croquis - Intelligent et automatique */}
               <IonButton
                 fill="clear"
                 className="glass-btn"
-                onClick={() => setFabOpen((prev) => !prev)}
+                onClick={() => {
+                  if (!fabOpen) {
+                    const hasPolygon =
+                      currentParcelle.polygone &&
+                      currentParcelle.polygone.length > 0;
+
+                    if (hasPolygon) {
+                      // ─── SI POLYGONE EXISTE → Mode ÉDITION automatique ─────
+                      const points = currentParcelle.polygone[0].points.map(
+                        (pt) =>
+                          transform(
+                            [pt.x, pt.y],
+                            "EPSG:29702",
+                            "EPSG:3857",
+                          ) as [number, number],
+                      );
+                      setDrawPoints(points);
+                      setIsEditMode(true);
+                      setSelectedPointIndex(null);
+                      setFabOpen(true);
+                      setToastMessage(
+                        "Mode édition - Modifiez les points existants",
+                      );
+                    } else {
+                      // ─── PAS DE POLYGONE → Mode CRÉATION ─────
+                      setDrawPoints([]);
+                      setIsEditMode(false);
+                      setSelectedPointIndex(null);
+                      setFabOpen(true);
+                      setToastMessage("Mode création - Ajoutez des points");
+                    }
+                  } else {
+                    // ─── Fermer le FAB ─────
+                    setDrawPoints([]);
+                    setFabOpen(false);
+                    setIsEditMode(false);
+                    setSelectedPointIndex(null);
+                  }
+                }}
               >
-                <IonIcon color="danger" icon={pencilOutline} />
+                <IonIcon
+                  color={fabOpen ? "dark" : "danger"}
+                  icon={pencilOutline}
+                />
               </IonButton>
+
               <IonButton
                 className="glass-btn"
                 fill="clear"
@@ -1264,8 +1813,16 @@ const Tab2: React.FC = () => {
               <IonItem className="glass-item border-bottom" lines="none">
                 <IonCheckbox
                   slot="start"
-                  checked={layerVisibility.ipss && layerVisibility.parcelle}
-                  onIonChange={() => toggleLayer(["ipss", "parcelle"])}
+                  checked={layerVisibility.parcelle}
+                  onIonChange={() => toggleLayer(["parcelle"])}
+                />
+                <Cube color="orange" /> Parcelle
+              </IonItem>
+              <IonItem className="glass-item border-bottom" lines="none">
+                <IonCheckbox
+                  slot="start"
+                  checked={layerVisibility.ipss}
+                  onIonChange={() => toggleLayer(["ipss"])}
                 />
                 <Cube color="blue" /> IPSS
               </IonItem>
