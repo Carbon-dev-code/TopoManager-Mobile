@@ -171,9 +171,7 @@ const Tab2: React.FC = () => {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [geojsons, setGeojsons] = useState<any[]>([]);
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
-    number[] | null
-  >(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const [showCard, setShowCard] = useState(true);
   const [fabOpen, setFabOpen] = useState(false);
@@ -185,15 +183,11 @@ const Tab2: React.FC = () => {
   const [tracking, setTracking] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsStatus, setGpsStatus] = useState<number>(0);
-  const [layerVisibility, setLayerVisibility] = useState(
-    layerVisibilityRef.current,
-  );
+  const [layerVisibility, setLayerVisibility] = useState(layerVisibilityRef.current);
   const [surface, setSurface] = useState<number>(0);
   const [isEditMode, setIsEditMode] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(true);
-  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
-    null,
-  );
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
 
   const query = useQuery();
   const from = query.get("from");
@@ -201,9 +195,7 @@ const Tab2: React.FC = () => {
   const codeParcelle = query.get("code");
 
   // ==================== DATA LOADING ====================
-  const loadParcellesFromStorage = useCallback(async (): Promise<
-    Parcelle[]
-  > => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     const { data } = await getAllParcelles();
     return data;
   }, []);
@@ -478,8 +470,6 @@ const Tab2: React.FC = () => {
         const isSelected =
           index !== undefined && selectedPointIndex === index - 1;
         
-        console.log("🎨 Style point - index:", index, "selectedPointIndex:", selectedPointIndex, "isSelected:", isSelected);
-
         const baseCircle = new Style({
           image: new CircleStyle({
             radius: isSelected ? 6 : 4, // Plus gros quand sélectionné
@@ -1048,8 +1038,6 @@ const Tab2: React.FC = () => {
       source.addFeature(pointFeature);
     });
 
-    console.log("✅ Mise à jour - Points réels affichés:", realPoints.length,
-      "| Numéros:", realPoints.map((_, i) => i + 1));
   }, [drawPoints, getDrawStyle, getRealPointsCount]);
 
   // ─── Rafraîchir le style quand le point sélectionné change ─────
@@ -1062,7 +1050,6 @@ const Tab2: React.FC = () => {
     // Forcer le rafraîchissement complet
     vectorLayerRef.current.changed();
     
-    console.log("🎨 Style mis à jour - Point sélectionné:", selectedPointIndex);
   }, [selectedPointIndex, getDrawStyle]);
 
   const moveSelectedPointToCenter = useCallback(() => {
@@ -1083,15 +1070,12 @@ const Tab2: React.FC = () => {
   }, [selectedPointIndex]);
 
   const deleteSelectedPoint = useCallback(() => {
-    console.log("🗑️ deleteSelectedPoint - selectedPointIndex:", selectedPointIndex);
-
     if (selectedPointIndex === null) {
       setToastMessage("Aucun point sélectionné");
       return;
     }
 
     const realPointsCount = getRealPointsCount(drawPoints);
-    console.log("Points réels avant suppression:", realPointsCount);
 
     // Vérifier minimum 3 points réels (après suppression il en restera au moins 2)
     if (realPointsCount <= 3) {
@@ -1112,8 +1096,6 @@ const Tab2: React.FC = () => {
 
       // 2. Supprimer le point sélectionné
       const newRealPoints = realPoints.filter((_, idx) => idx !== selectedPointIndex);
-
-      console.log("Points après suppression:", newRealPoints.length);
 
       // 3. Refermer le polygone
       const closedPoints = ensurePolygonClosure(newRealPoints);
@@ -1150,8 +1132,6 @@ const Tab2: React.FC = () => {
         }
       }
 
-      console.log("➕ Ajout point à l'index:", insertAt, "sur", realPoints.length, "points réels");
-
       // 3. Insérer le nouveau point
       const newRealPoints = [
         ...realPoints.slice(0, insertAt),
@@ -1164,7 +1144,6 @@ const Tab2: React.FC = () => {
 
       // ─── NE PAS SÉLECTIONNER le point après ajout ─────
       setSelectedPointIndex(null); // ← CHANGEMENT ICI
-      console.log("✅ Nouveau point ajouté sans sélection. Total points réels:", newRealPoints.length);
 
       return closedPoints;
     });
@@ -1527,9 +1506,6 @@ const Tab2: React.FC = () => {
               blinkFeature(feature, 5000);
             }, 1000);
           }
-        } else {
-          // Si pas de polygone, juste montrer le message
-          setToastMessage(`Parcelle ${found.code} trouvée (pas de géométrie)`);
         }
       } else {
         setCurrentParcelle(null);
@@ -1731,7 +1707,6 @@ const Tab2: React.FC = () => {
                     fill="clear"
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log("🆕 Bouton AJOUTER cliqué (édition)");
                       addPointInEditMode();
                     }}
                   >
