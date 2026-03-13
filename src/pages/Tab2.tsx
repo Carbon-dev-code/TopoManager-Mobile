@@ -31,8 +31,10 @@ import ScaleLine from "ol/control/ScaleLine";
 import "ol/ol.css";
 import {
   addOutline,
+  arrowUndoOutline,
   checkmark,
   closeOutline,
+  handLeftOutline,
   information,
   layersOutline,
   locateOutline,
@@ -40,7 +42,6 @@ import {
   navigateSharp,
   pencilOutline,
   removeOutline,
-  handLeftOutline,
   search,
   searchSharp,
   stopSharp,
@@ -469,7 +470,7 @@ const Tab2: React.FC = () => {
         const index = (feature as Feature).get("index") as number | undefined;
         const isSelected =
           index !== undefined && selectedPointIndex === index - 1;
-        
+
         const baseCircle = new Style({
           image: new CircleStyle({
             radius: isSelected ? 6 : 4, // Plus gros quand sélectionné
@@ -500,26 +501,6 @@ const Tab2: React.FC = () => {
   );
 
   // ==================== MAP OPERATIONS ====================
-  // ==================== MAP OPERATIONS ====================
-
-  // ─── Charger le polygone existant en mode édition ─────────────
-  const loadPolygonForEdit = useCallback(() => {
-    if (!currentParcelle || !currentParcelle.polygone?.[0]) {
-      setToastMessage("Aucun polygone à modifier");
-      return;
-    }
-
-    const points = currentParcelle.polygone[0].points.map(
-      (pt) =>
-        transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857") as [number, number],
-    );
-
-    setDrawPoints(points);
-    setIsEditMode(true);
-    setFabOpen(true);
-    setToastMessage("Mode édition activé - Vous pouvez modifier les points");
-  }, [currentParcelle]);
-
   // ─── Utilitaires pour la gestion des points ────────────────────────────
   const getRealPointsCount = useCallback((points: [number, number][]): number => {
     if (points.length === 0) return 0;
@@ -856,12 +837,49 @@ const Tab2: React.FC = () => {
     [],
   );
 
+  const readMaxZoom = useCallback(async (db: any): Promise<number> => {
+    let maxZoom = 21; // Valeur par défaut
+
+    try {
+      if (typeof db.query === "function") {
+        // MOBILE (Capacitor SQLite)
+        const res = await db.query(
+          "SELECT value FROM metadata WHERE name = ?",
+          ["maxzoom"],
+        );
+        if (res.values?.length) {
+          maxZoom = parseInt(String(res.values[0].value), 10);
+        }
+      } else if (typeof db.prepare === "function") {
+        // WEB (sql.js)
+        const stmt = db.prepare(
+          "SELECT value FROM metadata WHERE name = 'maxzoom'",
+        );
+        if (stmt.step()) {
+          maxZoom = parseInt(String(stmt.getAsObject().value), 10);
+        }
+        stmt.free();
+      }
+    } catch (err) {
+      console.warn("⚠️ Impossible de lire maxzoom, utilisation de la valeur par défaut (21):", err);
+    }
+
+    // Vérifier que c'est un nombre valide
+    if (!Number.isFinite(maxZoom) || maxZoom < 1 || maxZoom > 25) {
+      maxZoom = 21;
+    }
+
+    console.log("🔍 Max zoom détecté:", maxZoom);
+    return maxZoom;
+  }, []);
+
   const addMbTilesLayer = useCallback(
     async (database: any) => {
       if (!mapRef.current || !database) return;
       setLoadingMap(true);
       try {
         const bounds4326 = await readBounds(database);
+        const maxZoom = await readMaxZoom(database);
         const mbTilesSource = createMbTilesSource(database);
         const mbTilesLayer = new TileLayer({ source: mbTilesSource });
         mbTilesLayer.set("name", "fond");
@@ -869,10 +887,15 @@ const Tab2: React.FC = () => {
         mapRef.current.addLayer(mbTilesLayer);
         mbTilesSource.refresh();
 
-        // Zoom plus proche avec minZoom
+        // Définir le max zoom de la carte selon le MBTiles
+        const currentView = mapRef.current.getView();
+        currentView.setMaxZoom(maxZoom);
+        console.log("🔍 Max zoom de la carte défini à:", maxZoom);
+
+        // Zoom avec le maxZoom dynamique
         mapRef.current.getView().fit(bounds4326, {
           padding: [50, 50, 50, 50],
-          maxZoom: 21,
+          maxZoom: maxZoom,
           duration: 1000,
         });
       } catch (err) {
@@ -881,7 +904,7 @@ const Tab2: React.FC = () => {
         setLoadingMap(false);
       }
     },
-    [readBounds, createMbTilesSource],
+    [readBounds, readMaxZoom, createMbTilesSource],
   );
 
   // ==================== GPS TRACKING ====================
@@ -1030,26 +1053,25 @@ const Tab2: React.FC = () => {
       source.addFeature(polygonFeature);
     }
 
-    // ─── 3. Afficher UNIQUEMENT les points réels (pas la fermeture) ─────
+    // ─── 3. Afficher les points réels ─────
     realPoints.forEach((pt, index) => {
       const pointFeature = new Feature(new Point(pt));
       pointFeature.set("type", "point");
-      pointFeature.set("index", index + 1); // ← Numérotation correcte : 1, 2, 3...
+      pointFeature.set("index", index + 1);
       source.addFeature(pointFeature);
     });
-
   }, [drawPoints, getDrawStyle, getRealPointsCount]);
 
   // ─── Rafraîchir le style quand le point sélectionné change ─────
   useEffect(() => {
     if (!vectorLayerRef.current) return;
-    
+
     // Mettre à jour le style de la couche avec la nouvelle fonction
     vectorLayerRef.current.setStyle(getDrawStyle);
-    
+
     // Forcer le rafraîchissement complet
     vectorLayerRef.current.changed();
-    
+
   }, [selectedPointIndex, getDrawStyle]);
 
   const moveSelectedPointToCenter = useCallback(() => {
@@ -1068,6 +1090,10 @@ const Tab2: React.FC = () => {
       ),
     );
   }, [selectedPointIndex]);
+
+  // ─── Stockage temporaire pour l'annulation de suppression ─────
+  const [lastDeletedPoint, setLastDeletedPoint] = useState<{ index: number; point: [number, number]; previousPoints: [number, number][] } | null>(null);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const deleteSelectedPoint = useCallback(() => {
     if (selectedPointIndex === null) {
@@ -1090,22 +1116,69 @@ const Tab2: React.FC = () => {
       return;
     }
 
+    // Sauvegarder pour annulation
+    const pointToDelete = drawPoints[selectedPointIndex];
+    const previousPoints = [...drawPoints];
+
+    setLastDeletedPoint({
+      index: selectedPointIndex,
+      point: pointToDelete,
+      previousPoints
+    });
+
+    // Nettoyer le timeout précédent si existe
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+
+    // Supprimer le point
     setDrawPoints((prev) => {
-      // 1. Extraire les points réels uniquement
       const realPoints = prev.slice(0, realPointsCount);
-
-      // 2. Supprimer le point sélectionné
       const newRealPoints = realPoints.filter((_, idx) => idx !== selectedPointIndex);
-
-      // 3. Refermer le polygone
       const closedPoints = ensurePolygonClosure(newRealPoints);
-
-      // 4. Désélectionner
       setSelectedPointIndex(null);
-
       return closedPoints;
     });
+
+    // Message avec option d'annulation
+    setToastMessage(`Point ${selectedPointIndex + 1} supprimé. Appuyez sur Annuler pour restaurer.`);
+
+    // Timeout de 3 secondes pour confirmer la suppression définitive
+    undoTimeoutRef.current = setTimeout(() => {
+      setLastDeletedPoint(null);
+      setToastMessage("Suppression confirmée");
+    }, 3000);
   }, [selectedPointIndex, drawPoints, getRealPointsCount, ensurePolygonClosure]);
+
+  // ─── Fonction pour annuler la dernière suppression ─────
+  const undoDeletePoint = useCallback(() => {
+    if (!lastDeletedPoint) {
+      setToastMessage("Aucune suppression à annuler");
+      return;
+    }
+
+    // Annuler le timeout
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = null;
+    }
+
+    // Restaurer les points
+    setDrawPoints(lastDeletedPoint.previousPoints);
+    setSelectedPointIndex(lastDeletedPoint.index);
+    setLastDeletedPoint(null);
+
+    // Auto-zoom sur le point restauré
+    if (mapRef.current) {
+      mapRef.current.getView().animate({
+        center: lastDeletedPoint.point,
+        duration: 300,
+        easing: (t: number) => t * (2 - t),
+      });
+    }
+
+    setToastMessage(`Point ${lastDeletedPoint.index + 1} restauré`);
+  }, [lastDeletedPoint]);
 
   const addPointInEditMode = useCallback(() => {
     const center = mapRef.current?.getView().getCenter();
@@ -1152,10 +1225,6 @@ const Tab2: React.FC = () => {
   const addPointInCreateMode = useCallback(() => {
     const center = mapRef.current?.getView().getCenter();
     if (!center) return;
-
-    // En mode création, on conserve simplement la liste des points réels.
-    // Le polygone est fermé uniquement au moment du dessin / de la sauvegarde,
-    // donc on n'ajoute aucun point de fermeture ici.
     setDrawPoints((prev) => [...prev, center as [number, number]]);
     setSelectedPointIndex(null);
   }, []);
@@ -1204,10 +1273,10 @@ const Tab2: React.FC = () => {
 
     const map = mapRef.current;
 
-    const handleClick = (evt: any) => {
+    const handleClick = (evt: { pixel: [number, number] }) => {
       if (!drawPoints.length) return;
 
-      const clickPixel = evt.pixel as [number, number];
+      const clickPixel = evt.pixel;
       let closestIndex: number | null = null;
       let minDist = Infinity;
 
@@ -1221,18 +1290,28 @@ const Tab2: React.FC = () => {
         const dx = px[0] - clickPixel[0];
         const dy = px[1] - clickPixel[1];
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 25 && dist < minDist) {
+        if (dist < 40 && dist < minDist) { // ← Zone de clic augmentée pour faciliter la sélection tactile
           minDist = dist;
           closestIndex = idx;
         }
       });
 
       setSelectedPointIndex(closestIndex);
+
+      // ─── Auto-zoom sur le point sélectionné ─────
+      if (closestIndex !== null && mapRef.current) {
+        const selectedPoint = realPoints[closestIndex];
+        mapRef.current.getView().animate({
+          center: selectedPoint,
+          duration: 300,
+          easing: (t: number) => t * (2 - t), // Easing smooth
+        });
+      }
     };
 
-    map.on("singleclick", handleClick);
+    map.on("singleclick", handleClick as any);
     return () => {
-      map.un("singleclick", handleClick);
+      map.un("singleclick", handleClick as any);
     };
   }, [fabOpen, isEditMode, drawPoints, getRealPointsCount]);
 
@@ -1262,8 +1341,15 @@ const Tab2: React.FC = () => {
         const pts = pg.points.map((pt) =>
           transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
         );
-        if (pts.length > 2) {
-          const f = new Feature(new Polygon([pts]));
+        const rings: [number, number][][] = pts.length > 2 ? [[...pts, pts[0]] as [number, number][]] : [];
+        if (pg.holes?.length) {
+          pg.holes.forEach((h) => {
+            const h3857 = h.map((pt) => transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"));
+            if (h3857.length > 2) rings.push([...h3857, h3857[0]] as [number, number][]);
+          });
+        }
+        if (rings.length > 0) {
+          const f = new Feature(new Polygon(rings));
           f.set("code", p.code);
           f.set("name", "parcelle");
           features.push(f);
@@ -1563,7 +1649,7 @@ const Tab2: React.FC = () => {
               pointerEvents: "none",
             }}
           >
-            {isEditMode ? `MODIFICATION ${selectedPointIndex !== null ? `(Point ${selectedPointIndex + 1})` : ''}` : "CRÉATION"}
+            {isEditMode ? `MODIFICATION${selectedPointIndex !== null ? ` (Point ${selectedPointIndex + 1})` : ""}` : "CRÉATION"}
           </div>
         )}
 
@@ -1694,14 +1780,17 @@ const Tab2: React.FC = () => {
               <IonButton
                 className="glass-btn"
                 fill="clear"
-                onClick={isEditMode ? savePolygonEdit : addPolygone}
+                onClick={
+                  isEditMode ? savePolygonEdit
+                    : addPolygone
+                }
               >
                 <IonIcon color="success" icon={checkmark} />
               </IonButton>
 
               {isEditMode ? (
                 <>
-                  {/* Ajouter un sommet au centre (après le point sélectionné) */}
+                  {/* Ajouter un sommet */}
                   <IonButton
                     className="glass-btn"
                     fill="clear"

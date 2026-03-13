@@ -214,6 +214,7 @@ const Tab1: React.FC = () => {
   // Chargement initial
   const loadData = useCallback(async (page: number = 1) => {
     const { data, total } = await getAllParcelles(page, ITEMS_PER_PAGE);
+    console.log(data);
     setParcelles(data);
     setTotalParcelles(total);
   }, []);

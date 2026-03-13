@@ -97,8 +97,12 @@ export async function insertParcelle(parcelle: Parcelle): Promise<Parcelle> {
       observation: r.observation ?? "",
     }));
 
+    const polygoneForStorage = (parcelle.polygone ?? []).map((pg) =>
+      typeof pg.toJSON === "function" ? pg.toJSON() : pg
+    );
     const cleanData = {
       ...JSON.parse(JSON.stringify(parcelle)),
+      polygone: polygoneForStorage,
       demandeurs: demandeursClean,
       riverin: riverinClean,
     };

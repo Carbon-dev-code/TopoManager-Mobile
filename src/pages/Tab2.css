@@ -429,3 +429,148 @@ ion-checkbox {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
+
+/* ─── Styles pour le groupe d'actions sur point sélectionné ───── */
+.point-actions-group {
+  display: flex;
+  flex-direction: row !important;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  background: transparent;
+  border: 2px solid transparent;
+}
+
+.point-actions-group.active {
+  background: rgba(255, 59, 48, 0.1);
+  border: 2px solid rgba(255, 59, 48, 0.4);
+  box-shadow: 0 0 15px rgba(255, 59, 48, 0.2);
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    border-color: rgba(255, 59, 48, 0.4);
+    box-shadow: 0 0 10px rgba(255, 59, 48, 0.2);
+  }
+  50% {
+    border-color: rgba(255, 59, 48, 0.7);
+    box-shadow: 0 0 20px rgba(255, 59, 48, 0.4);
+  }
+}
+
+/* ─── Animation pour les boutons ───── */
+.glass-btn {
+  --padding-start: 0;
+  --padding-end: 0;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.521);
+  backdrop-filter: blur(10px) saturate(50%);
+  border: 1px solid rgba(255, 255, 255, 0.761);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  width: 42px;
+  height: 42px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.7);
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15),
+    inset 0 1px 3px rgba(255, 255, 255, 0.3);
+}
+
+.glass-btn:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.95);
+}
+
+.glass-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  filter: grayscale(0.5);
+}
+
+/* ─── Boutons avec états spéciaux ───── */
+.glass-btn.btn-undo {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px) rotate(-5deg); }
+  75% { transform: translateX(3px) rotate(5deg); }
+}
+
+.glass-btn.btn-danger-active {
+  background: rgba(255, 59, 48, 0.2);
+  border-color: rgba(255, 59, 48, 0.5);
+  animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 59, 48, 0);
+  }
+}
+
+/* ─── Toast message amélioré ───── */
+.toast-message {
+  font-weight: 500;
+  text-align: center;
+}
+
+.toast-undo {
+  color: #ff9500;
+  font-weight: 600;
+}
+
+/* ─── Responsive pour les petits écrans ───── */
+@media (max-width: 360px) {
+  .glass-btn {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .point-actions-group {
+    gap: 2px;
+    padding: 2px;
+  }
+  
+  .glass-btn ion-icon {
+    font-size: 18px;
+  }
+}
+
+/* ─── Indicateur visuel pour le point sélectionné sur la carte ───── */
+.point-selected-indicator {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1001;
+}
+
+.point-selected-indicator::before {
+  content: "";
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border: 2px dashed rgba(255, 59, 48, 0.6);
+  border-radius: 50%;
+  animation: rotate 4s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
