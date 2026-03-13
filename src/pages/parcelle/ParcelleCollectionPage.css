@@ -140,7 +140,7 @@ ion-searchbar.custom-search {
 .parcelle-layout {
   display: flex;
   flex-direction: column;
-  height: 100%; /* ← height pas min-height */
+  height: 100%;
 }
 
 .pagination-footer {
@@ -169,14 +169,12 @@ ion-searchbar.custom-search {
   margin: 2px 0 0;
 }
 
-/* ─── Scrollbar personnalisée ────────────────────────────────────────────── */
 .parcelle-scroll {
   flex: 1;
   overflow-y: auto;
   padding-bottom: 8px;
   margin-right: -10px;
   padding-right: 11px;
-  /* scrollbar custom */
   scrollbar-width: thin;
   scrollbar-color: rgba(25, 51, 97, 0.829) transparent;
 }
@@ -197,3 +195,5 @@ ion-searchbar.custom-search {
 .parcelle-scroll::-webkit-scrollbar-thumb:hover {
   background: #1b4f72;
 }
+
+

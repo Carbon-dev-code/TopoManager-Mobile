@@ -16,7 +16,7 @@ import {
   IonCheckbox,
   IonLabel,
 } from "@ionic/react";
-import "./Tab2.css";
+import "./MapViewerPage.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import OLMap from "ol/Map";
 import View from "ol/View";
@@ -47,7 +47,7 @@ import {
   stopSharp,
 } from "ionicons/icons";
 import { Preferences } from "@capacitor/preferences";
-import { Parcelle } from "../model/parcelle/Parcelle";
+import { Parcelle } from "../../model/parcelle/Parcelle";
 import VectorSource from "ol/source/Vector";
 import Polygon from "ol/geom/Polygon";
 import { Feature } from "ol";
@@ -59,21 +59,20 @@ import Text from "ol/style/Text";
 import GeoJSON from "ol/format/GeoJSON";
 import { useLocation } from "react-router";
 import { Geolocation } from "@capacitor/geolocation";
-import { Polygone } from "../model/vecteur/Polygone";
-import { PointC } from "../model/vecteur/PointC";
+import { Polygone } from "../../model/vecteur/Polygone";
+import { PointC } from "../../model/vecteur/PointC";
 import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
-import { useDb } from "../model/base/DbContextType";
-import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
-import Cube from "../components/utils/Cube";
+import { useDb } from "../../model/base/DbContextType";
+import { getAllParcelles, insertParcelle } from "../../model/base/DbSchema";
+import Cube from "../../components/utils/Cube";
 import MultiPoint from "ol/geom/MultiPoint";
-import CardGlass from "../components/card/CardGlass";
+import CardGlass from "../../components/card/CardGlass";
 import { getArea } from "ol/sphere";
 import { FeatureLike } from "ol/Feature";
 
-// ==================== CONSTANTS ====================
 proj4.defs(
   "EPSG:29702",
   "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs",
@@ -97,9 +96,8 @@ const LAYER_ORDER = [
 const INTERVAL_DURATION = 10000;
 const CROSSHAIR_RADIUS_PX = 20;
 const THROTTLE_DELAY = 150;
-const MAX_CACHE_SIZE = 200; // Nombre max de tuiles en RAM
+const MAX_CACHE_SIZE = 200;
 
-// Style configurations
 const STYLE_CONFIG = {
   ipss: { stroke: "rgba(5, 59, 255,1)", fill: "rgba(5,59,255,0.3)" },
   certificat: { stroke: "rgba(251,255,0,1)", fill: "rgba(251,255,0,0.3)" },
@@ -127,7 +125,6 @@ const LABEL_MAP = {
   parcelle: "code",
 };
 
-// ==================== HELPER FUNCTIONS ====================
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
@@ -141,9 +138,7 @@ const createCircleStyle = (color: string, radius = 6, strokeWidth = 2) =>
     }),
   });
 
-// ==================== MAIN COMPONENT ====================
-const Tab2: React.FC = () => {
-  // ==================== REFS ====================
+const MapViewerPage: React.FC = () => {
   const mapRef = useRef<OLMap | null>(null);
   const mapElement = useRef<HTMLDivElement>(null);
   const localLayerRef = useRef<TileLayer | null>(null);
@@ -164,7 +159,6 @@ const Tab2: React.FC = () => {
     certificat: true,
   });
 
-  // ==================== STATE ====================
   const { db, loadMBTiles } = useDb();
   const tileCache = new Map<string, string>();
   const [loadingMap, setLoadingMap] = useState(true);
@@ -172,7 +166,9 @@ const Tab2: React.FC = () => {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [geojsons, setGeojsons] = useState<any[]>([]);
   const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<number[] | null>(null);
+  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
+    number[] | null
+  >(null);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const [showCard, setShowCard] = useState(true);
   const [fabOpen, setFabOpen] = useState(false);
@@ -184,18 +180,21 @@ const Tab2: React.FC = () => {
   const [tracking, setTracking] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsStatus, setGpsStatus] = useState<number>(0);
-  const [layerVisibility, setLayerVisibility] = useState(layerVisibilityRef.current);
+  const [layerVisibility, setLayerVisibility] = useState(
+    layerVisibilityRef.current,
+  );
   const [surface, setSurface] = useState<number>(0);
   const [isEditMode, setIsEditMode] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(true);
-  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(
+    null,
+  );
 
   const query = useQuery();
   const from = query.get("from");
   const action = query.get("action");
   const codeParcelle = query.get("code");
 
-  // ==================== DATA LOADING ====================
   const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     const { data } = await getAllParcelles();
     return data;
@@ -236,7 +235,6 @@ const Tab2: React.FC = () => {
     setSurface(area);
   }, [drawPoints]);
 
-  // ==================== STYLES ====================
   const getLabelText = useCallback(
     (feature: Feature, type: string | undefined): string => {
       if (!type) return "";
@@ -250,11 +248,10 @@ const Tab2: React.FC = () => {
 
   const styleByType = useCallback(
     (feature: FeatureLike): Style => {
-      const f = feature as Feature; // cast
+      const f = feature as Feature;
       const type = f.get("name")?.toLowerCase() || "default";
       const labelText = getLabelText(f, type);
 
-      // Cache basé uniquement sur le type et le texte
       const cacheKey = `${type}_${labelText}`;
 
       if (styleCache.current[cacheKey]) {
@@ -271,13 +268,13 @@ const Tab2: React.FC = () => {
         fill: new Fill({ color: config.fill }),
         text: labelText
           ? new Text({
-            text: labelText,
-            font: "bold 13px Arial",
-            fill: new Fill({ color: "#000" }),
-            stroke: new Stroke({ color: "#fff", width: 3 }),
-            overflow: true, // Important : permet au texte de dépasser légèrement du polygone
-            placement: "point",
-          })
+              text: labelText,
+              font: "bold 13px Arial",
+              fill: new Fill({ color: "#000" }),
+              stroke: new Stroke({ color: "#fff", width: 3 }),
+              overflow: true,
+              placement: "point",
+            })
           : undefined,
       });
 
@@ -287,13 +284,11 @@ const Tab2: React.FC = () => {
     [getLabelText],
   );
 
-  // ==================== DATABASE ====================
   const readBounds = useCallback(async (db: any): Promise<number[]> => {
     let bounds: number[] = [];
 
     try {
       if (typeof db.query === "function") {
-        // MOBILE (Capacitor SQLite)
         const res = await db.query(
           "SELECT value FROM metadata WHERE name = ?",
           ["bounds"],
@@ -312,7 +307,6 @@ const Tab2: React.FC = () => {
           "EPSG:3857",
         );
       } else if (typeof db.prepare === "function") {
-        // WEB (sql.js)
         const stmt = db.prepare(
           "SELECT value FROM metadata WHERE name = 'bounds'",
         );
@@ -322,7 +316,6 @@ const Tab2: React.FC = () => {
           if (parts.length !== 4 || parts.some((v) => !Number.isFinite(v))) {
             throw new Error("Bounds invalide: " + value);
           }
-          // ✅ Transformation manquante
           bounds = transformExtent(
             parts as [number, number, number, number],
             "EPSG:4326",
@@ -345,7 +338,6 @@ const Tab2: React.FC = () => {
 
   const createMbTilesSource = useCallback((db: any) => {
     return new XYZ({
-      // Réintégration de l'URL OSM pour le fallback
       url: "https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       cacheSize: 512,
       tileLoadFunction: async (tile, src) => {
@@ -357,7 +349,6 @@ const Tab2: React.FC = () => {
 
         const cacheKey = `${z}-${x}-${y}`;
 
-        // 1. Vérification du cache mémoire
         if (tileCache.has(cacheKey)) {
           image.src = tileCache.get(cacheKey)!;
           return;
@@ -380,17 +371,14 @@ const Tab2: React.FC = () => {
               if (tileCache.size >= MAX_CACHE_SIZE) {
                 const firstKey = tileCache.keys().next().value;
                 if (firstKey !== undefined) tileCache.delete(firstKey);
-                // Note: On ne révoque pas immédiatement pour éviter les clignotements
               }
 
               tileCache.set(cacheKey, url);
               image.src = url;
             } else {
-              // 2. Si pas en DB, on charge depuis l'URL OSM (src)
               image.src = src;
             }
           } else if (db) {
-            // Version Web (sql.js)
             const stmt = db.prepare(
               "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
             );
@@ -406,27 +394,23 @@ const Tab2: React.FC = () => {
             }
             stmt.free();
           } else {
-            // Si la DB n'est pas chargée, on utilise OSM par défaut
             image.src = src;
           }
         } catch (err) {
           console.log(err);
-          // En cas d'erreur SQLite, on tente quand même OSM
           image.src = src;
         }
       },
     });
   }, []);
 
-  // ==================== VECTOR LAYERS ====================
   const createVectorLayers = useCallback(() => {
-    // Garder VectorLayer pour les parcelles (édition active)
     const parcellesSource = new VectorSource();
     const parcellesLayer = new VectorLayer({
       source: parcellesSource,
       style: styleByType,
       declutter: true,
-      renderBuffer: 200, // Augmenté pour éviter que le texte ne disparaisse sur les bords
+      renderBuffer: 200,
     });
     parcellesLayer.setZIndex(LAYER_ORDER.length + 1);
     parcellesLayer.set("name", "parcelle");
@@ -436,7 +420,6 @@ const Tab2: React.FC = () => {
       parcellesLayer,
     ];
 
-    // VectorImageLayer pour TOUTES les autres couches avec labels
     LAYER_ORDER.forEach((name, i) => {
       const src = new VectorSource();
       const layer = new VectorImageLayer({
@@ -444,7 +427,7 @@ const Tab2: React.FC = () => {
         style: styleByType,
         zIndex: i + 1,
         declutter: true,
-        imageRatio: 1, // Préserve la netteté du texte
+        imageRatio: 1,
       });
       layer.set("name", name);
       geoJsonLayersRef.current[name] = layer as any;
@@ -473,23 +456,25 @@ const Tab2: React.FC = () => {
 
         const baseCircle = new Style({
           image: new CircleStyle({
-            radius: isSelected ? 6 : 4, // Plus gros quand sélectionné
+            radius: isSelected ? 6 : 4,
             fill: new Fill({ color: isSelected ? "#ff0000" : "#0059ff" }),
-            stroke: isSelected ? new Stroke({ color: "#ffffff", width: 2 }) : undefined,
+            stroke: isSelected
+              ? new Stroke({ color: "#ffffff", width: 2 })
+              : undefined,
           }),
         });
 
         const label =
           index !== undefined
             ? new Style({
-              text: new Text({
-                text: String(index),
-                font: "bold 12px Arial",
-                fill: new Fill({ color: "#ffffff" }),
-                stroke: new Stroke({ color: "#000000", width: 3 }),
-                offsetY: -14,
-              }),
-            })
+                text: new Text({
+                  text: String(index),
+                  font: "bold 12px Arial",
+                  fill: new Fill({ color: "#ffffff" }),
+                  stroke: new Stroke({ color: "#000000", width: 3 }),
+                  offsetY: -14,
+                }),
+              })
             : null;
 
         return label ? [baseCircle, label] : baseCircle;
@@ -500,39 +485,32 @@ const Tab2: React.FC = () => {
     [selectedPointIndex],
   );
 
-  // ==================== MAP OPERATIONS ====================
-  // ─── Utilitaires pour la gestion des points ────────────────────────────
   const getRealPointsCount = useCallback((points: [number, number][]): number => {
     if (points.length === 0) return 0;
-
-    // Avec 1 seul point, il est forcément identique à lui‑même,
-    // mais ce n'est PAS un "point de fermeture" : on le compte.
     if (points.length === 1) return 1;
-
-    // Vérifier si le dernier point est une copie du premier (fermeture)
     const firstPoint = points[0];
     const lastPoint = points[points.length - 1];
-
-    return (firstPoint[0] === lastPoint[0] && firstPoint[1] === lastPoint[1])
-      ? points.length - 1  // Exclure uniquement un VRAI point de fermeture
-      : points.length;     // Pas de fermeture, tous les points sont réels
+    return firstPoint[0] === lastPoint[0] && firstPoint[1] === lastPoint[1]
+      ? points.length - 1
+      : points.length;
   }, []);
 
-  const ensurePolygonClosure = useCallback((points: [number, number][]): [number, number][] => {
-    if (points.length === 0) return points;
+  const ensurePolygonClosure = useCallback(
+    (points: [number, number][]): [number, number][] => {
+      if (points.length === 0) return points;
 
-    const firstPoint = points[0];
-    const lastPoint = points[points.length - 1];
+      const firstPoint = points[0];
+      const lastPoint = points[points.length - 1];
 
-    // Si le polygone n'est pas fermé, ajouter le premier point à la fin
-    if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
-      return [...points, firstPoint];
-    }
+      if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
+        return [...points, firstPoint];
+      }
 
-    return points;
-  }, []);
+      return points;
+    },
+    [],
+  );
 
-  // ─── Sauvegarder les modifications (remplace addPolygone en mode edit) ───
   const savePolygonEdit = useCallback(async () => {
     if (!currentParcelle) {
       setToastMessage("Aucune parcelle sélectionnée !");
@@ -560,6 +538,7 @@ const Tab2: React.FC = () => {
       const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
         number,
         number,
+        number,
       ];
       return new PointC(tx, ty);
     });
@@ -577,11 +556,10 @@ const Tab2: React.FC = () => {
     setParcelles(updatedParcelles);
     setDrawPoints([]);
     setFabOpen(false);
-    setIsEditMode(false); // ← Sortir du mode édition
+    setIsEditMode(false);
 
     await insertParcelle(updatedParcelle);
 
-    // Mettre à jour la couche parcelle
     if (parcellesSourceRef.current) {
       parcellesSourceRef.current.clear();
       const features: Feature[] = [];
@@ -604,7 +582,6 @@ const Tab2: React.FC = () => {
     setToastMessage("Polygone modifié avec succès !");
   }, [currentParcelle, drawPoints, parcelles]);
 
-  // ─── Annuler l'édition ─────────────────────────────────────────
   const cancelEdit = useCallback(() => {
     setDrawPoints([]);
     setFabOpen(false);
@@ -638,6 +615,7 @@ const Tab2: React.FC = () => {
 
     const points = closedPoints.map(([x, y]) => {
       const [tx, ty] = transform([x, y], "EPSG:3857", "EPSG:29702") as [
+        number,
         number,
         number,
       ];
@@ -838,11 +816,10 @@ const Tab2: React.FC = () => {
   );
 
   const readMaxZoom = useCallback(async (db: any): Promise<number> => {
-    let maxZoom = 21; // Valeur par défaut
+    let maxZoom = 21;
 
     try {
       if (typeof db.query === "function") {
-        // MOBILE (Capacitor SQLite)
         const res = await db.query(
           "SELECT value FROM metadata WHERE name = ?",
           ["maxzoom"],
@@ -851,7 +828,6 @@ const Tab2: React.FC = () => {
           maxZoom = parseInt(String(res.values[0].value), 10);
         }
       } else if (typeof db.prepare === "function") {
-        // WEB (sql.js)
         const stmt = db.prepare(
           "SELECT value FROM metadata WHERE name = 'maxzoom'",
         );
@@ -861,15 +837,16 @@ const Tab2: React.FC = () => {
         stmt.free();
       }
     } catch (err) {
-      console.warn("⚠️ Impossible de lire maxzoom, utilisation de la valeur par défaut (21):", err);
+      console.warn(
+        "⚠️ Impossible de lire maxzoom, utilisation de la valeur par défaut (21):",
+        err,
+      );
     }
 
-    // Vérifier que c'est un nombre valide
     if (!Number.isFinite(maxZoom) || maxZoom < 1 || maxZoom > 25) {
       maxZoom = 21;
     }
 
-    console.log("🔍 Max zoom détecté:", maxZoom);
     return maxZoom;
   }, []);
 
@@ -887,12 +864,9 @@ const Tab2: React.FC = () => {
         mapRef.current.addLayer(mbTilesLayer);
         mbTilesSource.refresh();
 
-        // Définir le max zoom de la carte selon le MBTiles
         const currentView = mapRef.current.getView();
         currentView.setMaxZoom(maxZoom);
-        console.log("🔍 Max zoom de la carte défini à:", maxZoom);
 
-        // Zoom avec le maxZoom dynamique
         mapRef.current.getView().fit(bounds4326, {
           padding: [50, 50, 50, 50],
           maxZoom: maxZoom,
@@ -907,7 +881,6 @@ const Tab2: React.FC = () => {
     [readBounds, readMaxZoom, createMbTilesSource],
   );
 
-  // ==================== GPS TRACKING ====================
   const toggleTracking = useCallback(async () => {
     if (!tracking) {
       try {
@@ -947,7 +920,7 @@ const Tab2: React.FC = () => {
             handleError,
             {
               enableHighAccuracy: true,
-              timeout: 10000, //10s
+              timeout: 10000,
               maximumAge: 0,
             },
           );
@@ -961,7 +934,7 @@ const Tab2: React.FC = () => {
           );
         }
         setTracking(true);
-      } catch (e) {
+      } catch {
         setGpsStatus(3);
       }
     } else {
@@ -979,7 +952,6 @@ const Tab2: React.FC = () => {
     }
   }, [tracking]);
 
-  // ==================== EFFECTS ====================
   useIonViewDidEnter(() => {
     const loadDataOnEnter = async () => {
       try {
@@ -990,7 +962,7 @@ const Tab2: React.FC = () => {
         const database = db || (await loadMBTiles());
         if (!localLayerRef.current) await addMbTilesLayer(database);
       } catch (err) {
-        console.error("Erreur chargement Tab2:", err);
+        console.error("Erreur chargement MapViewerPage:", err);
       } finally {
         setLoadingMap(false);
       }
@@ -1038,22 +1010,18 @@ const Tab2: React.FC = () => {
     const source = vectorLayerRef.current?.getSource();
     if (!source) return;
 
-    // Nettoyer complètement la source
     source.clear();
 
-    // ─── 1. Déterminer les points RÉELS (sans fermeture) ─────
     const realPointsCount = getRealPointsCount(drawPoints);
-    const realPoints = drawPoints.slice(0, realPointsCount); // ← Points réels uniquement
+    const realPoints = drawPoints.slice(0, realPointsCount);
 
-    // ─── 2. Créer le polygone (avec fermeture) ─────
     if (realPoints.length >= 3) {
-      const closedCoords = [...realPoints, realPoints[0]]; // ← Fermer le polygone
+      const closedCoords = [...realPoints, realPoints[0]];
       const polygonFeature = new Feature(new Polygon([closedCoords]));
       polygonFeature.set("type", "polygon");
       source.addFeature(polygonFeature);
     }
 
-    // ─── 3. Afficher les points réels ─────
     realPoints.forEach((pt, index) => {
       const pointFeature = new Feature(new Point(pt));
       pointFeature.set("type", "point");
@@ -1062,16 +1030,10 @@ const Tab2: React.FC = () => {
     });
   }, [drawPoints, getDrawStyle, getRealPointsCount]);
 
-  // ─── Rafraîchir le style quand le point sélectionné change ─────
   useEffect(() => {
     if (!vectorLayerRef.current) return;
-
-    // Mettre à jour le style de la couche avec la nouvelle fonction
     vectorLayerRef.current.setStyle(getDrawStyle);
-
-    // Forcer le rafraîchissement complet
     vectorLayerRef.current.changed();
-
   }, [selectedPointIndex, getDrawStyle]);
 
   const moveSelectedPointToCenter = useCallback(() => {
@@ -1091,8 +1053,11 @@ const Tab2: React.FC = () => {
     );
   }, [selectedPointIndex]);
 
-  // ─── Stockage temporaire pour l'annulation de suppression ─────
-  const [lastDeletedPoint, setLastDeletedPoint] = useState<{ index: number; point: [number, number]; previousPoints: [number, number][] } | null>(null);
+  const [lastDeletedPoint, setLastDeletedPoint] = useState<{
+    index: number;
+    point: [number, number];
+    previousPoints: [number, number][];
+  } | null>(null);
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const deleteSelectedPoint = useCallback(() => {
@@ -1103,72 +1068,65 @@ const Tab2: React.FC = () => {
 
     const realPointsCount = getRealPointsCount(drawPoints);
 
-    // Vérifier minimum 3 points réels (après suppression il en restera au moins 2)
     if (realPointsCount <= 3) {
       setToastMessage("Un polygone doit avoir au minimum 3 points");
       return;
     }
 
-    // ─── IMPORTANT: Vérifier que l'index sélectionné est bien un point réel ─────
     if (selectedPointIndex >= realPointsCount) {
       setToastMessage("Impossible de supprimer le point de fermeture");
       setSelectedPointIndex(null);
       return;
     }
 
-    // Sauvegarder pour annulation
     const pointToDelete = drawPoints[selectedPointIndex];
     const previousPoints = [...drawPoints];
 
     setLastDeletedPoint({
       index: selectedPointIndex,
       point: pointToDelete,
-      previousPoints
+      previousPoints,
     });
 
-    // Nettoyer le timeout précédent si existe
     if (undoTimeoutRef.current) {
       clearTimeout(undoTimeoutRef.current);
     }
 
-    // Supprimer le point
     setDrawPoints((prev) => {
       const realPoints = prev.slice(0, realPointsCount);
-      const newRealPoints = realPoints.filter((_, idx) => idx !== selectedPointIndex);
+      const newRealPoints = realPoints.filter(
+        (_, idx) => idx !== selectedPointIndex,
+      );
       const closedPoints = ensurePolygonClosure(newRealPoints);
       setSelectedPointIndex(null);
       return closedPoints;
     });
 
-    // Message avec option d'annulation
-    setToastMessage(`Point ${selectedPointIndex + 1} supprimé. Appuyez sur Annuler pour restaurer.`);
+    setToastMessage(
+      `Point ${selectedPointIndex + 1} supprimé. Appuyez sur Annuler pour restaurer.`,
+    );
 
-    // Timeout de 3 secondes pour confirmer la suppression définitive
     undoTimeoutRef.current = setTimeout(() => {
       setLastDeletedPoint(null);
       setToastMessage("Suppression confirmée");
     }, 3000);
   }, [selectedPointIndex, drawPoints, getRealPointsCount, ensurePolygonClosure]);
 
-  // ─── Fonction pour annuler la dernière suppression ─────
   const undoDeletePoint = useCallback(() => {
     if (!lastDeletedPoint) {
       setToastMessage("Aucune suppression à annuler");
       return;
     }
 
-    // Annuler le timeout
     if (undoTimeoutRef.current) {
       clearTimeout(undoTimeoutRef.current);
       undoTimeoutRef.current = null;
     }
 
-    // Restaurer les points
     setDrawPoints(lastDeletedPoint.previousPoints);
     setSelectedPointIndex(lastDeletedPoint.index);
     setLastDeletedPoint(null);
 
-    // Auto-zoom sur le point restauré
     if (mapRef.current) {
       mapRef.current.getView().animate({
         center: lastDeletedPoint.point,
@@ -1185,38 +1143,28 @@ const Tab2: React.FC = () => {
     if (!center) return;
 
     setDrawPoints((prev) => {
-      // 1. Extraire les points réels (sans fermeture)
       const realPointsCount = getRealPointsCount(prev);
       const realPoints = prev.slice(0, realPointsCount);
 
-      // 2. Déterminer où insérer
       let insertAt: number;
 
       if (selectedPointIndex === null) {
-        // Aucun point sélectionné → ajouter à la fin
+        insertAt = realPoints.length;
+      } else if (selectedPointIndex >= realPoints.length) {
         insertAt = realPoints.length;
       } else {
-        // Point sélectionné → insérer APRÈS ce point
-        if (selectedPointIndex >= realPoints.length) {
-          console.warn("⚠️ selectedPointIndex hors limite, ajout à la fin");
-          insertAt = realPoints.length;
-        } else {
-          insertAt = selectedPointIndex + 1;
-        }
+        insertAt = selectedPointIndex + 1;
       }
 
-      // 3. Insérer le nouveau point
       const newRealPoints = [
         ...realPoints.slice(0, insertAt),
         center as [number, number],
-        ...realPoints.slice(insertAt)
+        ...realPoints.slice(insertAt),
       ];
 
-      // 4. Refermer le polygone
       const closedPoints = ensurePolygonClosure(newRealPoints);
 
-      // ─── NE PAS SÉLECTIONNER le point après ajout ─────
-      setSelectedPointIndex(null); // ← CHANGEMENT ICI
+      setSelectedPointIndex(null);
 
       return closedPoints;
     });
@@ -1257,7 +1205,9 @@ const Tab2: React.FC = () => {
     map.on("moveend", () => {
       const center = map.getView().getCenter();
       if (center)
-        setCenterCoordsProjected(transform(center, "EPSG:3857", "EPSG:29702"));
+        setCenterCoordsProjected(
+          transform(center, "EPSG:3857", "EPSG:29702"),
+        );
     });
 
     return () => {
@@ -1280,7 +1230,6 @@ const Tab2: React.FC = () => {
       let closestIndex: number | null = null;
       let minDist = Infinity;
 
-      // ─── Ne chercher QUE parmi les points RÉELS ─────
       const realPointsCount = getRealPointsCount(drawPoints);
       const realPoints = drawPoints.slice(0, realPointsCount);
 
@@ -1290,7 +1239,7 @@ const Tab2: React.FC = () => {
         const dx = px[0] - clickPixel[0];
         const dy = px[1] - clickPixel[1];
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 40 && dist < minDist) { // ← Zone de clic augmentée pour faciliter la sélection tactile
+        if (dist < 40 && dist < minDist) {
           minDist = dist;
           closestIndex = idx;
         }
@@ -1298,13 +1247,12 @@ const Tab2: React.FC = () => {
 
       setSelectedPointIndex(closestIndex);
 
-      // ─── Auto-zoom sur le point sélectionné ─────
       if (closestIndex !== null && mapRef.current) {
         const selectedPoint = realPoints[closestIndex];
         mapRef.current.getView().animate({
           center: selectedPoint,
           duration: 300,
-          easing: (t: number) => t * (2 - t), // Easing smooth
+          easing: (t: number) => t * (2 - t),
         });
       }
     };
@@ -1341,11 +1289,15 @@ const Tab2: React.FC = () => {
         const pts = pg.points.map((pt) =>
           transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
         );
-        const rings: [number, number][][] = pts.length > 2 ? [[...pts, pts[0]] as [number, number][]] : [];
+        const rings: [number, number][][] =
+          pts.length > 2 ? [[...pts, pts[0]] as [number, number][]] : [];
         if (pg.holes?.length) {
           pg.holes.forEach((h) => {
-            const h3857 = h.map((pt) => transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"));
-            if (h3857.length > 2) rings.push([...h3857, h3857[0]] as [number, number][]);
+            const h3857 = h.map((pt) =>
+              transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
+            );
+            if (h3857.length > 2)
+              rings.push([...h3857, h3857[0]] as [number, number][]);
           });
         }
         if (rings.length > 0) {
@@ -1379,9 +1331,6 @@ const Tab2: React.FC = () => {
     return `${ha} ha ${a} a ${ca.toString().padStart(2, "0")} ca`;
   }
 
-  // ==================== MAP OPERATIONS ====================
-
-  // ─── Détection d'auto‑intersection du polygone ─────────────────
   type Coord = [number, number];
   const COORD_EPS = 1e-6;
 
@@ -1391,13 +1340,11 @@ const Tab2: React.FC = () => {
   const normalizePolygonPoints = (points: Coord[]): Coord[] => {
     if (points.length === 0) return points;
 
-    // Supprime la fermeture dupliquée si déjà présente (dernier == premier)
     const trimmed =
       points.length > 1 && sameCoord(points[0], points[points.length - 1])
         ? points.slice(0, -1)
         : points;
 
-    // Supprime les doublons consécutifs (peuvent fausser les tests)
     const out: Coord[] = [];
     for (const p of trimmed) {
       if (!out.length || !sameCoord(out[out.length - 1], p)) out.push(p);
@@ -1405,14 +1352,11 @@ const Tab2: React.FC = () => {
     return out;
   };
 
-  const onSegment = (p: Coord, q: Coord, r: Coord) => {
-    return (
-      q[0] <= Math.max(p[0], r[0]) &&
-      q[0] >= Math.min(p[0], r[0]) &&
-      q[1] <= Math.max(p[1], r[1]) &&
-      q[1] >= Math.min(p[1], r[1])
-    );
-  };
+  const onSegment = (p: Coord, q: Coord, r: Coord) =>
+    q[0] <= Math.max(p[0], r[0]) &&
+    q[0] >= Math.min(p[0], r[0]) &&
+    q[1] <= Math.max(p[1], r[1]) &&
+    q[1] >= Math.min(p[1], r[1]);
 
   const orientation = (p: Coord, q: Coord, r: Coord) => {
     const val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1]);
@@ -1439,20 +1383,17 @@ const Tab2: React.FC = () => {
   const isSelfIntersecting = (points: Coord[]): boolean => {
     const pts = normalizePolygonPoints(points);
     const n = pts.length;
-    if (n < 4) return false; // un triangle ne peut pas s'auto‑croiser
+    if (n < 4) return false;
 
-    // Segments du polygone fermé
     const segments: { a: Coord; b: Coord }[] = [];
     for (let i = 0; i < n - 1; i++) {
       segments.push({ a: pts[i], b: pts[i + 1] });
     }
-    // Dernier segment (fermeture)
     segments.push({ a: pts[n - 1], b: pts[0] });
 
     const segCount = segments.length;
     for (let i = 0; i < segCount; i++) {
       for (let j = i + 1; j < segCount; j++) {
-        // ignorer les segments adjacents qui partagent un point
         if (Math.abs(i - j) === 1) continue;
         if ((i === 0 && j === segCount - 1) || (j === 0 && i === segCount - 1))
           continue;
@@ -1460,7 +1401,6 @@ const Tab2: React.FC = () => {
         const s1 = segments[i];
         const s2 = segments[j];
 
-        // Si deux segments partagent exactement un sommet, on ne considère pas ça comme un croisement
         const sharesEndpoint =
           sameCoord(s1.a, s2.a) ||
           sameCoord(s1.a, s2.b) ||
@@ -1477,7 +1417,6 @@ const Tab2: React.FC = () => {
     return false;
   };
 
-  // ─── Fonction de snap réutilisable ────────────────────────────
   const performSnap = useCallback(() => {
     if (!mapRef.current) return false;
 
@@ -1510,7 +1449,7 @@ const Tab2: React.FC = () => {
           if (pixelCandidate && pixelCenter) {
             const distPx = Math.sqrt(
               Math.pow(pixelCandidate[0] - pixelCenter[0], 2) +
-              Math.pow(pixelCandidate[1] - pixelCenter[1], 2),
+                Math.pow(pixelCandidate[1] - pixelCenter[1], 2),
             );
 
             if (distPx <= CROSSHAIR_RADIUS_PX && distPx < minDistPx) {
@@ -1524,10 +1463,10 @@ const Tab2: React.FC = () => {
 
     if (snapPoint) {
       view.animate({ center: snapPoint, duration: 100 });
-      return true; // Snap effectué
+      return true;
     }
 
-    return false; // Pas de snap (pas de feature à proximité)
+    return false;
   }, []);
 
   useEffect(() => {
@@ -1539,7 +1478,7 @@ const Tab2: React.FC = () => {
       const now = Date.now();
       if (now - lastCall > THROTTLE_DELAY) {
         lastCall = now;
-        performSnap(); // ← Utiliser la fonction
+        performSnap();
       }
     };
 
@@ -1548,7 +1487,6 @@ const Tab2: React.FC = () => {
   }, [fabOpen, snapEnabled, performSnap]);
 
   useEffect(() => {
-    // zoom Automatique
     if (
       from === "tab1" &&
       action === "croquis" &&
@@ -1560,9 +1498,8 @@ const Tab2: React.FC = () => {
 
       if (found) {
         setCurrentParcelle(found);
-        setShowCard(true); // ← Afficher la carte d'info
+        setShowCard(true);
 
-        // ─── Zoom sur la parcelle si elle a un polygone ─────────
         const shouldAutoZoom = lastAutoZoomCodeRef.current !== codeParcelle;
         if (shouldAutoZoom && found.polygone && found.polygone.length > 0) {
           const firstPolygon = found.polygone[0];
@@ -1574,7 +1511,6 @@ const Tab2: React.FC = () => {
             const polygon = new Polygon([points]);
             const extent = polygon.getExtent();
 
-            // Zoom avec animation
             mapRef.current.getView().fit(extent, {
               duration: 1000,
               padding: [100, 100, 100, 100],
@@ -1582,12 +1518,10 @@ const Tab2: React.FC = () => {
             });
             lastAutoZoomCodeRef.current = codeParcelle;
 
-            // Highlight avec blink
             const feature = new Feature(polygon);
             feature.set("name", "parcelle");
             feature.set("code", found.code);
 
-            // Attendre la fin du zoom avant le blink
             setTimeout(() => {
               blinkFeature(feature, 5000);
             }, 1000);
@@ -1598,14 +1532,12 @@ const Tab2: React.FC = () => {
         setToastMessage(`Parcelle ${codeParcelle} introuvable`);
       }
     } else if (!codeParcelle) {
-      // Si pas de code, reset
       setCurrentParcelle(null);
       setFabOpen(false);
       lastAutoZoomCodeRef.current = null;
     }
   }, [from, action, codeParcelle, parcelles, blinkFeature]);
 
-  // ==================== RENDER ====================
   return (
     <IonPage>
       <IonHeader className="custom-header">
@@ -1629,7 +1561,6 @@ const Tab2: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
-        {/* 🎯 BADGE MODE FLOTTANT - Visible même sans crosshair */}
         {fabOpen && (
           <div
             style={{
@@ -1638,7 +1569,9 @@ const Tab2: React.FC = () => {
               left: "50%",
               transform: "translateX(-50%)",
               zIndex: 1000,
-              backgroundColor: isEditMode ? "rgba(255, 152, 0, 0.95)" : "rgba(5, 59, 255, 0.95)",
+              backgroundColor: isEditMode
+                ? "rgba(255, 152, 0, 0.95)"
+                : "rgba(5, 59, 255, 0.95)",
               color: "white",
               padding: "8px 20px",
               borderRadius: "25px",
@@ -1649,7 +1582,13 @@ const Tab2: React.FC = () => {
               pointerEvents: "none",
             }}
           >
-            {isEditMode ? `MODIFICATION${selectedPointIndex !== null ? ` (Point ${selectedPointIndex + 1})` : ""}` : "CRÉATION"}
+            {isEditMode
+              ? `MODIFICATION${
+                  selectedPointIndex !== null
+                    ? ` (Point ${selectedPointIndex + 1})`
+                    : ""
+                }`
+              : "CRÉATION"}
           </div>
         )}
 
@@ -1684,8 +1623,8 @@ const Tab2: React.FC = () => {
                           gpsAccuracy < 10
                             ? "green"
                             : gpsAccuracy < 50
-                              ? "orange"
-                              : "red",
+                            ? "orange"
+                            : "red",
                       }}
                     >
                       Précision GPS: {gpsAccuracy.toFixed(1)} m
@@ -1776,21 +1715,16 @@ const Tab2: React.FC = () => {
         <div className="map-controls">
           {fabOpen && (
             <div className="fab">
-              {/* Valider */}
               <IonButton
                 className="glass-btn"
                 fill="clear"
-                onClick={
-                  isEditMode ? savePolygonEdit
-                    : addPolygone
-                }
+                onClick={isEditMode ? savePolygonEdit : addPolygone}
               >
                 <IonIcon color="success" icon={checkmark} />
               </IonButton>
 
               {isEditMode ? (
                 <>
-                  {/* Ajouter un sommet */}
                   <IonButton
                     className="glass-btn"
                     fill="clear"
@@ -1802,7 +1736,6 @@ const Tab2: React.FC = () => {
                     <IonIcon color="primary" icon={addOutline} />
                   </IonButton>
 
-                  {/* Déplacer le point sélectionné vers le centre de la croix */}
                   <IonButton
                     className="glass-btn"
                     fill={selectedPointIndex !== null ? "solid" : "clear"}
@@ -1813,18 +1746,19 @@ const Tab2: React.FC = () => {
                     <IonIcon icon={handLeftOutline} />
                   </IonButton>
 
-                  {/* Supprimer le point sélectionné */}
                   <IonButton
                     className="glass-btn"
                     fill={selectedPointIndex !== null ? "solid" : "clear"}
                     color={selectedPointIndex !== null ? "danger" : "medium"}
                     onClick={deleteSelectedPoint}
-                    disabled={selectedPointIndex === null || getRealPointsCount(drawPoints) <= 2}
+                    disabled={
+                      selectedPointIndex === null ||
+                      getRealPointsCount(drawPoints) <= 2
+                    }
                   >
                     <IonIcon icon={removeOutline} />
                   </IonButton>
 
-                  {/* Désélectionner */}
                   <IonButton
                     className="glass-btn"
                     fill="clear"
@@ -1836,7 +1770,6 @@ const Tab2: React.FC = () => {
                 </>
               ) : (
                 <>
-                  {/* Ajouter un point au centre de la croix */}
                   <IonButton
                     className="glass-btn"
                     fill="clear"
@@ -1845,7 +1778,6 @@ const Tab2: React.FC = () => {
                     <IonIcon color="primary" icon={addOutline} />
                   </IonButton>
 
-                  {/* Supprimer le dernier point */}
                   <IonButton
                     className="glass-btn"
                     fill="clear"
@@ -1859,7 +1791,6 @@ const Tab2: React.FC = () => {
                 </>
               )}
 
-              {/* Toggle Snap/Accrochage */}
               <IonButton
                 className="glass-btn"
                 fill={snapEnabled ? "solid" : "clear"}
@@ -1875,7 +1806,6 @@ const Tab2: React.FC = () => {
                 <IonIcon icon={magnetOutline} />
               </IonButton>
 
-              {/* Annuler */}
               <IonButton
                 className="glass-btn"
                 fill="clear"
@@ -1884,7 +1814,6 @@ const Tab2: React.FC = () => {
                 <IonIcon color="dark" icon={closeOutline} />
               </IonButton>
 
-              {/* GPS */}
               <IonButton
                 className="glass-btn"
                 fill={tracking ? "solid" : "clear"}
@@ -1898,7 +1827,6 @@ const Tab2: React.FC = () => {
 
           {currentParcelle && (
             <>
-              {/* Bouton Croquis - Intelligent et automatique */}
               <IonButton
                 fill="clear"
                 className="glass-btn"
@@ -1909,7 +1837,6 @@ const Tab2: React.FC = () => {
                       currentParcelle.polygone.length > 0;
 
                     if (hasPolygon) {
-                      // ─── SI POLYGONE EXISTE → Mode ÉDITION automatique ─────
                       const points = currentParcelle.polygone[0].points.map(
                         (pt) =>
                           transform(
@@ -1926,7 +1853,6 @@ const Tab2: React.FC = () => {
                         "Mode édition - Modifiez les points existants",
                       );
                     } else {
-                      // ─── PAS DE POLYGONE → Mode CRÉATION ─────
                       setDrawPoints([]);
                       setIsEditMode(false);
                       setSelectedPointIndex(null);
@@ -1934,7 +1860,6 @@ const Tab2: React.FC = () => {
                       setToastMessage("Mode création - Ajoutez des points");
                     }
                   } else {
-                    // ─── Fermer le FAB ─────
                     setDrawPoints([]);
                     setFabOpen(false);
                     setIsEditMode(false);
@@ -2049,4 +1974,5 @@ const Tab2: React.FC = () => {
   );
 };
 
-export default Tab2;
+export default MapViewerPage;
+

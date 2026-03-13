@@ -38,20 +38,18 @@ import {
 } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import "../assets/dist/css/bootstrap.min.css";
-import "./Tab1.css";
-import { ParametreTerritoire } from "../model/ParametreTerritoire";
-import { Categorie } from "../model/Categorie";
-import { Status } from "../model/Status";
-import { Parcelle } from "../model/parcelle/Parcelle";
-import { checkRiverin, Riverin } from "../model/parcelle/Riverin";
-import { Repere } from "../model/Repere";
+import "../../assets/dist/css/bootstrap.min.css";
+import "./ParcelleCollectionPage.css";
+import { ParametreTerritoire } from "../../entities/territoire";
+import { Categorie, Status } from "../../entities/reference";
+import { Parcelle, checkRiverin, Riverin } from "../../entities/parcelle";
+import { Repere } from "../../entities/territoire";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-import ModalDemandeur from "../components/demandeur/ModalDemandeur";
-import ModalRiverin from "../components/riverin/ModalRiverin";
-import SeacrhModal from "../components/demandeur/SearchModal";
-import DemandeurView from "../components/demandeur/DemandeurView";
-import ParcelleForm from "../components/parcelle/ParcelleForm";
+import ModalDemandeur from "../../widgets/demandeur/ModalDemandeur";
+import ModalRiverin from "../../widgets/riverin/ModalRiverin";
+import SeacrhModal from "../../widgets/demandeur/SearchDemandeurModal";
+import DemandeurView from "../../widgets/demandeur/DemandeurView";
+import ParcelleForm from "../../widgets/parcelle/ParcelleForm";
 import {
   deleteParcelle,
   getAllParcelles,
@@ -60,17 +58,18 @@ import {
   insertPersonneMorale,
   insertPersonnePhysique,
   verifyDatabase,
-} from "../model/base/DbSchema";
-import Alert from "../components/alert/Alert";
-import DropDown from "../components/dropdown/DropDown";
+} from "../../model/base/DbSchema";
+import Alert from "../../shared/ui/Alert";
+import DropDown from "../../shared/ui/DropDown";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import ScrollToTop from "../components/ScrollTop/ScrollToTop";
-import { Demandeur } from "../model/Demandeur/Demandeur";
-import { PersonnePhysique } from "../model/Demandeur/PersonnePhysique";
-import { PersonneMorale } from "../model/Demandeur/PersonneMorale";
-import Toast, { ToastType } from "../components/toast/Toast";
+import ScrollToTop from "../../shared/ui/ScrollToTop";
+import {
+  Demandeur,
+  PersonnePhysique,
+  PersonneMorale,
+} from "../../entities/demandeur";
+import Toast, { ToastType } from "../../shared/ui/Toast";
 
-// Hook personnalisé pour la gestion des données de référence
 const useReferenceData = () => {
   const [categorie, setCategorie] = useState<Categorie[]>([]);
   const [status, setStatus] = useState<Status[]>([]);
@@ -90,7 +89,6 @@ const useReferenceData = () => {
   return { categorie, setCategorie, status, repereL, loadReferenceData };
 };
 
-// Hook personnalisé pour la génération du code parcelle
 const useParcelleCode = () => {
   const [currentIncrement, setCurrentIncrement] = useState(0);
   const [parametreTerritoire, setParametreTerritoire] =
@@ -159,11 +157,10 @@ const useParcelleCode = () => {
   return { parametreTerritoire, generateNextCode, saveIncrement };
 };
 
-const Tab1: React.FC = () => {
+const ParcelleCollectionPage: React.FC = () => {
   const history = useHistory();
   const contentRef = useRef<HTMLIonContentElement>(null);
 
-  // États UI
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
   const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
@@ -187,7 +184,6 @@ const Tab1: React.FC = () => {
   const [decomposed, setDecomposed] = useState(false);
   const [isPhysique, setIsPhysique] = useState(0);
 
-  // États données
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
   const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(
@@ -202,19 +198,20 @@ const Tab1: React.FC = () => {
   const [, setSelectedParcelle] = useState<Parcelle | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalParcelles, setTotalParcelles] = useState(0);
-  const [toast, setToast] = useState({visible: false, message: "",type: "success" as ToastType,});
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success" as ToastType,
+  });
   const ITEMS_PER_PAGE = 10;
 
-  // Hooks personnalisés
   const { categorie, setCategorie, status, repereL, loadReferenceData } =
     useReferenceData();
   const { parametreTerritoire, generateNextCode, saveIncrement } =
     useParcelleCode();
 
-  // Chargement initial
   const loadData = useCallback(async (page: number = 1) => {
     const { data, total } = await getAllParcelles(page, ITEMS_PER_PAGE);
-    console.log(data);
     setParcelles(data);
     setTotalParcelles(total);
   }, []);
@@ -284,7 +281,6 @@ const Tab1: React.FC = () => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // ─── Ajouter demandeur à la parcelle ────────────────────────────
   const addDemandeur = useCallback(async () => {
     try {
       const newDemandeur = new Demandeur(
@@ -313,7 +309,9 @@ const Tab1: React.FC = () => {
 
   const handleCardClick = useCallback(
     (codeParcelle: string) => {
-      history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
+      history.push(
+        `/tab2?from=tab1&action=croquis&code=${codeParcelle}`,
+      );
     },
     [history],
   );
@@ -326,15 +324,20 @@ const Tab1: React.FC = () => {
         riverin: [...prev.riverin, newRiverin],
       }));
       setNewRiverin(Riverin.init());
-      setToast({ visible: true, message: "Riverin ajouté avec success", type: "success", });
+      setToast({
+        visible: true,
+        message: "Riverin ajouté avec success",
+        type: "success",
+      });
     } catch (error) {
-      setTempAlertMessage(error instanceof Error ? error.message : "Erreur inconnue", );
+      setTempAlertMessage(
+        error instanceof Error ? error.message : "Erreur inconnue",
+      );
       setShowTempAlert(true);
     }
   }, [newRiverin]);
 
   const removeParcelle = useCallback((code: string, synchronise?: number) => {
-    // ahintsy malaky
     deleteParcelle(code);
 
     if (synchronise === 1) {
@@ -384,7 +387,11 @@ const Tab1: React.FC = () => {
       }
       setParcelle(Parcelle.init());
       setShowCreateModal(false);
-      setToast({ visible: true, message: "Parcelle ajouté avec success", type: "success", });
+      setToast({
+        visible: true,
+        message: "Parcelle ajouté avec success",
+        type: "success",
+      });
     } catch (error) {
       setTempAlertMessage(
         error instanceof Error ? error.message : "Erreur inconnue",
@@ -434,7 +441,11 @@ const Tab1: React.FC = () => {
         correctOrientation: true,
       });
       if (!photo.base64String) throw new Error("Pas de photo");
-      const compressed = await compressImage(photo.base64String, 1024, 0.6);
+      const compressed = await compressImage(
+        photo.base64String,
+        1024,
+        0.6,
+      );
       const fileName = `parcelle/${Date.now()}.jpeg`;
       await Filesystem.writeFile({
         path: fileName,
@@ -515,8 +526,10 @@ const Tab1: React.FC = () => {
             const newTotal = totalParcelles - 1;
             const maxPage = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1;
             setTotalParcelles(newTotal);
-            setParcelles((prev) => prev.filter((p) => p.code !== codeToRemove));
-            if (currentPage > maxPage) setCurrentPage(maxPage); // ← useEffect loadData se déclenche
+            setParcelles((prev) =>
+              prev.filter((p) => p.code !== codeToRemove),
+            );
+            if (currentPage > maxPage) setCurrentPage(maxPage);
           }
           setShowAlertRemove(false);
           setCodeToRemove(null);
@@ -696,7 +709,6 @@ const Tab1: React.FC = () => {
         <ScrollToTop contentRef={contentRef} />
       </IonContent>
 
-      {/* Modal création parcelle */}
       <IonModal isOpen={showCreateModal} onDidDismiss={closeCreateModal}>
         <IonHeader>
           <IonToolbar color="primary">
@@ -805,4 +817,5 @@ const Tab1: React.FC = () => {
   );
 };
 
-export default Tab1;
+export default ParcelleCollectionPage;
+

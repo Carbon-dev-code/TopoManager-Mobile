@@ -92,12 +92,9 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Ajuste checkbox */
 ion-checkbox {
   --background: #ffffff50;
-  /* couleur fond non cochée */
   --background-checked: #4fc3f7;
-  /* couleur fond cochée */
   --border-radius: 6px;
 }
 
@@ -128,31 +125,26 @@ ion-checkbox {
   justify-content: center;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.468);
-  /* ultra transparent */
-  backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.521);
+  backdrop-filter: blur(10px) saturate(50%);
+  border: 1px solid rgba(255, 255, 255, 0.761);
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
     inset 0 1px 3px rgba(255, 255, 255, 0.2);
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   position: relative;
   overflow: hidden;
-  transition: background 0.3s ease, transform 0.3s ease;
-}
-
-.glass-btn:active {
-  background: rgba(255, 255, 255, 0.15);
-  transform: scale(0.95);
+  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .glass-btn ion-icon {
   font-size: 20px;
 }
 
-.glass-btn-draw ion-icon {
-  font-size: 20px;
+.glass-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.95);
 }
 
 .ol-attribution {
@@ -211,8 +203,6 @@ ion-checkbox {
   white-space: nowrap;
   color: black;
   pointer-events: none;
-
-  /* 💎 Effet glassmorphism */
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -225,25 +215,6 @@ ion-checkbox {
     font-size: 11px;
     padding: 3px 6px;
   }
-}
-
-.glass-btn {
-  --padding-start: 0;
-  --padding-end: 0;
-  justify-content: center;
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.521);
-  backdrop-filter: blur(10px) saturate(50%);
-  border: 1px solid rgba(255, 255, 255, 0.761);
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
-    inset 0 1px 3px rgba(255, 255, 255, 0.2);
-  width: 42px;
-  height: 42px;
-  position: relative;
-  overflow: hidden;
-  transition: background 0.3s ease, transform 0.3s ease;
 }
 
 .glass-label {
@@ -267,7 +238,6 @@ ion-checkbox {
   transition: background 0.3s ease, transform 0.3s ease;
 }
 
-/* Responsive pour les petits écrans (ex: portrait mobile) */
 @media (max-width: 480px) {
   .glass-label {
     font-size: 0.9rem;
@@ -300,7 +270,6 @@ ion-checkbox {
     right: auto;
     transform: translateX(-50%);
     flex-direction: row;
-    /* Optionnel : aligner horizontalement en paysage */
   }
 }
 
@@ -342,7 +311,6 @@ ion-checkbox {
   flex: 1;
 }
 
-/* ✅ Responsive pour petits écrans en mode paysage */
 @media (max-height: 500px) and (orientation: landscape) {
   .gps-container {
     padding: 5px;
@@ -362,7 +330,6 @@ ion-checkbox {
   right: auto !important;
 }
 
-/* Loader trois points pour le GPS */
 .gps-status {
   margin-top: 5px;
 }
@@ -376,7 +343,6 @@ ion-checkbox {
   color: red;
 }
 
-/* Loader trois points */
 .gps-loader {
   display: flex;
   justify-content: center;
@@ -430,7 +396,6 @@ ion-checkbox {
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* ─── Styles pour le groupe d'actions sur point sélectionné ───── */
 .point-actions-group {
   display: flex;
   flex-direction: row !important;
@@ -450,7 +415,8 @@ ion-checkbox {
 }
 
 @keyframes pulse-border {
-  0%, 100% {
+  0%,
+  100% {
     border-color: rgba(255, 59, 48, 0.4);
     box-shadow: 0 0 10px rgba(255, 59, 48, 0.2);
   }
@@ -458,26 +424,6 @@ ion-checkbox {
     border-color: rgba(255, 59, 48, 0.7);
     box-shadow: 0 0 20px rgba(255, 59, 48, 0.4);
   }
-}
-
-/* ─── Animation pour les boutons ───── */
-.glass-btn {
-  --padding-start: 0;
-  --padding-end: 0;
-  justify-content: center;
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.521);
-  backdrop-filter: blur(10px) saturate(50%);
-  border: 1px solid rgba(255, 255, 255, 0.761);
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
-    inset 0 1px 3px rgba(255, 255, 255, 0.2);
-  width: 42px;
-  height: 42px;
-  position: relative;
-  overflow: hidden;
-  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .glass-btn:hover:not(:disabled) {
@@ -499,15 +445,21 @@ ion-checkbox {
   filter: grayscale(0.5);
 }
 
-/* ─── Boutons avec états spéciaux ───── */
 .glass-btn.btn-undo {
   animation: shake 0.5s ease-in-out;
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-3px) rotate(-5deg); }
-  75% { transform: translateX(3px) rotate(5deg); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px) rotate(-5deg);
+  }
+  75% {
+    transform: translateX(3px) rotate(5deg);
+  }
 }
 
 .glass-btn.btn-danger-active {
@@ -517,7 +469,8 @@ ion-checkbox {
 }
 
 @keyframes pulse-red {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4);
   }
   50% {
@@ -525,7 +478,6 @@ ion-checkbox {
   }
 }
 
-/* ─── Toast message amélioré ───── */
 .toast-message {
   font-weight: 500;
   text-align: center;
@@ -536,24 +488,22 @@ ion-checkbox {
   font-weight: 600;
 }
 
-/* ─── Responsive pour les petits écrans ───── */
 @media (max-width: 360px) {
   .glass-btn {
     width: 38px;
     height: 38px;
   }
-  
+
   .point-actions-group {
     gap: 2px;
     padding: 2px;
   }
-  
+
   .glass-btn ion-icon {
     font-size: 18px;
   }
 }
 
-/* ─── Indicateur visuel pour le point sélectionné sur la carte ───── */
 .point-selected-indicator {
   position: absolute;
   pointer-events: none;
@@ -571,6 +521,11 @@ ion-checkbox {
 }
 
 @keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
+

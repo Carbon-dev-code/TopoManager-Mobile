@@ -12,7 +12,7 @@ import { Capacitor, PluginListenerHandle } from "@capacitor/core";
 import { CommunityDevice } from "@capacitor-community/device";
 import { Network } from "@capacitor/network";
 import { Geolocation } from "@capacitor/geolocation";
-import "./Tab7.css";
+import "./DeviceStatusPage.css";
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return "0 B";
@@ -22,7 +22,7 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-const Tab7: React.FC = () => {
+const DeviceStatusPage: React.FC = () => {
   const [used, setUsed] = useState(0);
   const [total, setTotal] = useState(1);
   const [animated, setAnimated] = useState(false);
@@ -34,7 +34,6 @@ const Tab7: React.FC = () => {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
 
-  // Stockage + GPS (une seule fois)
   useEffect(() => {
     const fetchStorage = async () => {
       if (Capacitor.isNativePlatform()) {
@@ -61,8 +60,7 @@ const Tab7: React.FC = () => {
           timeout: 8000,
         });
         setGpsAccuracy(pos.coords.accuracy);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (e) {
+      } catch {
         setGpsError("Non disponible");
       } finally {
         setGpsLoading(false);
@@ -73,7 +71,6 @@ const Tab7: React.FC = () => {
     fetchGps();
   }, []);
 
-  // Réseau — useEffect séparé pour le listener
   useEffect(() => {
     let listenerHandle: PluginListenerHandle | null = null;
 
@@ -99,17 +96,14 @@ const Tab7: React.FC = () => {
       }
     };
 
-    // ✅ Premier appel immédiat
     initNetwork();
     fetchGps();
 
-    // ✅ Refresh toutes les 15s
     const interval = setInterval(() => {
       initNetwork();
       fetchGps();
     }, 15000);
 
-    // ✅ Listener réseau temps réel en plus
     Network.addListener("networkStatusChange", (status) => {
       setConnected(status.connected);
       setConnectionType(status.connectionType);
@@ -128,13 +122,22 @@ const Tab7: React.FC = () => {
   const storageStatus = pct < 50 ? "Normal" : pct < 80 ? "Modéré" : "Critique";
 
   const gpsColor =
-    gpsAccuracy === null ? "#aaa"
-      : gpsAccuracy < 10 ? "#00c9a7"
-      : gpsAccuracy < 50 ? "#f7b731"
+    gpsAccuracy === null
+      ? "#aaa"
+      : gpsAccuracy < 10
+      ? "#00c9a7"
+      : gpsAccuracy < 50
+      ? "#f7b731"
       : "#ff6b6b";
 
   const gpsStatus =
-    gpsAccuracy === null ? "—" : gpsAccuracy < 10 ? "Excellent" : gpsAccuracy < 50 ? "Modéré" : "Faible";
+    gpsAccuracy === null
+      ? "—"
+      : gpsAccuracy < 10
+      ? "Excellent"
+      : gpsAccuracy < 50
+      ? "Modéré"
+      : "Faible";
 
   return (
     <IonPage>
@@ -148,7 +151,6 @@ const Tab7: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen className="ion-padding tab7-content">
-        {/* Stockage */}
         <div className="storage-card">
           <div className="storage-header">
             <span className="storage-title">Stockage</span>
@@ -174,7 +176,6 @@ const Tab7: React.FC = () => {
           </div>
         </div>
 
-        {/* Réseau */}
         <div className="storage-card">
           <div className="storage-header">
             <span className="storage-title">Réseau</span>
@@ -187,7 +188,9 @@ const Tab7: React.FC = () => {
           </div>
           <div className="net-row">
             <div
-              className={`net-dot ${connected ? "net-dot-on" : "net-dot-off"}`}
+              className={`net-dot ${
+                connected ? "net-dot-on" : "net-dot-off"
+              }`}
             />
             <span className="net-type">
               {connectionType ? connectionType.toUpperCase() : "—"}
@@ -195,7 +198,6 @@ const Tab7: React.FC = () => {
           </div>
         </div>
 
-        {/* GPS */}
         <div className="storage-card">
           <div className="storage-header">
             <span className="storage-title">GPS</span>
@@ -238,4 +240,5 @@ const Tab7: React.FC = () => {
   );
 };
 
-export default Tab7;
+export default DeviceStatusPage;
+

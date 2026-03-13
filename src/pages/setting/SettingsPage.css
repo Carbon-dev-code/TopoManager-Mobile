@@ -101,7 +101,6 @@
   margin: 0 auto;
 }
 
-/* Animation de rotation pendant le chargement */
 .spin-icon {
   animation: spin 1s linear infinite;
 }
@@ -116,10 +115,10 @@
   }
 }
 
-/* Style pour la barre de progression */
 ion-progress-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
 }
+

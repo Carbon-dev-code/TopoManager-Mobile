@@ -12,11 +12,16 @@ import {
   IonToolbar,
   useIonViewWillEnter,
 } from "@ionic/react";
-import "./Tab5.css";
-import { searchSharp, create, close, informationCircle } from "ionicons/icons";
-import ModalDemandeur from "../components/demandeur/ModalDemandeur";
+import "./DemandeurManagementPage.css";
+import {
+  searchSharp,
+  create,
+  close,
+  informationCircle,
+} from "ionicons/icons";
+import ModalDemandeur from "../../components/demandeur/ModalDemandeur";
 import { useEffect, useMemo, useRef, useState } from "react";
-import DemandeurView from "../components/demandeur/DemandeurView";
+import DemandeurView from "../../components/demandeur/DemandeurView";
 import {
   insertPersonnePhysique,
   insertPersonneMorale,
@@ -24,16 +29,16 @@ import {
   getAllPersonnesMorales,
   deletePersonneMorale,
   deletePersonnePhysique,
-} from "../model/base/DbSchema";
-import Alert from "../components/alert/Alert";
-import Toast, { ToastType } from "../components/toast/Toast";
-import { PersonnePhysique } from "../model/Demandeur/PersonnePhysique";
-import { PersonneMorale } from "../model/Demandeur/PersonneMorale";
-import ScrollToTop from "../components/ScrollTop/ScrollToTop";
+} from "../../model/base/DbSchema";
+import Alert from "../../components/alert/Alert";
+import Toast, { ToastType } from "../../components/toast/Toast";
+import { PersonnePhysique } from "../../model/Demandeur/PersonnePhysique";
+import { PersonneMorale } from "../../model/Demandeur/PersonneMorale";
+import ScrollToTop from "../../components/ScrollTop/ScrollToTop";
 
 type ModalMode = "create" | "view" | "edit";
 
-const Tab5: React.FC = () => {
+const DemandeurManagementPage: React.FC = () => {
   const contentRef = useRef<HTMLIonContentElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [search, setSearch] = useState<boolean>(false);
@@ -83,8 +88,6 @@ const Tab5: React.FC = () => {
     load();
   });
 
-  // ─── Items paginés ───────────────────────────────────────────────
-  // Filtre recherche — physiques + morales
   const filteredPhysiques = personnePhysiqueList.filter((p) => {
     const q = searchQuery.toLowerCase();
     if (!q) return true;
@@ -100,7 +103,6 @@ const Tab5: React.FC = () => {
     return (p.denomination ?? "").toLowerCase().includes(q);
   });
 
-  // ─── Pagination ──────────────────────────────────────────────────
   const allFiltered = useMemo(
     () => [
       ...filteredPhysiques.map((p) => ({ type: 0 as const, data: p })),
@@ -116,12 +118,10 @@ const Tab5: React.FC = () => {
     currentPage * ITEMS_PER_PAGE,
   );
 
-  // reset page si recherche change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // ===== Ouvrir en mode création =====
   const handleOpenCreate = () => {
     setPersonnePhysique(PersonnePhysique.init());
     setPersonneMorale(PersonneMorale.init());
@@ -130,7 +130,6 @@ const Tab5: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  // ===== Ouvrir en mode vue — physique =====
   const handleOpenViewPhysique = (p: PersonnePhysique) => {
     setPersonnePhysique(p);
     setIsPhysique(0);
@@ -138,7 +137,6 @@ const Tab5: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  // ===== Ouvrir en mode vue — morale =====
   const handleOpenViewMorale = (p: PersonneMorale) => {
     setPersonneMorale(p);
     setIsPhysique(1);
@@ -146,7 +144,6 @@ const Tab5: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  // ===== Ouvrir en mode édition — physique =====
   const handleOpenEditPhysique = (p: PersonnePhysique) => {
     setPersonnePhysique(p);
     setIsPhysique(0);
@@ -154,7 +151,6 @@ const Tab5: React.FC = () => {
     setShowCreateModal(true);
   };
 
-  // ===== Ouvrir en mode édition — morale =====
   const handleOpenEditMorale = (p: PersonneMorale) => {
     setPersonneMorale(p);
     setIsPhysique(1);
@@ -421,4 +417,5 @@ const Tab5: React.FC = () => {
   );
 };
 
-export default Tab5;
+export default DemandeurManagementPage;
+

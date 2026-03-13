@@ -26,13 +26,13 @@ import {
   IonRefresherContent,
 } from "@ionic/react";
 import { sync, checkmark, settings, wifi } from "ionicons/icons";
-import "./Tab3.css";
-import { ConfigService } from "../model/ConfigService";
-import { Parcelle } from "../model/parcelle/Parcelle";
-import DemandeurView from "../components/demandeur/DemandeurView";
-import { getAllParcelles, insertParcelle } from "../model/base/DbSchema";
-import Filtre from "../components/filtre/Filtre";
-import ServerModal from "../components/server/ServerModal";
+import "./SyncManagerPage.css";
+import { ConfigService } from "../../model/ConfigService";
+import { Parcelle } from "../../model/parcelle/Parcelle";
+import DemandeurView from "../../components/demandeur/DemandeurView";
+import { getAllParcelles, insertParcelle } from "../../model/base/DbSchema";
+import Filtre from "../../components/filtre/Filtre";
+import ServerModal from "../../components/server/ServerModal";
 
 interface ApiResponse {
   success: boolean;
@@ -41,14 +41,14 @@ interface ApiResponse {
   server_time?: string;
 }
 
-const Tab3: React.FC = () => {
+const SyncManagerPage: React.FC = () => {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [syncingAll, setSyncingAll] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [toastColor, setToastColor] = useState<"success" | "danger" | "medium">(
-    "success",
-  );
+  const [toastColor, setToastColor] = useState<
+    "success" | "danger" | "medium"
+  >("success");
   const [serverIpPort, setServerIpPort] = useState<string>("");
   const [showServerModal, setShowServerModal] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
@@ -57,9 +57,7 @@ const Tab3: React.FC = () => {
   >("tous");
   const [hasUnsynced, setHasUnsynced] = useState(false);
 
-  const loadParcellesFromStorage = useCallback(async (): Promise<
-    Parcelle[]
-  > => {
+  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     const { data } = await getAllParcelles();
     return data;
   }, []);
@@ -98,7 +96,7 @@ const Tab3: React.FC = () => {
   const syncWithAPI = useCallback(
     async (parcelleData: Parcelle): Promise<boolean> => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000); // 8s max
+      const timeout = setTimeout(() => controller.abort(), 8000);
       try {
         const endpoint = `${await ConfigService.getServerBaseUrl()}/api_parcelle_demandeur`;
         const response = await fetch(endpoint, {
@@ -113,7 +111,9 @@ const Tab3: React.FC = () => {
         }
         const data: ApiResponse = await response.json();
         if (!data.success) {
-          throw new Error(`Sync échouée: ${data.message ?? "Erreur inconnue"}`);
+          throw new Error(
+            `Sync échouée: ${data.message ?? "Erreur inconnue"}`,
+          );
         }
         return true;
       } catch (error) {
@@ -180,9 +180,9 @@ const Tab3: React.FC = () => {
   const handleRefresh = useCallback(
     async (event: CustomEvent) => {
       try {
-        await load(); // charge tes données
+        await load();
       } finally {
-        event.detail.complete(); // stop le refresher dès que load est terminé
+        event.detail.complete();
       }
     },
     [load],
@@ -247,7 +247,6 @@ const Tab3: React.FC = () => {
 
     setSyncingAll(true);
 
-    // marquer toutes les parcelles comme en cours
     let updatedParcelles = parcelles.map((p) =>
       nonSyncParcelles.some((n) => n.code === p.code)
         ? { ...p, syncing: true }
@@ -269,7 +268,6 @@ const Tab3: React.FC = () => {
           syncing: false,
         };
 
-        // Persister via localforage
         await insertParcelle(updatedParcelle);
 
         updatedParcelles = updatedParcelles.map((p) =>
@@ -335,7 +333,6 @@ const Tab3: React.FC = () => {
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
 
-        {/* === Card info serveur avec icône de test === */}
         <div className="server mb-1">
           <div className="server-info-card w-100">
             <IonLabel>Adresse serveur :</IonLabel>
@@ -364,7 +361,6 @@ const Tab3: React.FC = () => {
           )}
         </div>
 
-        {/* Filtres */}
         <Filtre
           filtreParcelle={filtreParcelle}
           setFiltreParcelle={setFiltreParcelle}
@@ -424,9 +420,8 @@ const Tab3: React.FC = () => {
                         <IonIcon icon={sync} color="primary"></IonIcon>
                         <IonLabel>
                           {" "}
-                          Sync le {new Date(
-                            parcelle.lastSync,
-                          ).toLocaleString()}{" "}
+                          Sync le{" "}
+                          {new Date(parcelle.lastSync).toLocaleString()}{" "}
                         </IonLabel>
                       </IonChip>
                     )}
@@ -477,4 +472,5 @@ const Tab3: React.FC = () => {
   );
 };
 
-export default Tab3;
+export default SyncManagerPage;
+

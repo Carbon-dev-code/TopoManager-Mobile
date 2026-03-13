@@ -1,22 +1,37 @@
-import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonMenuButton, IonPage, IonPopover, IonTitle, IonToolbar,useIonViewWillEnter,} from "@ionic/react";
-import { ellipsisVertical, refreshCircleOutline, saveSharp } from "ionicons/icons";
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonInput,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenuButton,
+  IonPage,
+  IonPopover,
+  IonTitle,
+  IonToolbar,
+  useIonViewWillEnter,
+} from "@ionic/react";
+import {
+  ellipsisVertical,
+  refreshCircleOutline,
+  saveSharp,
+} from "ionicons/icons";
 import { useState } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { clearDatabase } from "../model/base/DbSchema";
+import { clearDatabase } from "../../model/base/DbSchema";
+import Alert from "../../components/alert/Alert";
+import "./AdminSettingsPage.css";
 
-// Components
-import Alert from "../components/alert/Alert";
-
-// CSS
-import "./Tab6.css";
-
-const Tab6: React.FC = () => {
+const AdminSettingsPage: React.FC = () => {
   const [deviceId, setDeviceId] = useState<string>("");
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isModified, setIsModified] = useState(false);
 
-  // Charger la valeur au montage
   useIonViewWillEnter(() => {
     const loadDeviceId = async () => {
       const { value } = await Preferences.get({ key: "device_id" });
@@ -25,19 +40,16 @@ const Tab6: React.FC = () => {
     loadDeviceId();
   });
 
-  // Sauvegarder le device_id
   const saveDeviceId = async () => {
     if (!deviceId) return;
     try {
       await Preferences.set({ key: "device_id", value: deviceId });
-      console.log("Device ID sauvegardé:", deviceId);
-      setIsModified(false); // bouton save caché après sauvegarde
+      setIsModified(false);
     } catch (err) {
       console.error("Erreur lors de la sauvegarde du device_id:", err);
     }
   };
 
-  // Réinitialiser toutes les preferences + DB
   const resetPreferences = async () => {
     try {
       await Preferences.clear();
@@ -45,7 +57,7 @@ const Tab6: React.FC = () => {
       setDeviceId("");
       setTimeout(() => {
         window.location.href = "/accueil";
-      }, 100); // petit délai pour s'assurer que tout est sauvegardé
+      }, 100);
     } catch (err) {
       console.error("Erreur lors du reset:", err);
     }
@@ -92,8 +104,8 @@ const Tab6: React.FC = () => {
                     onIonChange={async (e) => {
                       const val = e.detail.value ?? "";
                       setDeviceId(val);
-                      setIsModified(true); // marque comme modifié
-                      await Preferences.set({ key: "device_id", value: val }); // sauvegarde auto
+                      setIsModified(true);
+                      await Preferences.set({ key: "device_id", value: val });
                     }}
                     onIonFocus={() => setIsFocused(true)}
                     onIonBlur={() => setIsFocused(false)}
@@ -128,4 +140,5 @@ const Tab6: React.FC = () => {
   );
 };
 
-export default Tab6;
+export default AdminSettingsPage;
+
