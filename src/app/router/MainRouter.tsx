@@ -36,7 +36,7 @@ import DemandeurManagementPage from "../../pages/demandeur/DemandeurManagementPa
 import { Preferences } from "@capacitor/preferences";
 import { useEffect, useState } from "react";
 
-import "../../MainRouter.css";
+import "./MainRouter.css";
 
 const MainRouter: React.FC = () => {
   const location = useLocation();

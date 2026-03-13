@@ -8,6 +8,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .user-item {
   --padding-start: 0px; /* remplace le padding par défaut */
   --inner-padding-start: 0px;
@@ -15,7 +16,6 @@ body {
   padding-left: 10px; /* sécurité */
   padding-right: 0px; /* sécurité */
 }
-
 
 .avatar {
   width: 35px;
