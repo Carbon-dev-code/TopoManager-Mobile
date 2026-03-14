@@ -5,11 +5,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 export const useCamera = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const compressImage = useCallback(async (
-    base64: string,
-    maxSize = 1024,
-    quality = 0.6,
-  ): Promise<string> => {
+  const compressImage = useCallback(async ( base64: string, maxSize = 1024, quality = 0.6, ): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = `data:image/jpeg;base64,${base64}`;

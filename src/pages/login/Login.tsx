@@ -1,38 +1,23 @@
 import { IonContent, IonPage, IonAlert, IonButton, IonIcon, IonItem, IonInput, IonRouterLink } from "@ionic/react";
 import { useRef, useState } from "react";
-import { Preferences } from "@capacitor/preferences";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";
 
 import "../../assets/dist/css/bootstrap/bootstrap.min.css";
 import "./Login.css";
-
-const USERNAME_ADMIN = import.meta.env.VITE_ADMIN_USER;
-const PASSWORD_ADMIN = import.meta.env.VITE_ADMIN_PASSWORD;
+import { useLogin } from "./hooks/useLogin";
 
 const Login: React.FC = () => {
   const emailRef = useRef<HTMLIonInputElement>(null);
   const passwordRef = useRef<HTMLIonInputElement>(null);
-  const [showPasswordAlert, setShowPasswordAlert] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  /// Hooks personnalise
+  const { login, showPasswordAlert, setShowPasswordAlert } = useLogin();
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailValue = (emailRef.current?.value ?? "").toString().trim();
-    const passwordValue = (passwordRef.current?.value ?? "").toString().trim();
-    if (passwordValue === PASSWORD_ADMIN && emailValue === USERNAME_ADMIN) {
-      const SESSION_DURATION = 30 * 60 * 1000; // 30 min
-      const expirationTime = new Date().getTime() + SESSION_DURATION;
-      await Preferences.set({ key: "is_logged_in", value: "true" });
-      await Preferences.set({ key: "id_session", value: "0" });
-      await Preferences.set({ key: "username", value: "Admin" });
-      await Preferences.set({
-        key: "session_expiration",
-        value: expirationTime.toString(),
-      });
-      window.location.href = "/tab1";
-    } else { // utilisateur normal agent
-      setShowPasswordAlert(true);
-    } // sinon mots de passe completement erroner
+    await login((emailRef.current?.value ?? "").toString().trim(), (passwordRef.current?.value ?? "").toString().trim());
   };
 
   return (
@@ -54,12 +39,7 @@ const Login: React.FC = () => {
                   Identifiant<span className="red">*</span>
                 </p>
                 <IonItem lines="none" className="login-input">
-                  <IonInput
-                    type="text"
-                    placeholder="utilisateur"
-                    ref={emailRef}
-                    required
-                  />
+                  <IonInput type="text" placeholder="utilisateur" ref={emailRef} required/>
                 </IonItem>
               </div>
 
@@ -70,22 +50,14 @@ const Login: React.FC = () => {
                 <IonItem lines="none" className="login-input">
                   <IonInput
                     type={showPassword ? "text" : "password"}
-                    placeholder="xxxxxxx"
-                    ref={passwordRef}
-                    className="password-placeholder"
-                    required
+                    placeholder="xxxxxxx" ref={passwordRef} className="password-placeholder" required
                   />
                   <IonButton
-                    fill="clear"
-                    slot="end"
+                    fill="clear" slot="end"
                     onClick={() => setShowPassword(!showPassword)}
-                    size="small"
-                    color="medium"
+                    size="small" color="medium"
                   >
-                    <IonIcon
-                      slot="icon-only"
-                      icon={showPassword ? eyeOffOutline : eyeOutline}
-                    />
+                    <IonIcon slot="icon-only" icon={showPassword ? eyeOffOutline : eyeOutline}/>
                   </IonButton>
                 </IonItem>
               </div>

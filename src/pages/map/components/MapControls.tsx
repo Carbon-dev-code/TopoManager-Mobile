@@ -263,8 +263,7 @@ export const MapControls: React.FC<MapControlsProps> = ({
               checked={layerVisibility.requisition}
               onIonChange={() => toggleLayer("requisition")}
             />
-            <Cube color="chartreuse" />
-            <IonLabel>Requisition</IonLabel>
+            <Cube color="chartreuse" />Requisition
           </IonItem>
           <IonItem className="glass-item" lines="none">
             <IonCheckbox
