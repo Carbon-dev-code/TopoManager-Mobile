@@ -23,7 +23,7 @@ import {
   tabletPortraitSharp,
 } from "ionicons/icons";
 
-import ParcelleCollectionPage from "../../pages/parcelle/ParcelleCollectionPage";
+import ParcelleCollectionPage from "../../pages/parcelle/ParcelleCollectionPage.old";
 import MapViewerPage from "../../pages/map/MapViewerPage";
 import SyncManagerPage from "../../pages/sync/SyncManagerPage";
 import SettingsPage from "../../pages/setting/SettingsPage";

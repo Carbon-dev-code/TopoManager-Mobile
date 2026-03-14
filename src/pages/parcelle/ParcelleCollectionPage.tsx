@@ -1,218 +1,48 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
-import {
-  IonContent,
-  IonHeader,
-  IonPage,
-  IonTitle,
-  IonToolbar,
-  IonButtons,
-  IonMenuButton,
-  IonModal,
-  IonButton,
-  IonIcon,
-  IonCard,
-  IonCardSubtitle,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
-  IonChip,
-  IonLabel,
-  useIonViewWillEnter,
-  IonSearchbar,
-} from "@ionic/react";
-import {
-  close,
-  informationCircle,
-  create,
-  sync,
-  map,
-  searchSharp,
-  ellipsisVerticalOutline,
-} from "ionicons/icons";
+import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonButtons, IonMenuButton, IonModal, IonButton, IonIcon, IonCard, IonCardSubtitle, IonCardContent, IonCardHeader, IonCardTitle, IonChip, IonLabel, useIonViewWillEnter, IonSearchbar, } from "@ionic/react";
+import { close, informationCircle, create, sync, map, searchSharp, ellipsisVerticalOutline, } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
 import "../../assets/dist/css/bootstrap/bootstrap.min.css";
 import "./ParcelleCollectionPage.css";
-import { ParametreTerritoire } from "../../entities/territoire";
-import { Categorie, Status } from "../../entities/reference";
-import { Parcelle, checkRiverin, Riverin } from "../../entities/parcelle";
-import { Repere } from "../../entities/parcelle/model/Repere";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { verifyDatabase } from "../../shared/lib/db/DbSchema";
+import Alert from "../../shared/ui/Alert";
+import DropDown from "../../shared/ui/DropDown";
+import ScrollToTop from "../../shared/ui/ScrollToTop";
+import DemandeurView from "../../widgets/demandeur/DemandeurView";
+import ParcelleForm from "../../widgets/parcelle/ParcelleForm";
 import ModalDemandeur from "../../widgets/demandeur/ModalDemandeur";
 import ModalRiverin from "../../widgets/riverin/ModalRiverin";
 import SeacrhModal from "../../widgets/demandeur/SearchDemandeurModal";
-import DemandeurView from "../../widgets/demandeur/DemandeurView";
-import ParcelleForm from "../../widgets/parcelle/ParcelleForm";
-import {
-  deleteParcelle,
-  getAllParcelles,
-  insertDemandeur,
-  insertParcelle,
-  insertPersonneMorale,
-  insertPersonnePhysique,
-  verifyDatabase,
-} from "../../shared/lib/db/DbSchema";
-import Alert from "../../shared/ui/Alert";
-import DropDown from "../../shared/ui/DropDown";
-import { Directory, Filesystem } from "@capacitor/filesystem";
-import ScrollToTop from "../../shared/ui/ScrollToTop";
-import { Demandeur} from "../../entities/demandeur/model/Demandeur";
-import { PersonnePhysique} from "../../entities/demandeur/model/PersonnePhysique"
-import { PersonneMorale} from "../../entities/demandeur/model/PersonneMorale"
 import Toast, { ToastType } from "../../shared/ui/Toast";
-
-const useReferenceData = () => {
-  const [categorie, setCategorie] = useState<Categorie[]>([]);
-  const [status, setStatus] = useState<Status[]>([]);
-  const [repereL, setRepere] = useState<Repere[]>([]);
-
-  const loadReferenceData = useCallback(async () => {
-    const [categorieData, statusData, repereData] = await Promise.all([
-      Preferences.get({ key: "categorieData" }),
-      Preferences.get({ key: "statusData" }),
-      Preferences.get({ key: "repereData" }),
-    ]);
-    if (categorieData.value) setCategorie(JSON.parse(categorieData.value));
-    if (statusData.value) setStatus(JSON.parse(statusData.value));
-    if (repereData.value) setRepere(JSON.parse(repereData.value));
-  }, []);
-
-  return { categorie, setCategorie, status, repereL, loadReferenceData };
-};
-
-const useParcelleCode = () => {
-  const [currentIncrement, setCurrentIncrement] = useState(0);
-  const [parametreTerritoire, setParametreTerritoire] =
-    useState<ParametreTerritoire | null>(null);
-
-  const generateNextCode = useCallback(async () => {
-    try {
-      const [parametrePref, devicePref] = await Promise.all([
-        Preferences.get({ key: "parametreActuel" }),
-        Preferences.get({ key: "device_id" }),
-      ]);
-      if (!parametrePref.value || !devicePref.value) return null;
-
-      const parametreActuel = JSON.parse(parametrePref.value);
-      const deviceId = JSON.parse(devicePref.value);
-      const newIncrement = (parametreActuel.increment || 0) + 1;
-      const { region, district, commune, fokontany, hameau } = parametreActuel;
-      const code = `${deviceId}-${region.coderegion}-${district.codedistrict}-${commune.codecommune}-${fokontany.codefokontany}-${hameau?.codehameau}-${newIncrement}`;
-
-      setCurrentIncrement(newIncrement);
-      setParametreTerritoire(parametreActuel);
-
-      const now = new Date();
-      const dateTime = now
-        .toLocaleString("fr-FR", {
-          timeZone: "Indian/Antananarivo",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        })
-        .replace(/(\d{2})\/(\d{2})\/(\d{4}),?\s/, "$3-$2-$1 ");
-
-      return {
-        code,
-        dateCreation: dateTime,
-        parametreTerritoire: parametreActuel,
-      };
-    } catch (error) {
-      console.error("Erreur génération code parcelle:", error);
-      return null;
-    }
-  }, []);
-
-  const saveIncrement = useCallback(async () => {
-    try {
-      const parametrePref = await Preferences.get({ key: "parametreActuel" });
-      if (!parametrePref.value) throw new Error("Paramètres non configurés");
-      const parametreActuel = JSON.parse(parametrePref.value);
-      await Preferences.set({
-        key: "parametreActuel",
-        value: JSON.stringify({
-          ...parametreActuel,
-          increment: currentIncrement,
-        }),
-      });
-    } catch (error) {
-      console.error("Erreur sauvegarde incrément:", error);
-      throw error;
-    }
-  }, [currentIncrement]);
-
-  return { parametreTerritoire, generateNextCode, saveIncrement };
-};
+import { useReferenceData, useParcelleCode, useParcelleData, useParcelleForm, useCamera, } from "./hooks";
+import { Parcelle } from "../../entities/parcelle";
 
 const ParcelleCollectionPage: React.FC = () => {
   const history = useHistory();
   const contentRef = useRef<HTMLIonContentElement>(null);
 
+  // États UI
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDemandeurModal, setShowDemandeurModal] = useState(false);
-  const [showSearchDemandeurModal, setShowSearchDemandeurModal] =
-    useState(false);
+  const [showSearchDemandeurModal, setShowSearchDemandeurModal] = useState(false);
   const [showRiverin, setShowRiverin] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
   const [showAlertRemove, setShowAlertRemove] = useState(false);
   const [showAlertVerif, setShowAlertVerif] = useState(false);
-  const [verifMessageError, setVerifMessageError] = useState<string | null>(
-    null,
-  );
+  const [verifMessageError, setVerifMessageError] = useState<string | null>(null);
   const [codeToRemove, setCodeToRemove] = useState<string | null>(null);
   const [showTempAlert, setShowTempAlert] = useState(false);
   const [tempAlertMessage, setTempAlertMessage] = useState("");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [mode, setMode] = useState<"view" | "edit" | "create">("create");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"demandeur" | "riverin">(
-    "demandeur",
-  );
-  const [decomposed, setDecomposed] = useState(false);
-  const [isPhysique, setIsPhysique] = useState(0);
+  const [toast, setToast] = useState({ visible: false,  message: "", type: "success" as ToastType, });
 
-  const [parcelles, setParcelles] = useState<Parcelle[]>([]);
-  const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
-  const [personnePhysique, setPersonnePhysique] = useState<PersonnePhysique>(
-    PersonnePhysique.init(),
-  );
-  const [personneMorale, setPersonneMorale] = useState<PersonneMorale>(
-    PersonneMorale.init(),
-  );
-  const [representanType, setRepresentanType] = useState<string | null>(null);
-  const [newRiverin, setNewRiverin] = useState<Riverin>(Riverin.init());
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [, setSelectedParcelle] = useState<Parcelle | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalParcelles, setTotalParcelles] = useState(0);
-  const [toast, setToast] = useState({
-    visible: false,
-    message: "",
-    type: "success" as ToastType,
-  });
-  const ITEMS_PER_PAGE = 10;
-
-  const { categorie, setCategorie, status, repereL, loadReferenceData } =
-    useReferenceData();
-  const { parametreTerritoire, generateNextCode, saveIncrement } =
-    useParcelleCode();
-
-  const loadData = useCallback(async (page: number = 1) => {
-    const { data, total } = await getAllParcelles(page, ITEMS_PER_PAGE);
-    setParcelles(data);
-    setTotalParcelles(total);
-  }, []);
+  // Hooks personnalisés
+  const { categorie, setCategorie, status, repereL, loadReferenceData } = useReferenceData();
+  const { parametreTerritoire, generateNextCode, saveIncrement } = useParcelleCode();
+  const { parcelles,  currentPage, totalParcelles, searchQuery, totalPages, loadData, removeParcelle, confirmRemoveParcelle, updateParcelle, addParcelle, setCurrentPage, setSearchQuery } = useParcelleData();
+  const { parcelle, setParcelle, personnePhysique, setPersonnePhysique, personneMorale, setPersonneMorale, representanType, setRepresentanType, newRiverin, setNewRiverin, mode, setMode, activeTab, setActiveTab, decomposed, setDecomposed, isPhysique, setIsPhysique, resetForm, addDemandeur, addRiverin, createParcelle, } = useParcelleForm();
+  const { toastMessage, takePhoto, setToastMessage } = useCamera();
 
   useEffect(() => {
     loadData(currentPage);
@@ -228,7 +58,7 @@ const ParcelleCollectionPage: React.FC = () => {
         const codeData = await generateNextCode();
         const lastOrigine = await Preferences.get({ key: "lastOrigine" });
         if (codeData)
-          setParcelle((prev) => ({
+          setParcelle((prev: Parcelle) => ({
             ...prev,
             ...codeData,
             origine: lastOrigine.value ?? null,
@@ -237,7 +67,7 @@ const ParcelleCollectionPage: React.FC = () => {
       })();
     }
     if (showCreateModal && mode !== "create") loadReferenceData();
-  }, [showCreateModal, mode, generateNextCode, loadReferenceData]);
+  }, [showCreateModal, mode, generateNextCode, loadReferenceData, setParcelle]);
 
   const verifyDataBeforeCreate = useCallback(async () => {
     try {
@@ -254,20 +84,7 @@ const ParcelleCollectionPage: React.FC = () => {
           : "Erreur inconnue veuillez vous adresse au administrateur",
       );
     }
-  }, []);
-
-  useEffect(() => {
-    if (showCreateModal && mode === "create") {
-      (async () => {
-        const codeData = await generateNextCode();
-        if (codeData) setParcelle((prev) => ({ ...prev, ...codeData }));
-        await loadReferenceData();
-      })();
-    }
-    if (showCreateModal && mode !== "create") loadReferenceData();
-  }, [showCreateModal, mode, generateNextCode, loadReferenceData]);
-
-  const totalPages = Math.ceil(totalParcelles / ITEMS_PER_PAGE);
+  }, [setMode, setShowCreateModal, setVerifMessageError]);
 
   const filteredParcelles = useMemo(() => {
     if (!searchQuery) return parcelles;
@@ -277,203 +94,91 @@ const ParcelleCollectionPage: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, setCurrentPage]);
 
-  const addDemandeur = useCallback(async () => {
-    try {
-      const newDemandeur = new Demandeur(
-        uuidv4(),
-        isPhysique === 0 ? 0 : 1,
-        personnePhysique,
-        personneMorale,
-        isPhysique === 0 ? representanType ?? "proprietaire" : null,
-      );
-      setParcelle((prev) => ({
-        ...prev,
-        demandeurs: [...prev.demandeurs, newDemandeur],
-      }));
-      setPersonnePhysique(PersonnePhysique.init());
-      setPersonneMorale(PersonneMorale.init());
-      setRepresentanType("proprietaire");
-      setIsPhysique(0);
-      setShowDemandeurModal(false);
-    } catch (error) {
-      setTempAlertMessage(
-        error instanceof Error ? error.message : "Erreur inconnue",
-      );
+  const handleAddDemandeur = useCallback(async () => {
+    const result = await addDemandeur();
+    if (!result.success) {
+      setTempAlertMessage(result.error as string);
       setShowTempAlert(true);
+    } else {
+      setShowDemandeurModal(false);
     }
-  }, [personnePhysique, personneMorale, isPhysique, representanType]);
+  }, [addDemandeur]);
+
+  const handleAddRiverin = useCallback(() => {
+    const result = addRiverin();
+    if (!result.success) {
+      setTempAlertMessage(result.error as string);
+      setShowTempAlert(true);
+    } else {
+      setToast({ visible: true, message: result.message as string, type: "success", });
+    }
+  }, [addRiverin]);
 
   const handleCardClick = useCallback(
     (codeParcelle: string) => {
-      history.push(
-        `/tab2?from=tab1&action=croquis&code=${codeParcelle}`,
-      );
+      history.push(`/tab2?from=tab1&action=croquis&code=${codeParcelle}`);
     },
     [history],
   );
 
-  const addRiverin = useCallback(() => {
-    try {
-      checkRiverin(newRiverin);
-      setParcelle((prev) => ({
-        ...prev,
-        riverin: [...prev.riverin, newRiverin],
-      }));
-      setNewRiverin(Riverin.init());
-      setToast({
-        visible: true,
-        message: "Riverin ajouté avec success",
-        type: "success",
-      });
-    } catch (error) {
-      setTempAlertMessage(
-        error instanceof Error ? error.message : "Erreur inconnue",
-      );
+  const handleRemoveParcelle = useCallback((code: string, synchronise?: number) => {
+    const result = removeParcelle(code, synchronise);
+    if (!result.success) {
+      setTempAlertMessage(result.message as string);
       setShowTempAlert(true);
+    } else {
+      setCodeToRemove(result.codeToRemove as string);
+      setShowAlertRemove(true);
     }
-  }, [newRiverin]);
+  }, [removeParcelle]);
 
-  const removeParcelle = useCallback((code: string, synchronise?: number) => {
-    deleteParcelle(code);
-
-    if (synchronise === 1) {
-      setTempAlertMessage(
-        "Cette parcelle est déjà synchronisée et ne peut pas être supprimée.",
-      );
+  const handleCreateParcelle = useCallback(async () => {
+    const result = await createParcelle(mode === "create" ? saveIncrement : undefined);
+    if (!result.success) {
+      setTempAlertMessage(result.error as string);
       setShowTempAlert(true);
-      return;
-    }
-    setCodeToRemove(code);
-    setShowAlertRemove(true);
-  }, []);
-
-  const createParcelle = useCallback(async () => {
-    try {
-      for (const d of parcelle.demandeurs) await insertDemandeur(d);
-      for (const r of parcelle.riverin) {
-        if (r.typePersonne === 0 && r.personnePhysique)
-          await insertPersonnePhysique(r.personnePhysique);
-        if (r.typePersonne === 1 && r.personneMorale)
-          await insertPersonneMorale(r.personneMorale);
-      }
-
-      await insertParcelle(parcelle);
-      if (mode === "create") {
-        await saveIncrement();
-        if (parcelle.origine)
-          await Preferences.set({
-            key: "lastOrigine",
-            value: parcelle.origine,
-          });
-      }
-
+    } else {
       if (mode === "edit") {
-        setParcelles((prev) =>
-          prev.map((p) => (p.code === parcelle.code ? parcelle : p)),
-        );
+        updateParcelle(parcelle);
       } else {
-        const newTotal = totalParcelles + 1;
-        const lastPage = Math.ceil(newTotal / ITEMS_PER_PAGE);
-        setTotalParcelles(newTotal);
-        if (lastPage !== currentPage) {
-          setCurrentPage(lastPage);
-        } else {
-          setParcelles((prev) => [...prev, parcelle]);
-        }
+        addParcelle(parcelle);
       }
-      setParcelle(Parcelle.init());
+      resetForm();
       setShowCreateModal(false);
       setToast({
         visible: true,
         message: "Parcelle ajouté avec success",
         type: "success",
       });
-    } catch (error) {
-      setTempAlertMessage(
-        error instanceof Error ? error.message : "Erreur inconnue",
-      );
-      setShowTempAlert(true);
     }
-  }, [parcelle, saveIncrement, mode, currentPage, totalParcelles]);
-
-  async function compressImage(
-    base64: string,
-    maxSize = 1024,
-    quality = 0.6,
-  ): Promise<string> {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = `data:image/jpeg;base64,${base64}`;
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > height && width > maxSize) {
-          height = (height * maxSize) / width;
-          width = maxSize;
-        } else if (height > width && height > maxSize) {
-          width = (width * maxSize) / height;
-          height = maxSize;
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
-      };
-    });
-  }
+  }, [createParcelle, mode, saveIncrement, parcelle, updateParcelle, addParcelle, resetForm]);
 
   const takePhotoParcelle = useCallback(async () => {
-    try {
-      if (parcelle.photos?.length >= 5) {
-        setToastMessage("Maximum 5 photos");
-        return;
-      }
-      const photo = await Camera.getPhoto({
-        quality: 60,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
-        width: 1024,
-        height: 1024,
-        correctOrientation: true,
-      });
-      if (!photo.base64String) throw new Error("Pas de photo");
-      const compressed = await compressImage(
-        photo.base64String,
-        1024,
-        0.6,
-      );
-      const fileName = `parcelle/${Date.now()}.jpeg`;
-      await Filesystem.writeFile({
-        path: fileName,
-        data: compressed,
-        directory: Directory.Data,
-        recursive: true,
-      });
-      setParcelle((prev) => {
+    const fileName = await takePhoto(5, parcelle.photos || []);
+    if (fileName) {
+      setParcelle((prev : Parcelle) => {
         if (prev.photos?.length >= 5) return prev;
         return { ...prev, photos: [...prev.photos, fileName] };
       });
-    } catch (err) {
-      console.error(err);
-      setToastMessage("Erreur lors de la capture");
     }
-  }, [parcelle.photos?.length]);
+  }, [takePhoto, parcelle.photos, setParcelle]);
 
   const closeSearch = useCallback(() => {
     setSearchMode(false);
     setSearchQuery("");
-  }, []);
+  }, [setSearchQuery]);
 
   const closeCreateModal = useCallback(() => {
     setShowCreateModal(false);
     setMode("create");
-    setParcelle(Parcelle.init());
-  }, []);
+    resetForm();
+  }, [resetForm, setMode]);
 
   return (
     <IonPage>
+      {/* Header avec recherche */}
       <IonHeader>
         {searchMode ? (
           <IonToolbar color="primary">
@@ -501,7 +206,7 @@ const ParcelleCollectionPage: React.FC = () => {
               <IonButton onClick={() => setSearchMode(true)}>
                 <IonIcon icon={searchSharp} slot="icon-only" />
               </IonButton>
-              <IonButton onClick={() => verifyDataBeforeCreate()}>
+              <IonButton onClick={verifyDataBeforeCreate}>
                 <IonIcon icon={create} slot="icon-only" />
               </IonButton>
             </IonButtons>
@@ -509,6 +214,7 @@ const ParcelleCollectionPage: React.FC = () => {
         )}
       </IonHeader>
 
+      {/* Alerts */}
       <Alert
         show={showAlertRemove}
         type={1}
@@ -520,14 +226,7 @@ const ParcelleCollectionPage: React.FC = () => {
         }}
         onConfirm={async () => {
           if (codeToRemove) {
-            await deleteParcelle(codeToRemove);
-            const newTotal = totalParcelles - 1;
-            const maxPage = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1;
-            setTotalParcelles(newTotal);
-            setParcelles((prev) =>
-              prev.filter((p) => p.code !== codeToRemove),
-            );
-            if (currentPage > maxPage) setCurrentPage(maxPage);
+            await confirmRemoveParcelle(codeToRemove);
           }
           setShowAlertRemove(false);
           setCodeToRemove(null);
@@ -539,17 +238,13 @@ const ParcelleCollectionPage: React.FC = () => {
       />
 
       <Alert
-        show={showAlertVerif}
-        type={0}
-        title="Information"
-        duration={5000}
-        message={
-          verifMessageError ||
-          "Une erreur est survenue lors de la vérification des données."
-        }
+        show={showAlertVerif} type={0}
+        title="Information" duration={5000}
+        message={verifMessageError || "Une erreur est survenue lors de la vérification des données."}
         onClose={() => setShowAlertVerif(false)}
       />
 
+      {/* Content */}
       <IonContent ref={contentRef} className="ion-padding">
         {parcelles.length === 0 ? (
           <div className="text-center py-5">
@@ -559,7 +254,7 @@ const ParcelleCollectionPage: React.FC = () => {
               className="text-muted mb-3"
             />
             <h4 className="text-muted">Aucune parcelle enregistrée</h4>
-            <IonButton onClick={() => verifyDataBeforeCreate()}>
+            <IonButton onClick={verifyDataBeforeCreate}>
               Créer une première parcelle
             </IonButton>
           </div>
@@ -596,19 +291,17 @@ const ParcelleCollectionPage: React.FC = () => {
                           setOpenDropdown(null);
                           setMode("view");
                           setParcelle(p);
-                          setSelectedParcelle(p);
                           setShowCreateModal(true);
                         }}
                         onEdit={() => {
                           setOpenDropdown(null);
                           setMode("edit");
                           setParcelle(p);
-                          setSelectedParcelle(p);
                           setShowCreateModal(true);
                         }}
                         onDelete={() => {
                           setOpenDropdown(null);
-                          removeParcelle(p.code!, p.synchronise);
+                          handleRemoveParcelle(p.code!, p.synchronise);
                         }}
                         onCroquis={() => {
                           setOpenDropdown(null);
@@ -660,6 +353,7 @@ const ParcelleCollectionPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className="pagination-footer">
                 <div className="pagination-bar">
@@ -707,6 +401,7 @@ const ParcelleCollectionPage: React.FC = () => {
         <ScrollToTop contentRef={contentRef} />
       </IonContent>
 
+      {/* Modal création/édition */}
       <IonModal isOpen={showCreateModal} onDidDismiss={closeCreateModal}>
         <IonHeader>
           <IonToolbar color="primary">
@@ -716,19 +411,15 @@ const ParcelleCollectionPage: React.FC = () => {
               </IonButton>
             </IonButtons>
             <IonTitle>
-              {mode === "view"
-                ? "Détail de la parcelle"
-                : mode === "edit"
-                ? "Modification de la parcelle"
+              {mode === "view" ? "Détail de la parcelle"
+                : mode === "edit" ? "Modification de la parcelle"
                 : "Nouvelle parcelle"}
             </IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
           <ParcelleForm
-            mode={mode}
-            parcelle={parcelle}
-            setParcelle={setParcelle}
+            mode={mode} parcelle={parcelle} setParcelle={setParcelle}
             categorie={categorie}
             status={status}
             parametreTerritoire={
@@ -736,12 +427,10 @@ const ParcelleCollectionPage: React.FC = () => {
                 ? parcelle.parametreTerritoire
                 : parametreTerritoire
             }
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            decomposed={decomposed}
-            setDecomposed={setDecomposed}
+            activeTab={activeTab} setActiveTab={setActiveTab}
+            decomposed={decomposed} setDecomposed={setDecomposed}
             takePhotoParcelle={takePhotoParcelle}
-            onCreateParcelle={createParcelle}
+            onCreateParcelle={handleCreateParcelle}
             onShowDemandeurModal={() => setShowDemandeurModal(true)}
             onShowSearchModal={() => setShowSearchDemandeurModal(true)}
             onShowRiverinModal={() => setShowRiverin(true)}
@@ -750,21 +439,17 @@ const ParcelleCollectionPage: React.FC = () => {
         </IonContent>
       </IonModal>
 
-      <Alert
-        show={showTempAlert}
-        type={0}
-        title="Information"
-        message={tempAlertMessage}
+      {/* Autres modals */}
+      <Alert 
+        show={showTempAlert} type={0} title="Information" message={tempAlertMessage}
         onClose={() => setShowTempAlert(false)}
       />
 
       <ModalRiverin
-        showRiverin={showRiverin}
-        setShowRiverin={setShowRiverin}
-        addRiverin={addRiverin}
+        showRiverin={showRiverin} setShowRiverin={setShowRiverin}
+        addRiverin={handleAddRiverin}
         repereL={repereL}
-        newRiverin={newRiverin}
-        setNewRiverin={setNewRiverin}
+        newRiverin={newRiverin} setNewRiverin={setNewRiverin}
       />
 
       <SeacrhModal
@@ -772,7 +457,7 @@ const ParcelleCollectionPage: React.FC = () => {
         setShowSearchModal={setShowSearchDemandeurModal}
         withRole={true}
         onSelect={(d, role) => {
-          setParcelle((prev) => {
+          setParcelle((prev : Parcelle) => {
             const exists = prev.demandeurs.find((r) => r.id === d.id);
             if (exists) return prev;
             return {
@@ -789,26 +474,18 @@ const ParcelleCollectionPage: React.FC = () => {
       <ModalDemandeur
         showCreateModal={showDemandeurModal}
         setShowCreateModal={setShowDemandeurModal}
-        personnePhysique={personnePhysique}
-        setPersonnePhysique={setPersonnePhysique}
-        personneMorale={personneMorale}
-        setPersonneMorale={setPersonneMorale}
-        addDemandeur={addDemandeur}
-        toastMessage={toastMessage}
-        setToastMessage={setToastMessage}
-        isPhysique={isPhysique}
-        setIsPhysique={setIsPhysique}
-        decomposed={decomposed}
-        setDecomposed={setDecomposed}
+        personnePhysique={personnePhysique} setPersonnePhysique={setPersonnePhysique}
+        personneMorale={personneMorale} setPersonneMorale={setPersonneMorale}
+        addDemandeur={handleAddDemandeur}
+        toastMessage={toastMessage} setToastMessage={setToastMessage}
+        isPhysique={isPhysique} setIsPhysique={setIsPhysique}
+        decomposed={decomposed} setDecomposed={setDecomposed}
         withRepresentants={true}
-        representanType={representanType}
-        setRepresentanType={setRepresentanType}
+        representanType={representanType} setRepresentanType={setRepresentanType}
       />
 
       <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
+        visible={toast.visible} message={toast.message} type={toast.type}
         onClose={() => setToast((t) => ({ ...t, visible: false }))}
       />
     </IonPage>
@@ -816,4 +493,3 @@ const ParcelleCollectionPage: React.FC = () => {
 };
 
 export default ParcelleCollectionPage;
-
