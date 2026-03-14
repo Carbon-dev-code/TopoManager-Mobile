@@ -57,7 +57,7 @@ ion-content {
 
 .custom-header-card {
   position: relative;
-  padding-bottom: 0px !important;
+  padding-bottom: 8px !important;
 }
 
 .custom-card {
@@ -66,14 +66,14 @@ ion-content {
   border-radius: 17px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
   background: rgb(255, 255, 255);
-  backdrop-filter: blur(6px);
+  overflow: hidden;
 }
 
 .scrollable-list {
   max-height: 110px;
   overflow-y: auto;
-  padding: 4px;
-  margin: 0.4em;
+  padding: 2px;
+  margin: 0.15em;
 }
 
 .cardContent {
@@ -113,18 +113,18 @@ ion-searchbar.custom-search {
 
 .parcelle-chips {
   display: flex;
-  gap: 0px;
-  margin-top: 0px;
+  gap: 6px;
+  margin-top: 4px;
   overflow-x: auto;
   white-space: nowrap;
 }
 
 .parcelle-chips ion-chip {
-  max-width: fit-content;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
+  --background: #f5f7ff;
+  border-radius: 15px;
+  height: 26px;
+  font-size: 12px;
+  margin: 0;
 }
 
 @media (max-width: 350px) {
