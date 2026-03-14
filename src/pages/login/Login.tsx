@@ -1,4 +1,4 @@
-import { IonContent, IonPage, IonAlert, IonButton, IonIcon, IonItem, IonInput, IonRouterLink } from "@ionic/react";
+import { IonContent, IonPage, IonButton, IonIcon, IonItem, IonInput, IonRouterLink, IonSpinner } from "@ionic/react";
 import { useRef, useState } from "react";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";
 
@@ -12,8 +12,7 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   /// Hooks personnalise
-  const { login, showPasswordAlert, setShowPasswordAlert } = useLogin();
-
+  const { login, loading ,showPasswordAlert } = useLogin();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,6 @@ const Login: React.FC = () => {
           <div className="login-wrapper">
             <form className="login-form" onSubmit={handleLogin}>
 
-              {/* Logo + Titre */}
               <div className="all-login-title">
                 <div className="login-logo">T</div>
                 <h1 className="login-title">TopoManager</h1>
@@ -38,16 +36,15 @@ const Login: React.FC = () => {
                 <p className="mb-0 custom-label-login">
                   Identifiant<span className="red">*</span>
                 </p>
-                <IonItem lines="none" className="login-input">
+                <IonItem lines="none" className={`login-input ${showPasswordAlert ? 'input-error' : ''}`}>
                   <IonInput type="text" placeholder="utilisateur" ref={emailRef} required/>
                 </IonItem>
+                {showPasswordAlert && <span className="error-message">Identifiant incorrect</span>}
               </div>
 
               <div className="input-pile">
-                <p className="mb-0 custom-label-login">
-                  Mot de passe<span className="red">*</span>
-                </p>
-                <IonItem lines="none" className="login-input">
+                <p className="mb-0 custom-label-login">  Mot de passe<span className="red">*</span> </p>
+                <IonItem lines="none" className={`login-input ${showPasswordAlert ? 'input-error' : ''}`}>
                   <IonInput
                     type={showPassword ? "text" : "password"}
                     placeholder="xxxxxxx" ref={passwordRef} className="password-placeholder" required
@@ -60,10 +57,12 @@ const Login: React.FC = () => {
                     <IonIcon slot="icon-only" icon={showPassword ? eyeOffOutline : eyeOutline}/>
                   </IonButton>
                 </IonItem>
+                {showPasswordAlert && <span className="error-message">Mot de passe incorrect</span>}
               </div>
 
-              <IonButton expand="block" className="login-button" type="submit">
-                Se connecter
+              <IonButton expand="block" className="login-button" type="submit" disabled={loading}>
+                {loading && ( <IonSpinner name="circular"></IonSpinner> )}
+                {!loading && "Se connecter"}
               </IonButton>
 
               <IonRouterLink routerLink="/accueil" className="link-custom">
@@ -72,13 +71,6 @@ const Login: React.FC = () => {
             </form>
           </div>
         </div>
-
-        <IonAlert
-          isOpen={showPasswordAlert}
-          onDidDismiss={() => setShowPasswordAlert(false)}
-          message="Mot de passe ou identifiant incorrect. Veuillez contacter l'administrateur."
-          buttons={["OK"]}
-        />
       </IonContent>
     </IonPage>
   );

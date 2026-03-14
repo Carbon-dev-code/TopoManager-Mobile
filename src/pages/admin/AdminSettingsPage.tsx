@@ -1,67 +1,35 @@
-import {
-  IonButton,
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonIcon,
-  IonInput,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonMenuButton,
-  IonPage,
-  IonPopover,
-  IonTitle,
-  IonToolbar,
-  useIonViewWillEnter,
-} from "@ionic/react";
-import {
-  ellipsisVertical,
-  refreshCircleOutline,
-  saveSharp,
-} from "ionicons/icons";
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonMenuButton, IonPage, IonPopover, IonTitle, IonToolbar, useIonViewWillEnter, } from "@ionic/react";
+import { ellipsisVertical, refreshCircleOutline, saveSharp } from "ionicons/icons";
 import { useState } from "react";
-import { Preferences } from "@capacitor/preferences";
-import { clearDatabase } from "../../shared/lib/db/DbSchema";
+
 import Alert from "../../shared/ui/Alert";
+
+import { useServer } from "./hooks/useServer";
+
 import "./AdminSettingsPage.css";
+import { useServerConnection } from "./hooks/useServerConnection";
 
 const AdminSettingsPage: React.FC = () => {
-  const [deviceId, setDeviceId] = useState<string>("");
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isModified, setIsModified] = useState(false);
+  const [isFocusedAdresse, setIsFocusedAdresse] = useState(false);
+  const [isModifiedAdresse, setIsModifiedAdresse] = useState(false);
+
+  //hooks personnaliser
+  const { serverAdresse, setServerAdresse, getServerAdresse, saveServerAdresse, getDeviceId, deviceId, setDeviceId, saveDeviceId, clearAll } = useServer();
+  const { connectionStatus, testConnection } = useServerConnection();
+
+
+  const init = async () => {
+    await getServerAdresse();
+    await getDeviceId();
+  };
 
   useIonViewWillEnter(() => {
-    const loadDeviceId = async () => {
-      const { value } = await Preferences.get({ key: "device_id" });
-      if (value) setDeviceId(value);
-    };
-    loadDeviceId();
+    init();
   });
 
-  const saveDeviceId = async () => {
-    if (!deviceId) return;
-    try {
-      await Preferences.set({ key: "device_id", value: deviceId });
-      setIsModified(false);
-    } catch (err) {
-      console.error("Erreur lors de la sauvegarde du device_id:", err);
-    }
-  };
-
-  const resetPreferences = async () => {
-    try {
-      await Preferences.clear();
-      await clearDatabase();
-      setDeviceId("");
-      setTimeout(() => {
-        window.location.href = "/accueil";
-      }, 100);
-    } catch (err) {
-      console.error("Erreur lors du reset:", err);
-    }
-  };
 
   return (
     <IonPage>
@@ -91,37 +59,84 @@ const AdminSettingsPage: React.FC = () => {
       </IonPopover>
 
       <IonContent fullscreen className="ion-padding">
-        <div className="admin-card">
-          <div className="row d-flex align-items-center">
-            <div className="col">
-              <div className="row d-flex align-items-center">
-                <div className="col-auto">ID du Device :</div>
-                <div className="col">
-                  <IonInput
-                    className="input-tab-6-custom"
-                    value={deviceId}
-                    placeholder="XXXXX"
-                    onIonChange={async (e) => {
-                      const val = e.detail.value ?? "";
-                      setDeviceId(val);
-                      setIsModified(true);
-                      await Preferences.set({ key: "device_id", value: val });
-                    }}
-                    onIonFocus={() => setIsFocused(true)}
-                    onIonBlur={() => setIsFocused(false)}
-                  />
-                </div>
+
+        <p className="settings-section-title">Réseau</p>
+
+        <div className="settings-card">
+          <div className="settings-row">
+            <div className="settings-row-icon blue">🌐</div>
+            <div className="settings-row-content">
+              <div className="settings-row-label">Adresse serveur</div>
+              <IonInput
+                className="settings-row-input"
+                value={serverAdresse}
+                placeholder="192.168.1.1:8080"
+                onIonChange={async (e) => {
+                  const val = e.detail.value ?? "";
+                  setServerAdresse(val);
+                  setIsModifiedAdresse(true);
+                  await saveServerAdresse(val);
+                }}
+                onIonFocus={() => setIsFocusedAdresse(true)}
+                onIonBlur={() => setIsFocusedAdresse(false)}
+              />
+            </div>
+            {(isFocusedAdresse || isModifiedAdresse) && (
+              <div className="settings-save-btn" onClick={() => saveServerAdresse(serverAdresse)}>
+                <IonIcon icon={saveSharp} />
               </div>
-            </div>
-            <div className="col-auto">
-              {(isFocused || isModified) && (
-                <div className="save-button" onClick={saveDeviceId}>
-                  <IonIcon icon={saveSharp} />
-                </div>
-              )}
-            </div>
+            )}
+          </div>
+
+          <div style={{ padding: "0 16px 16px" }}>
+            <button
+              className={`test-connection-btn ${connectionStatus}`}
+              onClick={() => testConnection(serverAdresse)}
+            >
+              <span className={`status-dot ${connectionStatus}`} />
+              {connectionStatus === 'idle' && "Tester la connexion"}
+              {connectionStatus === 'loading' && "Connexion en cours..."}
+              {connectionStatus === 'success' && "Serveur accessible ✓"}
+              {connectionStatus === 'error' && "Serveur inaccessible"}
+            </button>
           </div>
         </div>
+
+        <p className="settings-section-title">Appareil</p>
+
+        <div className="settings-card">
+          <div className="settings-row">
+            <div className="settings-row-icon purple">📱</div>
+            <div className="settings-row-content">
+              <div className="settings-row-label">ID du Device</div>
+              <IonInput
+                className="settings-row-input"
+                value={deviceId}
+                placeholder="XXXXX"
+                onIonChange={async (e) => {
+                  const val = e.detail.value ?? "";
+                  setDeviceId(val);
+                  setIsModified(true);
+                  await saveDeviceId(val);
+                }}
+                onIonFocus={() => setIsFocused(true)}
+                onIonBlur={() => setIsFocused(false)}
+              />
+            </div>
+            {(isFocused || isModified) && (
+              <div className="settings-save-btn" onClick={() => saveDeviceId(deviceId)}>
+                <IonIcon icon={saveSharp} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="settings-danger-zone">
+          <button className="reset-btn" onClick={() => setShowAlert(true)}>
+            🗑️ Réinitialiser toutes les données
+          </button>
+        </div>
+
       </IonContent>
 
       <Alert
@@ -130,10 +145,7 @@ const AdminSettingsPage: React.FC = () => {
         title="Réinitialisation"
         message="Êtes-vous sûr de vouloir supprimer toutes les données ?"
         onCancel={() => setShowAlert(false)}
-        onConfirm={() => {
-          resetPreferences();
-          setShowAlert(false);
-        }}
+        onConfirm={() => { clearAll(); setShowAlert(false); }}
         onClose={() => setShowAlert(false)}
       />
     </IonPage>

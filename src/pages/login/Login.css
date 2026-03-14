@@ -103,10 +103,20 @@
   font-size: 13px;
 }
 
-.red {
-  color: red;
-}
-
 .password-placeholder input::placeholder {
   font-size: 12px; /* ajustez selon votre besoin */
+}
+
+/* Style pour les messages d'erreur */
+.error-message {
+  color: red;
+  font-size: 11px;
+  margin-top: 4px;
+  font-weight: 600;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.input-error {
+  border: 1px solid red !important;
+  border-radius: 4px !important;
 }
