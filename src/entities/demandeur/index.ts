@@ -1,6 +1,6 @@
-export * from "../../model/Demandeur/Demandeur";
-export * from "../../model/Demandeur/PersonnePhysique";
-export * from "../../model/Demandeur/PersonneMorale";
-export * from "../../model/Demandeur/Representant";
-export * from "../../model/Demandeur/RepresentantMoral";
+export * from "./model/Demandeur";
+export * from "./model/PersonnePhysique";
+export * from "./model/PersonneMorale";
+export * from "./model/Representant";
+export * from "./model/RepresentantMoral";
 

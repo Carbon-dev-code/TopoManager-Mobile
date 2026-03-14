@@ -19,9 +19,9 @@ import {
   close,
   informationCircle,
 } from "ionicons/icons";
-import ModalDemandeur from "../../components/demandeur/ModalDemandeur";
+import ModalDemandeur from "../../widgets/demandeur/ModalDemandeur";
 import { useEffect, useMemo, useRef, useState } from "react";
-import DemandeurView from "../../components/demandeur/DemandeurView";
+import DemandeurView from "../../widgets/demandeur/DemandeurView";
 import {
   insertPersonnePhysique,
   insertPersonneMorale,
@@ -29,12 +29,11 @@ import {
   getAllPersonnesMorales,
   deletePersonneMorale,
   deletePersonnePhysique,
-} from "../../model/base/DbSchema";
-import Alert from "../../components/alert/Alert";
-import Toast, { ToastType } from "../../components/toast/Toast";
-import { PersonnePhysique } from "../../model/Demandeur/PersonnePhysique";
-import { PersonneMorale } from "../../model/Demandeur/PersonneMorale";
-import ScrollToTop from "../../components/ScrollTop/ScrollToTop";
+} from "../../shared/lib/db/DbSchema";
+import Alert from "../../shared/ui/Alert";
+import Toast, { ToastType } from "../../shared/ui/Toast";
+import { PersonnePhysique, PersonneMorale } from "../../entities/demandeur";
+import ScrollToTop from "../../shared/ui/ScrollToTop";
 
 type ModalMode = "create" | "view" | "edit";
 

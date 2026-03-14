@@ -24,7 +24,7 @@ import {
 import { Preferences } from "@capacitor/preferences";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { useState, useEffect, useCallback } from "react";
-import { ConfigService } from "../../model/ConfigService";
+import { ConfigService } from "../../shared/lib/config/ConfigService";
 import { Buffer } from "buffer";
 import { FileTransfer } from "@capacitor/file-transfer";
 import {
@@ -37,16 +37,18 @@ import {
   serverOutline,
 } from "ionicons/icons";
 import "./SettingsPage.css";
-import { Territoire } from "../../model/Territoire";
-import { ParametreTerritoire } from "../../model/ParametreTerritoire";
-import { District } from "../../model/limite/District";
-import { Commune } from "../../model/limite/Commune";
-import { Fokontany } from "../../model/limite/Fokontany";
-import { Hameau } from "../../model/limite/Hameau";
-import { useDb } from "../../model/base/DbContextType";
-import { verifIDDevice } from "../../model/base/DbSchema";
-import TerritorialSelector from "../../components/territoire/Territorialselector";
-import ServerModal from "../../components/server/ServerModal";
+import {
+  Territoire,
+  ParametreTerritoire,
+  District,
+  Commune,
+  Fokontany,
+  Hameau,
+} from "../../entities/territoire";
+import { useDb } from "../../shared/lib/db/DbContext";
+import { verifIDDevice } from "../../shared/lib/db/DbSchema";
+import TerritorialSelector from "../../widgets/territoire/TerritorialSelector";
+import ServerModal from "../../widgets/server/ServerModal";
 import { PluginListenerHandle } from "@capacitor/core";
 
 const SettingsPage: React.FC = () => {
@@ -243,12 +245,17 @@ const SettingsPage: React.FC = () => {
       );
       if (!dsResp.ok) throw new Error(`Erreur datastores: ${dsResp.status}`);
 
-      const dsData = await dsResp.json();
-      const datastores = dsData.dataStores.dataStore.map(
-        (ds: any) => ds.name,
+      const dsData: {
+        dataStores?: { dataStore?: { name: string }[] };
+      } = await dsResp.json();
+      const datastores = (dsData.dataStores?.dataStore ?? []).map((ds) =>
+        String(ds.name),
       );
 
-      const structure = { workspace, datastores: [] as any[] };
+      const structure: {
+        workspace: string;
+        datastores: { name: string; layers: { name: string; path: string }[] }[];
+      } = { workspace, datastores: [] };
 
       for (const dsName of datastores) {
         const ftResp = await fetch(
@@ -258,9 +265,11 @@ const SettingsPage: React.FC = () => {
 
         if (!ftResp.ok) continue;
 
-        const ftData = await ftResp.json();
-        const layers = ftData.featureTypes.featureType.map(
-          (f: any) => f.name,
+        const ftData: {
+          featureTypes?: { featureType?: { name: string }[] };
+        } = await ftResp.json();
+        const layers = (ftData.featureTypes?.featureType ?? []).map((f) =>
+          String(f.name),
         );
         const savedLayers = [];
 
@@ -272,11 +281,17 @@ const SettingsPage: React.FC = () => {
 
           if (!wfsResp.ok) continue;
 
-          const geojson = await wfsResp.json();
+          const geojson: {
+            features?: Array<{ properties?: Record<string, unknown> }>;
+            [k: string]: unknown;
+          } = await wfsResp.json();
           if (geojson.features) {
-            geojson.features = geojson.features.map((feature: any) => ({
+            geojson.features = geojson.features.map((feature) => ({
               ...feature,
-              properties: { ...feature.properties, name: layerName },
+              properties: {
+                ...(feature.properties ?? {}),
+                name: layerName,
+              },
             }));
           }
 
@@ -328,7 +343,9 @@ const SettingsPage: React.FC = () => {
           path: "TopoManager/mbtiles",
           recursive: true,
         });
-      } catch {}
+      } catch (e) {
+        console.error(e);
+      }
 
       try {
         await Filesystem.stat({
@@ -350,7 +367,9 @@ const SettingsPage: React.FC = () => {
           directory: Directory.Documents,
           path: mbtilesPath,
         });
-      } catch {}
+      } catch (e) {
+        console.error(e);
+      }
 
       const { uri } = await Filesystem.getUri({
         directory: Directory.Documents,
@@ -386,14 +405,18 @@ const SettingsPage: React.FC = () => {
         path: databasesPath,
         directory: undefined,
         recursive: true,
-      }).catch(() => {});
+      }).catch((e) => {
+        console.error(e);
+      });
 
       try {
         await Filesystem.deleteFile({
           path: `${databasesPath}/${dbName}`,
           directory: undefined,
         });
-      } catch {}
+      } catch (e) {
+        console.error(e);
+      }
 
       const { uri: sourceUri } = await Filesystem.getUri({
         directory: Directory.Documents,
@@ -409,7 +432,9 @@ const SettingsPage: React.FC = () => {
       await Filesystem.deleteFile({
         path: mbtilesPath,
         directory: Directory.Documents,
-      }).catch(() => {});
+      }).catch((e) => {
+        console.error(e);
+      });
 
       if (loadMBTiles) await loadMBTiles();
     } catch (err: unknown) {

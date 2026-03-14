@@ -1,0 +1,20 @@
+ion-input.input-end input {
+  text-align: end !important;
+}
+
+ion-input.input-end::part(placeholder) {
+  text-align: end !important;
+}
+
+.textarea-cool {
+  border-radius: 12px;
+  background: var(--ion-color-light);
+  padding: 8px;
+  border-left: 3px solid var(--ion-color-primary);
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

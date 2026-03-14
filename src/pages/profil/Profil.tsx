@@ -17,7 +17,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import {
   statisiqueParcelles,
   parcellesParJourSemaine,
-} from "../../model/base/DbSchema";
+} from "../../shared/lib/db/DbSchema";
 
 import {
   Chart as ChartJS,
@@ -104,7 +104,7 @@ const Profil: React.FC = () => {
 
   useEffect(() => {
     loadStats();
-  }, [selectedDate]);
+  }, [selectedDate, loadStats]);
 
   // Gradient sur les barres
   useEffect(() => {

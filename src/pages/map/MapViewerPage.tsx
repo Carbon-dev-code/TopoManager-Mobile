@@ -31,7 +31,6 @@ import ScaleLine from "ol/control/ScaleLine";
 import "ol/ol.css";
 import {
   addOutline,
-  arrowUndoOutline,
   checkmark,
   closeOutline,
   handLeftOutline,
@@ -47,7 +46,7 @@ import {
   stopSharp,
 } from "ionicons/icons";
 import { Preferences } from "@capacitor/preferences";
-import { Parcelle } from "../../model/parcelle/Parcelle";
+import { Parcelle } from "../../entities/parcelle";
 import VectorSource from "ol/source/Vector";
 import Polygon from "ol/geom/Polygon";
 import { Feature } from "ol";
@@ -59,17 +58,17 @@ import Text from "ol/style/Text";
 import GeoJSON from "ol/format/GeoJSON";
 import { useLocation } from "react-router";
 import { Geolocation } from "@capacitor/geolocation";
-import { Polygone } from "../../model/vecteur/Polygone";
-import { PointC } from "../../model/vecteur/PointC";
+import { Polygone } from "../../shared/lib/vecteur/Polygone";
+import { PointC } from "../../shared/lib/vecteur/PointC";
 import Point from "ol/geom/Point";
 import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
 import { Capacitor } from "@capacitor/core";
-import { useDb } from "../../model/base/DbContextType";
-import { getAllParcelles, insertParcelle } from "../../model/base/DbSchema";
-import Cube from "../../components/utils/Cube";
+import { useDb } from "../../shared/lib/db/DbContext";
+import { getAllParcelles, insertParcelle } from "../../shared/lib/db/DbSchema";
+import Cube from "../../shared/ui/Cube";
 import MultiPoint from "ol/geom/MultiPoint";
-import CardGlass from "../../components/card/CardGlass";
+import CardGlass from "../../shared/ui/CardGlass";
 import { getArea } from "ol/sphere";
 import { FeatureLike } from "ol/Feature";
 

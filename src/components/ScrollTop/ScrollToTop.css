@@ -1,6 +1,0 @@
-.scroll-to-top-fab ion-fab-button {
-  --background: var(--ion-color-primary);
-  --background-activated: var(--ion-color-primary-shade);
-  --box-shadow: 0 4px 16px rgba(0, 84, 233, 0.35);
-  --border-radius: 50%;
-}

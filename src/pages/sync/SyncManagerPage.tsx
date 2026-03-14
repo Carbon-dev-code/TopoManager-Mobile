@@ -27,12 +27,12 @@ import {
 } from "@ionic/react";
 import { sync, checkmark, settings, wifi } from "ionicons/icons";
 import "./SyncManagerPage.css";
-import { ConfigService } from "../../model/ConfigService";
-import { Parcelle } from "../../model/parcelle/Parcelle";
-import DemandeurView from "../../components/demandeur/DemandeurView";
-import { getAllParcelles, insertParcelle } from "../../model/base/DbSchema";
-import Filtre from "../../components/filtre/Filtre";
-import ServerModal from "../../components/server/ServerModal";
+import { ConfigService } from "../../shared/lib/config/ConfigService";
+import { Parcelle } from "../../entities/parcelle";
+import DemandeurView from "../../widgets/demandeur/DemandeurView";
+import { getAllParcelles, insertParcelle } from "../../shared/lib/db/DbSchema";
+import Filtre from "../../widgets/filtre/Filtre";
+import ServerModal from "../../widgets/server/ServerModal";
 
 interface ApiResponse {
   success: boolean;

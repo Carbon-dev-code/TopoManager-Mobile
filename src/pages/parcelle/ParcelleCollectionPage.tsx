@@ -43,7 +43,7 @@ import "./ParcelleCollectionPage.css";
 import { ParametreTerritoire } from "../../entities/territoire";
 import { Categorie, Status } from "../../entities/reference";
 import { Parcelle, checkRiverin, Riverin } from "../../entities/parcelle";
-import { Repere } from "../../entities/territoire";
+import { Repere } from "../../entities/parcelle/model/Repere";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import ModalDemandeur from "../../widgets/demandeur/ModalDemandeur";
 import ModalRiverin from "../../widgets/riverin/ModalRiverin";
@@ -58,16 +58,14 @@ import {
   insertPersonneMorale,
   insertPersonnePhysique,
   verifyDatabase,
-} from "../../model/base/DbSchema";
+} from "../../shared/lib/db/DbSchema";
 import Alert from "../../shared/ui/Alert";
 import DropDown from "../../shared/ui/DropDown";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import ScrollToTop from "../../shared/ui/ScrollToTop";
-import {
-  Demandeur,
-  PersonnePhysique,
-  PersonneMorale,
-} from "../../entities/demandeur";
+import { Demandeur} from "../../entities/demandeur/model/Demandeur";
+import { PersonnePhysique} from "../../entities/demandeur/model/PersonnePhysique"
+import { PersonneMorale} from "../../entities/demandeur/model/PersonneMorale"
 import Toast, { ToastType } from "../../shared/ui/Toast";
 
 const useReferenceData = () => {
@@ -218,7 +216,7 @@ const ParcelleCollectionPage: React.FC = () => {
 
   useEffect(() => {
     loadData(currentPage);
-  }, [currentPage]);
+  }, [currentPage, loadData]);
 
   useIonViewWillEnter(() => {
     loadData(currentPage);

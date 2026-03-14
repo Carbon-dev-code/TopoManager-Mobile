@@ -1,2 +1,2 @@
-export { default } from "../../components/demandeur/SearchModal";
+export { default } from "./SearchModal";
 

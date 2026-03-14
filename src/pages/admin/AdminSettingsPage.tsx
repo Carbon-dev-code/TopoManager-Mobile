@@ -22,8 +22,8 @@ import {
 } from "ionicons/icons";
 import { useState } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { clearDatabase } from "../../model/base/DbSchema";
-import Alert from "../../components/alert/Alert";
+import { clearDatabase } from "../../shared/lib/db/DbSchema";
+import Alert from "../../shared/ui/Alert";
 import "./AdminSettingsPage.css";
 
 const AdminSettingsPage: React.FC = () => {

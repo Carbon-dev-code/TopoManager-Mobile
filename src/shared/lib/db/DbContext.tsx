@@ -13,7 +13,7 @@ import {
   SQLiteConnection,
   SQLiteDBConnection,
 } from "@capacitor-community/sqlite";
-import { initDatabase } from "../../../model/base/Database";
+import { initDatabase } from "./Database";
 
 interface DbContextProps {
   db: Database | SQLiteDBConnection | null;

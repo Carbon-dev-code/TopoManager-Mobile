@@ -1,0 +1,75 @@
+.dropdown-popover::part(content) {
+  --width: 230px;
+  border-radius: 16px;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.14),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.dropdown-popover::part(backdrop) {
+  background: transparent;
+}
+
+.dd-list {
+  padding: 6px;
+  background: #ffffff;
+}
+
+.dd-item {
+  --padding-start: 8px;
+  --padding-end: 10px;
+  --inner-padding-end: 0;
+  --background: transparent;
+  --background-activated: transparent;
+  --background-focused: transparent;
+  --ripple-color: transparent;
+  border-radius: 10px;
+  margin-bottom: 2px;
+  transition: background 0.15s ease;
+}
+
+.dd-item:hover { --background: #f8fafc; }
+
+.dd-item ion-label {
+  display: flex !important;
+  flex-direction: column;
+  gap: 1px;
+  margin: 6px 0;
+}
+
+.dd-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dd-sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.dd-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 6px;
+}
+
+.dd-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+.dd-icon-teal { background: #ccfbf1; color: #0f766e; }
+.dd-icon-blue { background: #dbeafe; color: #1d4ed8; }
+.dd-icon-indigo { background: #e0e7ff; color: #4338ca; }
+.dd-icon-red { background: #fee2e2; color: #b91c1c; }
+
+.dd-item-danger .dd-label { color: #b91c1c; }
+.dd-item-danger:hover { --background: #fef2f2; }

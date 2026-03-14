@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";
 import * as bcrypt from "bcryptjs";
-import { initDatabase } from "../../model/base/Database";
+import { initDatabase } from "../../shared/lib/db/Database";
 
 import "../../assets/dist/css/bootstrap.min.css";
 import "./Login.css";
