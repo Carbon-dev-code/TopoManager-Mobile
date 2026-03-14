@@ -1,75 +1,43 @@
-import {
-  IonContent,
-  IonHeader,
-  IonPage,
-  IonToolbar,
-  IonIcon,
-  IonButtons,
-  IonMenuButton,
-  IonButton,
-  IonInput,
-  IonToast,
-  IonTitle,
-  IonLoading,
-  useIonViewDidEnter,
-  IonItem,
-  IonCheckbox,
-  IonLabel,
-} from "@ionic/react";
-import "../MapViewerPage.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useIonViewDidEnter } from "@ionic/react";
+import { useCallback, useEffect, useRef } from "react";
+
 import OLMap from "ol/Map";
 import View from "ol/View";
+import GeoJSON from "ol/format/GeoJSON";
 import { fromLonLat, transform } from "ol/proj";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import VectorImageLayer from "ol/layer/VectorImage";
 import ScaleLine from "ol/control/ScaleLine";
 import "ol/ol.css";
-import {
-  addOutline,
-  checkmark,
-  closeOutline,
-  handLeftOutline,
-  information,
-  layersOutline,
-  locateOutline,
-  magnetOutline,
-  navigateSharp,
-  pencilOutline,
-  removeOutline,
-  search,
-  searchSharp,
-  stopSharp,
-} from "ionicons/icons";
-import { Parcelle } from "../../../entities/parcelle";
+import Rotate from "ol/control/Rotate";
 import VectorSource from "ol/source/Vector";
-import Polygon from "ol/geom/Polygon";
-import { Feature } from "ol";
-import VectorLayer from "ol/layer/Vector";
+import Feature, { FeatureLike } from "ol/Feature";
 import Style from "ol/style/Style";
 import Stroke from "ol/style/Stroke";
 import Fill from "ol/style/Fill";
 import Text from "ol/style/Text";
-import GeoJSON from "ol/format/GeoJSON";
-import { useLocation } from "react-router";
-import Rotate from "ol/control/Rotate";
-import { useDb } from "../../../shared/lib/db/DbContext";
-import {
-  getAllParcelles,
-  insertParcelle,
-} from "../../../shared/lib/db/DbSchema";
-import Cube from "../../../shared/ui/Cube";
-import CardGlass from "../../../shared/ui/CardGlass";
-import { FeatureLike } from "ol/Feature";
+
 import { useParcelleDrawing } from "./useParcelleDrawing";
 import { useGpsTracking } from "./Usegpstracking";
-import { useGeoJsonLoader } from "./Usegeojsonloader";
 import { useMbTiles } from "./Usembtiles";
 import { useLayerVisibility } from "./Uselayervisibility";
 import { useMapSearch } from "./Usemapsearch";
 import { useParcelleLayer } from "./Useparcellelayer";
 import { useParcelleAutoZoom } from "./Useparcelleautozoom";
+import { MapViewerLayout } from "../components/MapViewerLayout";
+import { useLocation } from "react-router";
+import VectorLayer from "ol/layer/Vector";
+import { useMapState } from "./useMapState";
+import { useMapUI } from "./useMapUI";
+import { LABEL_MAP, LAYER_ORDER, STYLE_CONFIG } from "../constants/layerConfig";
+import { SearchInterface } from "../components/SearchInterface";
+import { GPSInterface } from "../components/GPSInterface";
+import { MapControls } from "../components/MapControls";
+import { formatSurface } from "../utils/formatters";
+import { insertParcelle } from "../../../shared/lib/db/DbSchema";
+
+import "../MapViewerPage.css";
 
 proj4.defs(
   "EPSG:29702",
@@ -77,46 +45,6 @@ proj4.defs(
 );
 register(proj4);
 
-const LAYER_ORDER = [
-  "region",
-  "district",
-  "commune",
-  "fokontany",
-  "ipss",
-  "demandecf",
-  "requisition",
-  "titre",
-  "certificat",
-  "cadastre",
-  "demandefn",
-];
-
-const STYLE_CONFIG = {
-  ipss: { stroke: "rgba(5, 59, 255,1)", fill: "rgba(5,59,255,0.3)" },
-  certificat: { stroke: "rgba(251,255,0,1)", fill: "rgba(251,255,0,0.3)" },
-  demandecf: { stroke: "rgba(148,52,211,1)", fill: "rgba(148,52,211,0.3)" },
-  requisition: {
-    stroke: "rgba(76, 211, 52, 1)",
-    fill: "rgba(76, 211, 52,0.3)",
-  },
-  titre: { stroke: "rgba(255,0,0,1)", fill: "rgba(255,0,0,0.3)" },
-  region: { stroke: "rgba(0, 100, 0, 1)", fill: "rgba(0, 100, 0, 0.1)" },
-  district: { stroke: "rgba(0, 150, 0, 1)", fill: "rgba(0, 150, 0, 0.1)" },
-  commune: { stroke: "rgba(0, 200, 0, 1)", fill: "rgba(0, 200, 0, 0.1)" },
-  fokontany: { stroke: "rgba(0, 250, 0, 1)", fill: "rgba(0, 250, 0, 0.1)" },
-  cadastre: { stroke: "rgba(200, 100, 0, 1)", fill: "rgba(200, 100, 0, 0.2)" },
-  demandefn: { stroke: "rgba(100, 0, 200, 1)", fill: "rgba(100, 0, 200,0.3)" },
-  parcelle: { stroke: "rgb(255, 147, 5)", fill: "rgba(255, 147, 5, 0.2)" },
-};
-
-const LABEL_MAP = {
-  requisition: "num_requisition",
-  certificat: "numerocertificat",
-  ipss: "code_parcelle",
-  demandecf: "numdemande",
-  titre: "titres_req",
-  parcelle: "code",
-};
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -124,30 +52,32 @@ function useQuery() {
 
 export const useMapViewerPage = () => {
   const mapRef = useRef<OLMap | null>(null);
-  const mapElement = useRef<HTMLDivElement>(null);
+  const mapElement = useRef<HTMLDivElement | null>(null);
   const parcellesSourceRef = useRef<VectorSource | null>(null);
-  const geoJsonLayersRef = useRef<Record<string, VectorLayer>>({});
+  const geoJsonLayersRef = useRef<Record<string, VectorLayer | VectorImageLayer<any>>>({});
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const styleCache = useRef<Record<string, Style>>({});
-
-  const { db, loadMBTiles } = useDb();
-  const [loadingMap, setLoadingMap] = useState(true);
-  const [showLocalTiles, setShowLocalTiles] = useState(true);
-  const [parcelles, setParcelles] = useState<Parcelle[]>([]);
-  const [geojsons, setGeojsons] = useState<any[]>([]);
-  const [currentParcelle, setCurrentParcelle] = useState<Parcelle | null>(null);
-  const [centerCoordsProjected, setCenterCoordsProjected] = useState<
-    number[] | null
-  >(null);
-  const [showCard, setShowCard] = useState(true);
-  const [fabOpen, setFabOpen] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [showGPS, setShowGPS] = useState(false);
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
   const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+
+  const mapState = useMapState();
+  const mapUI = useMapUI();
+
+  const { loadingMap, setLoadingMap, showLocalTiles, setShowLocalTiles, parcelles, setParcelles,  geojsons, currentParcelle,  setCurrentParcelle, centerCoordsProjected,  setCenterCoordsProjected, toastMessage, setToastMessage, db, loadMBTiles, loadData, } = mapState;
+
+  const {
+    showCard,
+    setShowCard,
+    fabOpen,
+    setFabOpen,
+    showSearch,
+    setShowSearch,
+    showGPS,
+    setShowGPS,
+    latitude,
+    setLatitude,
+    longitude,
+    setLongitude,
+  } = mapUI;
 
   const { searchAndZoom, blinkFeature, addMarkerWithBlink } = useMapSearch({
     mapRef,
@@ -157,7 +87,7 @@ export const useMapViewerPage = () => {
     onError: setToastMessage,
   });
 
-  const { layerVisibility, layerVisibilityRef, toggleLayer } = useLayerVisibility({
+  const { layerVisibility, toggleLayer } = useLayerVisibility({
     mapRef,
   });
 
@@ -166,7 +96,6 @@ export const useMapViewerPage = () => {
     onError: (message) => setToastMessage(message),
   });
 
-  const { loadGeoJsonFromStorage } = useGeoJsonLoader();
   const { localLayerRef, addMbTilesLayer } = useMbTiles({
     mapRef,
     onLoadStart: () => setLoadingMap(true),
@@ -177,11 +106,6 @@ export const useMapViewerPage = () => {
   const from = query.get("from");
   const action = query.get("action");
   const codeParcelle = query.get("code");
-
-  const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
-    const { data } = await getAllParcelles();
-    return data;
-  }, []);
 
   const getLabelText = useCallback(
     (feature: Feature, type: string | undefined): string => {
@@ -255,7 +179,7 @@ export const useMapViewerPage = () => {
     mapRef,
     vectorLayerRef,
     parcellesSourceRef,
-    geoJsonLayersRef: geoJsonLayersRef as any,
+    geoJsonLayersRef: geoJsonLayersRef,
     fabOpen,
     setFabOpen,
     currentParcelle,
@@ -266,7 +190,7 @@ export const useMapViewerPage = () => {
     styleByType,
     setToastMessage,
   });
-  
+
   useParcelleAutoZoom({
     mapRef,
     parcelles,
@@ -293,7 +217,7 @@ export const useMapViewerPage = () => {
     parcellesLayer.set("name", "parcelle");
     parcellesSourceRef.current = parcellesSource;
 
-    const layers: (VectorLayer<any> | VectorImageLayer<any>)[] = [
+    const layers: (VectorLayer | VectorImageLayer)[] = [
       parcellesLayer,
     ];
 
@@ -307,7 +231,7 @@ export const useMapViewerPage = () => {
         imageRatio: 1,
       });
       layer.set("name", name);
-      geoJsonLayersRef.current[name] = layer as any;
+      geoJsonLayersRef.current[name] = layer;
       layers.push(layer);
     });
     return layers;
@@ -324,24 +248,19 @@ export const useMapViewerPage = () => {
 
     map.getView().animate({ center: coords3857, zoom: 17, duration: 1000 });
     if (!fabOpen) addMarkerWithBlink(coords3857);
-  }, [fabOpen, latitude, longitude, addMarkerWithBlink]);
+  }, [fabOpen, latitude, longitude, addMarkerWithBlink, setToastMessage]);
 
   useIonViewDidEnter(() => {
-    const loadDataOnEnter = async () => {
+    const init = async () => {
       try {
-        setLoadingMap(true);
-        setGeojsons(await loadGeoJsonFromStorage());
-        const loadedParcelles = await loadParcellesFromStorage();
-        setParcelles(loadedParcelles);
+        await loadData();
         const database = db || (await loadMBTiles());
         if (!localLayerRef.current) await addMbTilesLayer(database);
       } catch (err) {
         console.error("Erreur chargement MapViewerPage:", err);
-      } finally {
-        setLoadingMap(false);
       }
     };
-    loadDataOnEnter();
+    init();
   });
 
   useEffect(() => {
@@ -383,7 +302,7 @@ export const useMapViewerPage = () => {
         mapRef.current = null;
       }
     };
-  }, [createVectorLayers]);
+  }, [createVectorLayers, setCenterCoordsProjected]);
 
   useEffect(() => {
     if (!mapRef.current || geojsons.length === 0) return;
@@ -391,7 +310,7 @@ export const useMapViewerPage = () => {
     Object.keys(geoJsonLayersRef.current).forEach((n) =>
       geoJsonLayersRef.current[n].getSource()?.clear(),
     );
-    geojsons.forEach((g) => {
+    geojsons.forEach((g: any) => {
       const fts = format.readFeatures(g, { featureProjection: "EPSG:3857" });
       if (fts.length > 0) {
         const type = fts[0].get("name")?.toLowerCase();
@@ -404,446 +323,178 @@ export const useMapViewerPage = () => {
 
   useParcelleLayer({ parcelles, parcellesSourceRef });
 
-  function formatSurface(m2: number): string {
-    const ha = Math.floor(m2 / 10000);
-    const reste = m2 % 10000;
-    const a = Math.floor(reste / 100);
-    const ca = Math.floor(reste % 100);
+  const handleEditToggle = () => {
+    if (!fabOpen) {
+      const hasPolygon =
+        currentParcelle?.polygone &&
+        currentParcelle.polygone.length > 0;
 
-    return `${ha} ha ${a} a ${ca.toString().padStart(2, "0")} ca`;
-  }
+      if (hasPolygon) {
+        const points = currentParcelle.polygone[0].points.map(
+          (pt) =>
+            transform(
+              [pt.x, pt.y],
+              "EPSG:29702",
+              "EPSG:3857",
+            ) as [number, number],
+        );
+        setDrawPoints(points);
+        setIsEditMode(true);
+        setSelectedPointIndex(null);
+        setFabOpen(true);
+        setToastMessage(
+          "Mode édition - Modifiez les points existants",
+        );
+      } else {
+        setDrawPoints([]);
+        setIsEditMode(false);
+        setSelectedPointIndex(null);
+        setFabOpen(true);
+        setToastMessage("Mode création - Ajoutez des points");
+      }
+    } else {
+      setDrawPoints([]);
+      setFabOpen(false);
+      setIsEditMode(false);
+      setSelectedPointIndex(null);
+    }
+  };
 
   return (
-    <IonPage>
-      <IonHeader className="custom-header">
-        <IonToolbar className="custom-toolBar">
-          <IonButtons slot="start" className="glass-btn">
-            <IonMenuButton />
-          </IonButtons>
-          {currentParcelle && (
-            <IonTitle className="glass-label">
-              Parcelle {currentParcelle.code}
-            </IonTitle>
-          )}
-          <IonButtons
-            onClick={() => setShowSearch((prev) => !prev)}
-            slot="end"
-            className="glass-btn"
-          >
-            <IonIcon icon={search} />
-          </IonButtons>
-        </IonToolbar>
-      </IonHeader>
+    <MapViewerLayout
+      mapElement={mapElement}
+      loadingMap={loadingMap}
+      currentParcelle={currentParcelle}
+      showCard={showCard}
+      setShowCard={setShowCard}
+      showSearch={showSearch}
+      setShowSearch={setShowSearch}
+      toastMessage={toastMessage}
+      setToastMessage={setToastMessage}
+    >
+      {fabOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "70px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            backgroundColor: isEditMode
+              ? "rgba(255, 152, 0, 0.95)"
+              : "rgba(5, 59, 255, 0.95)",
+            color: "white",
+            padding: "8px 20px",
+            borderRadius: "25px",
+            fontSize: "11px",
+            fontWeight: "bold",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            letterSpacing: "0.8px",
+            pointerEvents: "none",
+          }}
+        >
+          {isEditMode
+            ? `MODIFICATION${selectedPointIndex !== null
+              ? ` (Point ${selectedPointIndex + 1})`
+              : ""
+            }`
+            : "CRÉATION"}
+        </div>
+      )}
 
-      <IonContent fullscreen>
-        {fabOpen && (
-          <div
-            style={{
-              position: "absolute",
-              top: "70px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 1000,
-              backgroundColor: isEditMode
-                ? "rgba(255, 152, 0, 0.95)"
-                : "rgba(5, 59, 255, 0.95)",
-              color: "white",
-              padding: "8px 20px",
-              borderRadius: "25px",
-              fontSize: "11px",
-              fontWeight: "bold",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-              letterSpacing: "0.8px",
-              pointerEvents: "none",
-            }}
-          >
-            {isEditMode
-              ? `MODIFICATION${selectedPointIndex !== null
-                ? ` (Point ${selectedPointIndex + 1})`
-                : ""
-              }`
-              : "CRÉATION"}
-          </div>
-        )}
-
-        <IonLoading
-          isOpen={loadingMap}
-          message="Initialisation de la carte..."
-          spinner="circles"
-        />
-
-        {fabOpen && (
-          <div className="map-crosshair">
-            <div className="cross-symbol"></div>
-            {centerCoordsProjected && (
-              <div className="coord-display">
-                <div>
-                  X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
-                  {centerCoordsProjected[1].toFixed(6)}
-                </div>
-                <div className="gps-status">
-                  {gpsStatus === 1 && (
-                    <div className="gps-loader">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                  )}
-                  {gpsStatus === 2 && gpsAccuracy !== null && (
-                    <div
-                      className="gps-accuracy"
-                      style={{
-                        color:
-                          gpsAccuracy < 10
-                            ? "green"
-                            : gpsAccuracy < 50
-                              ? "orange"
-                              : "red",
-                      }}
-                    >
-                      Précision GPS: {gpsAccuracy.toFixed(1)} m
-                    </div>
-                  )}
-                  {gpsStatus === 3 && (
-                    <div className="gps-error">Erreur GPS</div>
-                  )}
-                </div>
+      {fabOpen && (
+        <div className="map-crosshair">
+          <div className="cross-symbol"></div>
+          {centerCoordsProjected && (
+            <div className="coord-display">
+              <div>
+                X: {centerCoordsProjected[0].toFixed(6)} Y:{" "}
+                {centerCoordsProjected[1].toFixed(6)}
               </div>
-            )}
-          </div>
-        )}
-
-        <div ref={mapElement} className="map-container"></div>
-
-        {showSearch && (
-          <div className="map-search">
-            <div className="search-glass">
-              <IonInput
-                type="search"
-                placeholder="Recherche titre, karatany, ipss, ..."
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const val = (e.target as HTMLInputElement).value;
-                    if (val?.trim()) searchAndZoom(val.trim());
-                  }
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        <IonToast
-          isOpen={!!toastMessage}
-          message={toastMessage || ""}
-          duration={2000}
-          color="danger"
-          onDidDismiss={() => setToastMessage(null)}
-        />
-
-        {showCard && currentParcelle && (
-          <CardGlass
-            currentParcelle={currentParcelle}
-            setShowCard={setShowCard}
-          />
-        )}
-
-        {showGPS && (
-          <div className="gps-container">
-            <div className="gps-search">
-              <IonInput
-                className="border"
-                type="text"
-                placeholder="X"
-                value={longitude}
-                onIonChange={(e) => setLongitude(e.detail.value!)}
-              />
-              <IonInput
-                className="border"
-                type="text"
-                placeholder="Y"
-                value={latitude}
-                onIonChange={(e) => setLatitude(e.detail.value!)}
-              />
-              <IonButton
-                className="glass-btn"
-                fill="clear"
-                size="small"
-                color="primary"
-                onClick={searchGPS}
-              >
-                <IonIcon icon={searchSharp} style={{ fontSize: "20px" }} />
-              </IonButton>
-              <IonButton
-                className="glass-btn"
-                fill="clear"
-                size="small"
-                color="danger"
-                onClick={() => setShowGPS(false)}
-              >
-                <IonIcon icon={closeOutline} style={{ fontSize: "20px" }} />
-              </IonButton>
-            </div>
-          </div>
-        )}
-
-        <div className="map-controls">
-          {fabOpen && (
-            <div className="fab">
-              <IonButton
-                className="glass-btn"
-                fill="clear"
-                onClick={isEditMode ? savePolygonEdit : addPolygone}
-              >
-                <IonIcon color="success" icon={checkmark} />
-              </IonButton>
-
-              {isEditMode ? (
-                <>
-                  <IonButton
-                    className="glass-btn"
-                    fill="clear"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addPointInEditMode();
+              <div className="gps-status">
+                {gpsStatus === 1 && (
+                  <div className="gps-loader">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                )}
+                {gpsStatus === 2 && gpsAccuracy !== null && (
+                  <div
+                    className="gps-accuracy"
+                    style={{
+                      color:
+                        gpsAccuracy < 10
+                          ? "green"
+                          : gpsAccuracy < 50
+                            ? "orange"
+                            : "red",
                     }}
                   >
-                    <IonIcon color="primary" icon={addOutline} />
-                  </IonButton>
-
-                  <IonButton
-                    className="glass-btn"
-                    fill={selectedPointIndex !== null ? "solid" : "clear"}
-                    color={selectedPointIndex !== null ? "primary" : "medium"}
-                    onClick={moveSelectedPointToCenter}
-                    disabled={selectedPointIndex === null}
-                  >
-                    <IonIcon icon={handLeftOutline} />
-                  </IonButton>
-
-                  <IonButton
-                    className="glass-btn"
-                    fill={selectedPointIndex !== null ? "solid" : "clear"}
-                    color={selectedPointIndex !== null ? "danger" : "medium"}
-                    onClick={deleteSelectedPoint}
-                    disabled={
-                      selectedPointIndex === null ||
-                      getRealPointsCount(drawPoints) <= 2
-                    }
-                  >
-                    <IonIcon icon={removeOutline} />
-                  </IonButton>
-
-                  <IonButton
-                    className="glass-btn"
-                    fill="clear"
-                    onClick={() => setSelectedPointIndex(null)}
-                    disabled={selectedPointIndex === null}
-                  >
-                    <IonIcon color="medium" icon={closeOutline} />
-                  </IonButton>
-                </>
-              ) : (
-                <>
-                  <IonButton
-                    className="glass-btn"
-                    fill="clear"
-                    onClick={addPointInCreateMode}
-                  >
-                    <IonIcon color="primary" icon={addOutline} />
-                  </IonButton>
-
-                  <IonButton
-                    className="glass-btn"
-                    fill="clear"
-                    onClick={() =>
-                      setDrawPoints((prev) => prev.slice(0, -1))
-                    }
-                    disabled={drawPoints.length === 0}
-                  >
-                    <IonIcon color="danger" icon={removeOutline} />
-                  </IonButton>
-                </>
-              )}
-
-              <IonButton
-                className="glass-btn"
-                fill={snapEnabled ? "solid" : "clear"}
-                color={snapEnabled ? "tertiary" : "medium"}
-                onClick={() => {
-                  const newSnapState = !snapEnabled;
-                  setSnapEnabled(newSnapState);
-                  if (newSnapState) {
-                    performSnap();
-                  }
-                }}
-              >
-                <IonIcon icon={magnetOutline} />
-              </IonButton>
-
-              <IonButton
-                className="glass-btn"
-                fill="clear"
-                onClick={cancelEdit}
-              >
-                <IonIcon color="dark" icon={closeOutline} />
-              </IonButton>
-
-              <IonButton
-                className="glass-btn"
-                fill={tracking ? "solid" : "clear"}
-                color={tracking ? "danger" : "primary"}
-                onClick={toggleTracking}
-              >
-                <IonIcon icon={tracking ? stopSharp : navigateSharp} />
-              </IonButton>
-            </div>
-          )}
-
-          {currentParcelle && (
-            <>
-              <IonButton
-                fill="clear"
-                className="glass-btn"
-                onClick={() => {
-                  if (!fabOpen) {
-                    const hasPolygon =
-                      currentParcelle.polygone &&
-                      currentParcelle.polygone.length > 0;
-
-                    if (hasPolygon) {
-                      const points = currentParcelle.polygone[0].points.map(
-                        (pt) =>
-                          transform(
-                            [pt.x, pt.y],
-                            "EPSG:29702",
-                            "EPSG:3857",
-                          ) as [number, number],
-                      );
-                      setDrawPoints(points);
-                      setIsEditMode(true);
-                      setSelectedPointIndex(null);
-                      setFabOpen(true);
-                      setToastMessage(
-                        "Mode édition - Modifiez les points existants",
-                      );
-                    } else {
-                      setDrawPoints([]);
-                      setIsEditMode(false);
-                      setSelectedPointIndex(null);
-                      setFabOpen(true);
-                      setToastMessage("Mode création - Ajoutez des points");
-                    }
-                  } else {
-                    setDrawPoints([]);
-                    setFabOpen(false);
-                    setIsEditMode(false);
-                    setSelectedPointIndex(null);
-                  }
-                }}
-              >
-                <IonIcon
-                  color={fabOpen ? "dark" : "danger"}
-                  icon={pencilOutline}
-                />
-              </IonButton>
-
-              <IonButton
-                className="glass-btn"
-                fill="clear"
-                onClick={() => setShowCard(true)}
-              >
-                <IonIcon color="dark" icon={information} />
-              </IonButton>
-            </>
-          )}
-
-          <IonButton
-            className="glass-btn"
-            fill="clear"
-            onClick={() => setShowGPS((prev) => !prev)}
-          >
-            <IonIcon color="dark" icon={locateOutline} />
-          </IonButton>
-
-          {!showLocalTiles && (
-            <div className="glass-panel">
-              <h4 className="glass-title">Couches visibles</h4>
-              <IonItem className="glass-item border-bottom" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.parcelle}
-                  onIonChange={() => toggleLayer(["parcelle"])}
-                />
-                <Cube color="orange" /> Parcelle
-              </IonItem>
-              <IonItem className="glass-item border-bottom" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.ipss}
-                  onIonChange={() => toggleLayer(["ipss"])}
-                />
-                <Cube color="blue" /> IPSS
-              </IonItem>
-              <IonItem className="glass-item" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.titre}
-                  onIonChange={() => toggleLayer("titre")}
-                />
-                <Cube color="red" /> Titre
-              </IonItem>
-              <IonItem className="glass-item border-bottom" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.requisition}
-                  onIonChange={() => toggleLayer("requisition")}
-                />
-                <Cube color="chartreuse" />
-                <IonLabel>Requisition</IonLabel>
-              </IonItem>
-              <IonItem className="glass-item" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.demandecf}
-                  onIonChange={() => toggleLayer("demandecf")}
-                />
-                <Cube color="purple" /> Demande CF
-              </IonItem>
-              <IonItem className="glass-item border-bottom" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.certificat}
-                  onIonChange={() => toggleLayer("certificat")}
-                />
-                <Cube color="yellow" /> Karatany
-              </IonItem>
-              <IonItem className="glass-item" lines="none">
-                <IonCheckbox
-                  slot="start"
-                  checked={layerVisibility.fond}
-                  onIonChange={() => toggleLayer("fond")}
-                />
-                Fond image
-              </IonItem>
-            </div>
-          )}
-
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            {fabOpen && drawPoints.length >= 3 && (
-              <div className="surface-parcelle">
-                Surface {formatSurface(surface)}
+                    Précision GPS: {gpsAccuracy.toFixed(1)} m
+                  </div>
+                )}
+                {gpsStatus === 3 && (
+                  <div className="gps-error">Erreur GPS</div>
+                )}
               </div>
-            )}
-            <IonButton
-              fill="clear"
-              className="glass-btn"
-              onClick={() => setShowLocalTiles((prev) => !prev)}
-            >
-              <IonIcon color="dark" icon={layersOutline} />
-            </IonButton>
-          </div>
+            </div>
+          )}
         </div>
-      </IonContent>
-    </IonPage>
+      )}
+
+      {showSearch && (
+        <SearchInterface onSearch={searchAndZoom} />
+      )}
+
+      {showGPS && (
+        <GPSInterface
+          latitude={latitude}
+          longitude={longitude}
+          setLatitude={setLatitude}
+          setLongitude={setLongitude}
+          onSearch={searchGPS}
+          onClose={() => setShowGPS(false)}
+        />
+      )}
+
+      <MapControls
+        fabOpen={fabOpen}
+        isEditMode={isEditMode}
+        selectedPointIndex={selectedPointIndex}
+        snapEnabled={snapEnabled}
+        tracking={tracking}
+        currentParcelle={currentParcelle}
+        showLocalTiles={showLocalTiles}
+        layerVisibility={layerVisibility}
+        drawPoints={drawPoints}
+        surface={surface}
+        getRealPointsCount={getRealPointsCount}
+        setShowLocalTiles={setShowLocalTiles}
+        setShowGPS={setShowGPS}
+        toggleLayer={toggleLayer}
+        savePolygonEdit={savePolygonEdit}
+        addPolygone={addPolygone}
+        addPointInEditMode={addPointInEditMode}
+        addPointInCreateMode={addPointInCreateMode}
+        moveSelectedPointToCenter={moveSelectedPointToCenter}
+        deleteSelectedPoint={deleteSelectedPoint}
+        setSelectedPointIndex={setSelectedPointIndex}
+        performSnap={performSnap}
+        setSnapEnabled={setSnapEnabled}
+        cancelEdit={cancelEdit}
+        toggleTracking={toggleTracking}
+        onEditToggle={handleEditToggle}
+        onShowCard={() => setShowCard(true)}
+      />
+
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", position: "absolute", bottom: "20px", right: "20px" }}>
+        {fabOpen && drawPoints.length >= 3 && (
+          <div className="surface-parcelle">
+            Surface {formatSurface(surface)}
+          </div>
+        )}
+      </div>
+    </MapViewerLayout>
   );
 };
