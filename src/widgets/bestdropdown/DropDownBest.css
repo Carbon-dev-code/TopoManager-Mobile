@@ -1,0 +1,68 @@
+.dd-best-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.dd-best-menu {
+  position: fixed;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+  border: 1px solid #f0f0f0;
+  min-width: 210px;
+  overflow: hidden;
+}
+
+.dd-best-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dd-best-item:active {
+  background: #f5f7ff;
+}
+
+.dd-best-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.dd-best-icon-blue   { background: #e8f0ff; color: #005eff; }
+.dd-best-icon-teal   { background: #e0f7f4; color: #00897b; }
+.dd-best-icon-indigo { background: #ede7f6; color: #5e35b1; }
+.dd-best-icon-red    { background: #ffebee; color: #e53935; }
+.dd-best-icon-green  { background: #e6f9f0; color: #00a854; }
+
+.dd-best-label-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.dd-best-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.dd-best-sub {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 1px;
+}
+
+.dd-best-divider {
+  height: 1px;
+  background: #f5f5f5;
+  margin: 0 12px;
+}
