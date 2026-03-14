@@ -1,13 +1,4 @@
-import {
-  IonModal,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonButton,
-  IonContent,
-  IonLabel,
-  IonInput,
-} from "@ionic/react";
+import { IonInput } from "@ionic/react";
 import { useEffect, useState } from "react";
 import { ConfigService } from "../../shared/lib/config/ConfigService";
 import "./ServerModal.css";
@@ -34,41 +25,41 @@ const ServerModal: React.FC<ServerModalProps> = ({ isOpen, onClose, onSaved }) =
     onClose();
   };
 
+  if (!isOpen) return null;
+
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onClose}>
-      <IonHeader>
-        <IonToolbar color="primary">
-          <IonTitle>Configurer le serveur</IonTitle>
-        </IonToolbar>
-      </IonHeader>
+    <div className="server-modal-overlay" onClick={onClose}>
+      <div className="server-modal-sheet" onClick={(e) => e.stopPropagation()}>
 
-      <IonContent className="ion-padding">
-        <div className="card-server-modal">
-          <IonLabel position="stacked">Adresse IP:port</IonLabel>
+        <div className="server-modal-icon">🌐</div>
+        <div className="server-modal-title">Configurer le serveur</div>
+        <div className="server-modal-subtitle">
+          Entrez l'adresse IP et le port du serveur
+        </div>
 
+        <div className="server-modal-field">
+          <div className="server-modal-field-label">Adresse IP : Port</div>
           <IonInput
+            className="server-modal-input"
             value={ipPort}
             onIonChange={(e) => setIpPort(e.detail.value ?? "")}
-            placeholder="192.168.1.10:80"
+            placeholder="192.168.1.10:8080"
+            inputmode="url"
           />
-
-          <div className="row g-0">
-            <div className="col-6">
-              <IonButton expand="block" color="danger" onClick={onClose}>
-                Annuler
-              </IonButton>
-            </div>
-            <div className="col-6">
-              <IonButton expand="block" onClick={handleSave}>
-                Enregistrer
-              </IonButton>
-            </div>
-          </div>
         </div>
-      </IonContent>
-    </IonModal>
+
+        <div className="server-modal-actions">
+          <button className="server-modal-btn cancel" onClick={onClose}>
+            Annuler
+          </button>
+          <button className="server-modal-btn save" onClick={handleSave}>
+            Enregistrer
+          </button>
+        </div>
+
+      </div>
+    </div>
   );
 };
 
 export default ServerModal;
-
