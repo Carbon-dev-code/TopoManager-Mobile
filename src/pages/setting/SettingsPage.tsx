@@ -19,7 +19,6 @@ import {
   IonText,
   IonProgressBar,
   useIonViewWillEnter,
-  IonPopover,
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
@@ -51,6 +50,8 @@ import TerritorialSelector from "../../widgets/territoire/TerritorialSelector";
 import ServerModal from "../../widgets/server/ServerModal";
 import { PluginListenerHandle } from "@capacitor/core";
 
+import DropDown, { DropDownItem } from "../../widgets/bestdropdown/DropDownItem";
+
 const SettingsPage: React.FC = () => {
   const [territoire, setTerritoire] = useState<Territoire[]>([]);
   const [parametres, setParametres] = useState<ParametreTerritoire[]>([]);
@@ -70,6 +71,7 @@ const SettingsPage: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isDownloadingTiles, setIsDownloadingTiles] = useState(false);
   const [progression, setProgression] = useState<number>(0);
 
@@ -214,8 +216,7 @@ const SettingsPage: React.FC = () => {
       setShowModal(true);
     } catch (err: unknown) {
       setError(
-        `Échec de la synchronisation: ${
-          err instanceof Error ? err.message : "Erreur inconnue"
+        `Échec de la synchronisation: ${err instanceof Error ? err.message : "Erreur inconnue"
         }`,
       );
     } finally {
@@ -558,51 +559,61 @@ const SettingsPage: React.FC = () => {
           </IonButtons>
           <IonTitle>Paramètrage</IonTitle>
           <IonButtons slot="end">
-            <IonButton id="dropdown-trigger">
+            <IonButton id="settings-dropdown-trigger"
+              onClick={() => setDropdownOpen(true)}
+            >
               <IonIcon icon={ellipsisVertical} />
             </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
-      <IonPopover trigger="dropdown-trigger" triggerAction="click">
-        <IonContent>
-          <IonList>
-            <IonItem
-              button
-              onClick={() => setModalServerOpen(true)}
-              disabled={isLoading}
-            >
-              <IonIcon icon={serverOutline} slot="start" />
-              <IonLabel>Adresse du Serveur</IonLabel>
-            </IonItem>
-            <IonItem
-              button
-              onClick={fetchData}
-              disabled={isLoading}
-            >
-              <IonIcon icon={sync} slot="start" />
-              <IonLabel>Maj. locale</IonLabel>
-            </IonItem>
-            <IonItem
-              button
-              onClick={() => setShowModalCarte(true)}
-              disabled={isLoading}
-            >
-              <IonIcon icon={map} slot="start" />
-              <IonLabel>Ajouter une carte</IonLabel>
-            </IonItem>
-            <IonItem
-              button
-              onClick={fetchPlof}
-              disabled={isLoading}
-              lines="none"
-            >
-              <IonIcon icon={layersOutline} slot="start" />
-              <IonLabel>Maj. plof local</IonLabel>
-            </IonItem>
-          </IonList>
-        </IonContent>
-      </IonPopover>
+
+      <DropDown
+        show={dropdownOpen}
+        onClose={() => setDropdownOpen(false)}
+        triggerId="settings-dropdown-trigger"
+      >
+        <DropDownItem
+          icon={serverOutline}
+          label="Adresse du serveur"
+          sub="Configurer l'IP et le port"
+          color="blue"
+          onClick={() => {
+            setModalServerOpen(true);
+            setDropdownOpen(false);
+          }}
+        />
+        <DropDownItem
+          icon={sync}
+          label="Maj. locale"
+          sub="Synchroniser les données"
+          color="teal"
+          onClick={() => {
+            fetchData();
+            setDropdownOpen(false);
+          }}
+        />
+        <DropDownItem
+          icon={map}
+          label="Ajouter une carte"
+          sub="Télécharger les tuiles"
+          color="indigo"
+          onClick={() => {
+            setShowModalCarte(true);
+            setDropdownOpen(false);
+          }}
+        />
+        <DropDownItem
+          icon={layersOutline}
+          label="Maj. plof en local"
+          sub="Mettre à jour les couches"
+          color="green"
+          onClick={() => {
+            fetchPlof();
+            setDropdownOpen(false);
+          }}
+        />
+      </DropDown>
 
       <IonContent className="ion-padding" color="light">
         <IonCard color="white" className="current-param-card">
