@@ -1,13 +1,4 @@
-import {
-  IonContent,
-  IonPage,
-  IonAlert,
-  IonButton,
-  IonIcon,
-  IonItem,
-  IonInput,
-  IonRouterLink,
-} from "@ionic/react";
+import { IonContent, IonPage, IonAlert, IonButton, IonIcon, IonItem, IonInput, IonRouterLink } from "@ionic/react";
 import { useRef, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";

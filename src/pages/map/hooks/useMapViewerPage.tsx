@@ -20,13 +20,10 @@ import "../MapViewerPage.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import OLMap from "ol/Map";
 import View from "ol/View";
-import { fromLonLat, transform, transformExtent } from "ol/proj";
+import { fromLonLat, transform } from "ol/proj";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
-import XYZ from "ol/source/XYZ";
-import TileLayer from "ol/layer/Tile";
 import VectorImageLayer from "ol/layer/VectorImage";
-import { Directory, Filesystem, Encoding } from "@capacitor/filesystem";
 import ScaleLine from "ol/control/ScaleLine";
 import "ol/ol.css";
 import {
@@ -45,7 +42,6 @@ import {
   searchSharp,
   stopSharp,
 } from "ionicons/icons";
-import { Preferences } from "@capacitor/preferences";
 import { Parcelle } from "../../../entities/parcelle";
 import VectorSource from "ol/source/Vector";
 import Polygon from "ol/geom/Polygon";
@@ -57,24 +53,23 @@ import Fill from "ol/style/Fill";
 import Text from "ol/style/Text";
 import GeoJSON from "ol/format/GeoJSON";
 import { useLocation } from "react-router";
-import { Geolocation } from "@capacitor/geolocation";
-import { Polygone } from "../../../shared/lib/vecteur/Polygone";
-import { PointC } from "../../../shared/lib/vecteur/PointC";
-import Point from "ol/geom/Point";
-import CircleStyle from "ol/style/Circle";
 import Rotate from "ol/control/Rotate";
-import { Capacitor } from "@capacitor/core";
 import { useDb } from "../../../shared/lib/db/DbContext";
 import {
   getAllParcelles,
   insertParcelle,
 } from "../../../shared/lib/db/DbSchema";
 import Cube from "../../../shared/ui/Cube";
-import MultiPoint from "ol/geom/MultiPoint";
 import CardGlass from "../../../shared/ui/CardGlass";
-import { getArea } from "ol/sphere";
 import { FeatureLike } from "ol/Feature";
 import { useParcelleDrawing } from "./useParcelleDrawing";
+import { useGpsTracking } from "./Usegpstracking";
+import { useGeoJsonLoader } from "./Usegeojsonloader";
+import { useMbTiles } from "./Usembtiles";
+import { useLayerVisibility } from "./Uselayervisibility";
+import { useMapSearch } from "./Usemapsearch";
+import { useParcelleLayer } from "./Useparcellelayer";
+import { useParcelleAutoZoom } from "./Useparcelleautozoom";
 
 proj4.defs(
   "EPSG:29702",
@@ -82,7 +77,6 @@ proj4.defs(
 );
 register(proj4);
 
-const STORAGE_KEY_GEOJSON = "plofData";
 const LAYER_ORDER = [
   "region",
   "district",
@@ -96,8 +90,6 @@ const LAYER_ORDER = [
   "cadastre",
   "demandefn",
 ];
-const INTERVAL_DURATION = 10000;
-const MAX_CACHE_SIZE = 200;
 
 const STYLE_CONFIG = {
   ipss: { stroke: "rgba(5, 59, 255,1)", fill: "rgba(5,59,255,0.3)" },
@@ -130,38 +122,15 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-const createCircleStyle = (color: string, radius = 6, strokeWidth = 2) =>
-  new Style({
-    image: new CircleStyle({
-      radius,
-      fill: new Fill({ color }),
-      stroke: new Stroke({ color: "#fff", width: strokeWidth }),
-    }),
-  });
-
 export const useMapViewerPage = () => {
   const mapRef = useRef<OLMap | null>(null);
   const mapElement = useRef<HTMLDivElement>(null);
-  const localLayerRef = useRef<TileLayer | null>(null);
   const parcellesSourceRef = useRef<VectorSource | null>(null);
   const geoJsonLayersRef = useRef<Record<string, VectorLayer>>({});
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
-  const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const styleCache = useRef<Record<string, Style>>({});
-  const watchId = useRef<string | number | null>(null);
-  const lastAutoZoomCodeRef = useRef<string | null>(null);
-  const layerVisibilityRef = useRef({
-    fond: true,
-    ipss: true,
-    parcelle: true,
-    titre: true,
-    requisition: true,
-    demandecf: true,
-    certificat: true,
-  });
 
   const { db, loadMBTiles } = useDb();
-  const tileCache = new Map<string, string>();
   const [loadingMap, setLoadingMap] = useState(true);
   const [showLocalTiles, setShowLocalTiles] = useState(true);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
@@ -177,12 +146,32 @@ export const useMapViewerPage = () => {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [tracking, setTracking] = useState(false);
-  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
-  const [gpsStatus, setGpsStatus] = useState<number>(0);
-  const [layerVisibility, setLayerVisibility] = useState(
-    layerVisibilityRef.current,
-  );
+
+  const highlightLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+
+  const { searchAndZoom, blinkFeature, addMarkerWithBlink } = useMapSearch({
+    mapRef,
+    geoJsonLayersRef,
+    parcelles,
+    highlightLayerRef,
+    onError: setToastMessage,
+  });
+
+  const { layerVisibility, layerVisibilityRef, toggleLayer } = useLayerVisibility({
+    mapRef,
+  });
+
+  const { tracking, gpsAccuracy, gpsStatus, toggleTracking } = useGpsTracking({
+    mapRef,
+    onError: (message) => setToastMessage(message),
+  });
+
+  const { loadGeoJsonFromStorage } = useGeoJsonLoader();
+  const { localLayerRef, addMbTilesLayer } = useMbTiles({
+    mapRef,
+    onLoadStart: () => setLoadingMap(true),
+    onLoadEnd: () => setLoadingMap(false),
+  });
 
   const query = useQuery();
   const from = query.get("from");
@@ -192,29 +181,6 @@ export const useMapViewerPage = () => {
   const loadParcellesFromStorage = useCallback(async (): Promise<Parcelle[]> => {
     const { data } = await getAllParcelles();
     return data;
-  }, []);
-
-  const loadGeoJsonFromStorage = useCallback(async (): Promise<any[]> => {
-    try {
-      const plofDataStr = await Preferences.get({ key: STORAGE_KEY_GEOJSON });
-      if (!plofDataStr.value) return [];
-      const structure = JSON.parse(plofDataStr.value);
-      const all: any[] = [];
-      for (const ds of structure.datastores) {
-        for (const l of ds.layers) {
-          const file = await Filesystem.readFile({
-            path: l.path,
-            directory: Directory.Data,
-            encoding: Encoding.UTF8,
-          });
-          all.push(JSON.parse(file.data as string));
-        }
-      }
-      return all;
-    } catch (e) {
-      console.error(e);
-      return [];
-    }
   }, []);
 
   const getLabelText = useCallback(
@@ -250,13 +216,13 @@ export const useMapViewerPage = () => {
         fill: new Fill({ color: config.fill }),
         text: labelText
           ? new Text({
-              text: labelText,
-              font: "bold 13px Arial",
-              fill: new Fill({ color: "#000" }),
-              stroke: new Stroke({ color: "#fff", width: 3 }),
-              overflow: true,
-              placement: "point",
-            })
+            text: labelText,
+            font: "bold 13px Arial",
+            fill: new Fill({ color: "#000" }),
+            stroke: new Stroke({ color: "#fff", width: 3 }),
+            overflow: true,
+            placement: "point",
+          })
           : undefined,
       });
 
@@ -282,8 +248,6 @@ export const useMapViewerPage = () => {
     addPolygone,
     moveSelectedPointToCenter,
     deleteSelectedPoint,
-    undoDeletePoint,
-    canUndoDeletePoint,
     addPointInEditMode,
     addPointInCreateMode,
     performSnap,
@@ -302,126 +266,20 @@ export const useMapViewerPage = () => {
     styleByType,
     setToastMessage,
   });
+  
+  useParcelleAutoZoom({
+    mapRef,
+    parcelles,
+    from,
+    action,
+    codeParcelle,
+    setCurrentParcelle,
+    setShowCard,
+    setFabOpen,
+    blinkFeature,
+    onError: setToastMessage,
+  });
 
-  const readBounds = useCallback(async (db: any): Promise<number[]> => {
-    let bounds: number[] = [];
-
-    try {
-      if (typeof db.query === "function") {
-        const res = await db.query(
-          "SELECT value FROM metadata WHERE name = ?",
-          ["bounds"],
-        );
-        if (!res.values?.length) throw new Error("Aucun bounds trouvé");
-
-        const value = String(res.values[0].value);
-        const parts = value.split(",").map((v) => Number(v.trim()));
-        if (parts.length !== 4 || parts.some((v) => !Number.isFinite(v))) {
-          throw new Error("Bounds invalide: " + value);
-        }
-
-        bounds = transformExtent(
-          parts as [number, number, number, number],
-          "EPSG:4326",
-          "EPSG:3857",
-        );
-      } else if (typeof db.prepare === "function") {
-        const stmt = db.prepare(
-          "SELECT value FROM metadata WHERE name = 'bounds'",
-        );
-        if (stmt.step()) {
-          const value = stmt.getAsObject().value as string;
-          const parts = value.split(",").map((v) => Number(v.trim()));
-          if (parts.length !== 4 || parts.some((v) => !Number.isFinite(v))) {
-            throw new Error("Bounds invalide: " + value);
-          }
-          bounds = transformExtent(
-            parts as [number, number, number, number],
-            "EPSG:4326",
-            "EPSG:3857",
-          );
-        } else {
-          throw new Error("Aucun bounds trouvé");
-        }
-        stmt.free();
-      } else {
-        throw new Error("Driver SQLite non supporté");
-      }
-    } catch (err) {
-      console.error("⚠️ Erreur lecture bounds:", err);
-      throw err;
-    }
-
-    return bounds;
-  }, []);
-
-  const createMbTilesSource = useCallback((db: any) => {
-    return new XYZ({
-      url: "https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      cacheSize: 512,
-      tileLoadFunction: async (tile, src) => {
-        const imageTile = tile as any;
-        const tileCoord = imageTile.getTileCoord();
-        const [z, x, y_ol] = tileCoord;
-        const y = (1 << z) - 1 - y_ol;
-        const image = imageTile.getImage() as HTMLImageElement;
-
-        const cacheKey = `${z}-${x}-${y}`;
-
-        if (tileCache.has(cacheKey)) {
-          image.src = tileCache.get(cacheKey)!;
-          return;
-        }
-
-        try {
-          if (Capacitor.isNativePlatform() && db) {
-            const res = await db.query(
-              "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
-              [z, x, y],
-            );
-
-            if (res?.values?.length > 0) {
-              const bytes = res.values[0].tile_data;
-              const blob = new Blob([new Uint8Array(bytes)], {
-                type: "image/png",
-              });
-              const url = URL.createObjectURL(blob);
-
-              if (tileCache.size >= MAX_CACHE_SIZE) {
-                const firstKey = tileCache.keys().next().value;
-                if (firstKey !== undefined) tileCache.delete(firstKey);
-              }
-
-              tileCache.set(cacheKey, url);
-              image.src = url;
-            } else {
-              image.src = src;
-            }
-          } else if (db) {
-            const stmt = db.prepare(
-              "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
-            );
-            stmt.bind([z, x, y]);
-            if (stmt.step()) {
-              const tileData = stmt.getAsObject().tile_data;
-              const blob = new Blob([tileData], { type: "image/png" });
-              const url = URL.createObjectURL(blob);
-              tileCache.set(cacheKey, url);
-              image.src = url;
-            } else {
-              image.src = src;
-            }
-            stmt.free();
-          } else {
-            image.src = src;
-          }
-        } catch (err) {
-          console.log(err);
-          image.src = src;
-        }
-      },
-    });
-  }, []);
 
   const createVectorLayers = useCallback(() => {
     const parcellesSource = new VectorSource();
@@ -455,135 +313,6 @@ export const useMapViewerPage = () => {
     return layers;
   }, [styleByType]);
 
-  const addMarkerWithBlink = useCallback(
-    (coords: number[], duration = INTERVAL_DURATION) => {
-      const map = mapRef.current;
-      if (!map) return;
-
-      const marker = new Feature({ geometry: new Point(coords) });
-      const style1 = createCircleStyle("red");
-      const style2 = createCircleStyle("rgba(30,255,0,1)");
-
-      let visible = true;
-      marker.setStyle(style1);
-      const interval = setInterval(() => {
-        visible = !visible;
-        marker.setStyle(visible ? style1 : style2);
-      }, 500);
-
-      const vectorSource = new VectorSource({ features: [marker] });
-      const markerLayer = new VectorLayer({ source: vectorSource });
-      map.addLayer(markerLayer);
-
-      setTimeout(() => {
-        clearInterval(interval);
-        map.removeLayer(markerLayer);
-      }, duration);
-    },
-    [],
-  );
-
-  const blinkFeature = useCallback((feature: Feature, duration = 5000) => {
-    if (!mapRef.current) return;
-    if (highlightLayerRef.current)
-      mapRef.current.removeLayer(highlightLayerRef.current);
-
-    const highlightSource = new VectorSource({ features: [feature] });
-    let visible = true;
-
-    const highlightStyle = (visible: boolean) =>
-      new Style({
-        stroke: new Stroke({
-          color: visible
-            ? "rgba(81, 255, 0, 0.63)"
-            : "rgba(255, 255, 255, 0.63)",
-          width: 1.5,
-        }),
-        fill: new Fill({
-          color: visible ? "rgba(255, 255, 255, 1)" : "rgba(81, 255, 0, 0.63)",
-        }),
-      });
-
-    const vectorLayer = new VectorLayer({
-      source: highlightSource,
-      style: highlightStyle(true),
-      zIndex: 9999,
-    });
-
-    mapRef.current.addLayer(vectorLayer);
-    highlightLayerRef.current = vectorLayer;
-
-    const blinkInterval = setInterval(() => {
-      visible = !visible;
-      vectorLayer.setStyle(highlightStyle(visible));
-    }, 500);
-
-    setTimeout(() => {
-      clearInterval(blinkInterval);
-      if (mapRef.current && highlightLayerRef.current) {
-        mapRef.current.removeLayer(highlightLayerRef.current);
-        highlightLayerRef.current = null;
-      }
-    }, duration);
-  }, []);
-
-  const searchAndZoom = useCallback(
-    (searchTerm: string) => {
-      if (!mapRef.current) return;
-      const term = searchTerm.trim().toLowerCase();
-      if (!term) return;
-
-      let foundFeature: Feature | null = null;
-      const geoJsonLayers = Object.values(geoJsonLayersRef.current);
-
-      for (const layer of geoJsonLayers) {
-        const source = layer.getSource();
-        if (!source) continue;
-        const features = source.getFeatures();
-        for (const feature of features) {
-          const props = feature.getProperties();
-          for (const key in props) {
-            if (
-              typeof props[key] === "string" &&
-              props[key].toLowerCase().includes(term)
-            ) {
-              foundFeature = feature;
-              break;
-            }
-          }
-          if (foundFeature) break;
-        }
-        if (foundFeature) break;
-      }
-
-      if (!foundFeature && parcelles.length > 0) {
-        for (const p of parcelles) {
-          if (p.code?.toLowerCase().includes(term) && p.polygone?.length) {
-            const points = p.polygone[0].points.map((pt) =>
-              transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
-            );
-            const polygon = new Polygon([points]);
-            foundFeature = new Feature(polygon);
-            break;
-          }
-        }
-      }
-
-      if (foundFeature) {
-        const extent = foundFeature.getGeometry()?.getExtent();
-        if (extent) {
-          mapRef.current
-            .getView()
-            .fit(extent, { duration: 800, padding: [50, 50, 50, 50] });
-          blinkFeature(foundFeature);
-        }
-      } else {
-        setToastMessage(`Aucune parcelle trouvée pour : ${searchTerm}`);
-      }
-    },
-    [blinkFeature, parcelles],
-  );
-
   const searchGPS = useCallback(() => {
     const x = parseFloat(longitude);
     const y = parseFloat(latitude);
@@ -596,163 +325,6 @@ export const useMapViewerPage = () => {
     map.getView().animate({ center: coords3857, zoom: 17, duration: 1000 });
     if (!fabOpen) addMarkerWithBlink(coords3857);
   }, [fabOpen, latitude, longitude, addMarkerWithBlink]);
-
-  const toggleLayer = useCallback(
-    (keys: keyof typeof layerVisibility | (keyof typeof layerVisibility)[]) => {
-      const keysArray = Array.isArray(keys) ? keys : [keys];
-      setLayerVisibility((prev) => {
-        const newVisibility = !prev[keysArray[0]];
-        const updated = { ...prev };
-        keysArray.forEach((k) => {
-          updated[k] = newVisibility;
-          const layer = mapRef.current
-            ?.getLayers()
-            .getArray()
-            .find((l) => l.get("name") === k);
-          if (layer) layer.setVisible(newVisibility);
-        });
-        return updated;
-      });
-    },
-    [],
-  );
-
-  const readMaxZoom = useCallback(async (db: any): Promise<number> => {
-    let maxZoom = 21;
-
-    try {
-      if (typeof db.query === "function") {
-        const res = await db.query(
-          "SELECT value FROM metadata WHERE name = ?",
-          ["maxzoom"],
-        );
-        if (res.values?.length) {
-          maxZoom = parseInt(String(res.values[0].value), 10);
-        }
-      } else if (typeof db.prepare === "function") {
-        const stmt = db.prepare(
-          "SELECT value FROM metadata WHERE name = 'maxzoom'",
-        );
-        if (stmt.step()) {
-          maxZoom = parseInt(String(stmt.getAsObject().value), 10);
-        }
-        stmt.free();
-      }
-    } catch (err) {
-      console.warn(
-        "⚠️ Impossible de lire maxzoom, utilisation de la valeur par défaut (21):",
-        err,
-      );
-    }
-
-    if (!Number.isFinite(maxZoom) || maxZoom < 1 || maxZoom > 25) {
-      maxZoom = 21;
-    }
-
-    return maxZoom;
-  }, []);
-
-  const addMbTilesLayer = useCallback(
-    async (database: any) => {
-      if (!mapRef.current || !database) return;
-      setLoadingMap(true);
-      try {
-        const bounds4326 = await readBounds(database);
-        const maxZoom = await readMaxZoom(database);
-        const mbTilesSource = createMbTilesSource(database);
-        const mbTilesLayer = new TileLayer({ source: mbTilesSource });
-        mbTilesLayer.set("name", "fond");
-        localLayerRef.current = mbTilesLayer;
-        mapRef.current.addLayer(mbTilesLayer);
-        mbTilesSource.refresh();
-
-        const currentView = mapRef.current.getView();
-        currentView.setMaxZoom(maxZoom);
-
-        mapRef.current.getView().fit(bounds4326, {
-          padding: [50, 50, 50, 50],
-          maxZoom: maxZoom,
-          duration: 1000,
-        });
-      } catch (err) {
-        console.error("Erreur ajout MBTiles:", err);
-      } finally {
-        setLoadingMap(false);
-      }
-    },
-    [readBounds, readMaxZoom, createMbTilesSource],
-  );
-
-  const toggleTracking = useCallback(async () => {
-    if (!tracking) {
-      try {
-        if (Capacitor.isNativePlatform()) {
-          const status = await Geolocation.checkPermissions();
-          if (status.location !== "granted") {
-            const request = await Geolocation.requestPermissions();
-            if (request.location !== "granted") {
-              setToastMessage("Permission GPS refusée");
-              return;
-            }
-          }
-        }
-
-        setGpsStatus(1);
-        const handlePosition = (pos: any) => {
-          if (pos && mapRef.current) {
-            const { longitude, latitude, accuracy } = pos.coords;
-            setGpsAccuracy(accuracy);
-            setGpsStatus(2);
-            mapRef.current.getView().animate({
-              center: fromLonLat([longitude, latitude]),
-              zoom: 21,
-              duration: 800,
-            });
-          }
-        };
-
-        const handleError = (err: any) => {
-          setGpsStatus(err.code === 2 ? 1 : 3);
-          setToastMessage("Erreur GPS : " + (err.message || "Signal perdu"));
-        };
-
-        if (Capacitor.getPlatform() === "web") {
-          watchId.current = navigator.geolocation.watchPosition(
-            handlePosition,
-            handleError,
-            {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 0,
-            },
-          );
-        } else {
-          watchId.current = await Geolocation.watchPosition(
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-            (pos, err) => {
-              if (err) handleError(err);
-              else handlePosition(pos);
-            },
-          );
-        }
-        setTracking(true);
-      } catch {
-        setGpsStatus(3);
-      }
-    } else {
-      if (watchId.current) {
-        if (Capacitor.getPlatform() === "web") {
-          navigator.geolocation.clearWatch(watchId.current as number);
-        } else {
-          await Geolocation.clearWatch({ id: watchId.current as string });
-        }
-        watchId.current = null;
-      }
-      setGpsAccuracy(null);
-      setGpsStatus(0);
-      setTracking(false);
-    }
-  }, [tracking]);
 
   useIonViewDidEnter(() => {
     const loadDataOnEnter = async () => {
@@ -771,25 +343,6 @@ export const useMapViewerPage = () => {
     };
     loadDataOnEnter();
   });
-
-  useEffect(() => {
-    layerVisibilityRef.current = layerVisibility;
-  }, [layerVisibility]);
-
-  useEffect(() => {
-    if (
-      from === "tab1" &&
-      action === "croquis" &&
-      codeParcelle &&
-      parcelles.length > 0
-    ) {
-      const found = parcelles.find((p) => p.code === codeParcelle);
-      setCurrentParcelle(found || null);
-    } else {
-      setCurrentParcelle(null);
-      setFabOpen(false);
-    }
-  }, [from, action, codeParcelle, parcelles]);
 
   useEffect(() => {
     if (!mapElement.current || mapRef.current) return;
@@ -849,48 +402,7 @@ export const useMapViewerPage = () => {
     });
   }, [geojsons]);
 
-  useEffect(() => {
-    if (!parcellesSourceRef.current) return;
-    parcellesSourceRef.current.clear();
-    const features: Feature[] = [];
-    parcelles.forEach((p) =>
-      p.polygone?.forEach((pg) => {
-        const pts = pg.points.map((pt) =>
-          transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
-        );
-        const rings: [number, number][][] =
-          pts.length > 2 ? [[...pts, pts[0]] as [number, number][]] : [];
-        const holes = (pg as any).holes as { x: number; y: number }[][] | undefined;
-        if (holes?.length) {
-          holes.forEach((h: { x: number; y: number }[]) => {
-            const h3857 = h.map((pt: { x: number; y: number }) =>
-              transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
-            );
-            if (h3857.length > 2)
-              rings.push([...h3857, h3857[0]] as [number, number][]);
-          });
-        }
-        if (rings.length > 0) {
-          const f = new Feature(new Polygon(rings));
-          f.set("code", p.code);
-          f.set("name", "parcelle");
-          features.push(f);
-        }
-      }),
-    );
-    parcellesSourceRef.current.addFeatures(features);
-  }, [parcelles]);
-
-  useEffect(() => {
-    return () => {
-      if (!watchId.current) return;
-      if (Capacitor.getPlatform() === "web") {
-        navigator.geolocation.clearWatch(watchId.current as number);
-      } else {
-        Geolocation.clearWatch({ id: watchId.current as string });
-      }
-    };
-  }, []);
+  useParcelleLayer({ parcelles, parcellesSourceRef });
 
   function formatSurface(m2: number): string {
     const ha = Math.floor(m2 / 10000);
@@ -900,58 +412,6 @@ export const useMapViewerPage = () => {
 
     return `${ha} ha ${a} a ${ca.toString().padStart(2, "0")} ca`;
   }
-
-  useEffect(() => {
-    if (
-      from === "tab1" &&
-      action === "croquis" &&
-      codeParcelle &&
-      parcelles.length > 0 &&
-      mapRef.current
-    ) {
-      const found = parcelles.find((p) => p.code === codeParcelle);
-
-      if (found) {
-        setCurrentParcelle(found);
-        setShowCard(true);
-
-        const shouldAutoZoom = lastAutoZoomCodeRef.current !== codeParcelle;
-        if (shouldAutoZoom && found.polygone && found.polygone.length > 0) {
-          const firstPolygon = found.polygone[0];
-          const points = firstPolygon.points.map((pt) =>
-            transform([pt.x, pt.y], "EPSG:29702", "EPSG:3857"),
-          );
-
-          if (points.length > 2) {
-            const polygon = new Polygon([points]);
-            const extent = polygon.getExtent();
-
-            mapRef.current.getView().fit(extent, {
-              duration: 1000,
-              padding: [100, 100, 100, 100],
-              maxZoom: 19,
-            });
-            lastAutoZoomCodeRef.current = codeParcelle;
-
-            const feature = new Feature(polygon);
-            feature.set("name", "parcelle");
-            feature.set("code", found.code);
-
-            setTimeout(() => {
-              blinkFeature(feature, 5000);
-            }, 1000);
-          }
-        }
-      } else {
-        setCurrentParcelle(null);
-        setToastMessage(`Parcelle ${codeParcelle} introuvable`);
-      }
-    } else if (!codeParcelle) {
-      setCurrentParcelle(null);
-      setFabOpen(false);
-      lastAutoZoomCodeRef.current = null;
-    }
-  }, [from, action, codeParcelle, parcelles, blinkFeature]);
 
   return (
     <IonPage>
@@ -998,11 +458,10 @@ export const useMapViewerPage = () => {
             }}
           >
             {isEditMode
-              ? `MODIFICATION${
-                  selectedPointIndex !== null
-                    ? ` (Point ${selectedPointIndex + 1})`
-                    : ""
-                }`
+              ? `MODIFICATION${selectedPointIndex !== null
+                ? ` (Point ${selectedPointIndex + 1})`
+                : ""
+              }`
               : "CRÉATION"}
           </div>
         )}
@@ -1038,8 +497,8 @@ export const useMapViewerPage = () => {
                           gpsAccuracy < 10
                             ? "green"
                             : gpsAccuracy < 50
-                            ? "orange"
-                            : "red",
+                              ? "orange"
+                              : "red",
                       }}
                     >
                       Précision GPS: {gpsAccuracy.toFixed(1)} m
@@ -1240,17 +699,6 @@ export const useMapViewerPage = () => {
             </div>
           )}
 
-          {fabOpen && (
-            <IonButton
-              className="glass-btn"
-              fill="clear"
-              onClick={undoDeletePoint}
-              disabled={!canUndoDeletePoint}
-            >
-              <IonIcon color="warning" icon={handLeftOutline} />
-            </IonButton>
-          )}
-
           {currentParcelle && (
             <>
               <IonButton
@@ -1399,4 +847,3 @@ export const useMapViewerPage = () => {
     </IonPage>
   );
 };
-
