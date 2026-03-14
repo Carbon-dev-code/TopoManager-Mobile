@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { useHistory } from "react-router-dom";
 
-import "../../assets/dist/css/bootstrap.min.css";
+import "../../assets/dist/css/bootstrap/bootstrap.min.css";
 import "./Accueil.css";
 
 import logo2 from "../../assets/image/logo/logo2.png";

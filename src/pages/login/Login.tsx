@@ -12,7 +12,7 @@ import { useRef, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { eyeOutline, eyeOffOutline } from "ionicons/icons";
 
-import "../../assets/dist/css/bootstrap.min.css";
+import "../../assets/dist/css/bootstrap/bootstrap.min.css";
 import "./Login.css";
 
 const USERNAME_ADMIN = import.meta.env.VITE_ADMIN_USER;

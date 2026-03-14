@@ -38,7 +38,7 @@ import {
 } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import "../../assets/dist/css/bootstrap.min.css";
+import "../../assets/dist/css/bootstrap/bootstrap.min.css";
 import "./ParcelleCollectionPage.css";
 import { ParametreTerritoire } from "../../entities/territoire";
 import { Categorie, Status } from "../../entities/reference";
