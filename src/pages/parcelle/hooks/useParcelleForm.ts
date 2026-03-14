@@ -1,13 +1,16 @@
 import { useState, useCallback } from "react";
-import { Parcelle, Riverin } from "../../entities/parcelle";
-import { Demandeur, PersonnePhysique, PersonneMorale } from "../../entities/demandeur";
+import { Parcelle, Riverin } from "../../../entities/parcelle";
+import { Demandeur } from "../../../entities/demandeur";
+import { PersonnePhysique } from "../../../entities/demandeur/model/PersonnePhysique";
+import { PersonneMorale } from "../../../entities/demandeur/model/PersonneMorale";
+
 import { v4 as uuidv4 } from "uuid";
 import { 
   insertDemandeur, 
   insertParcelle, 
   insertPersonneMorale, 
   insertPersonnePhysique 
-} from "../../shared/lib/db/DbSchema";
+} from "../../../shared/lib/db/DbSchema";
 
 export const useParcelleForm = () => {
   const [parcelle, setParcelle] = useState<Parcelle>(Parcelle.init());
