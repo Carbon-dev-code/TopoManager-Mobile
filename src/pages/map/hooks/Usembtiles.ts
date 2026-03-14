@@ -5,7 +5,7 @@ import { transformExtent } from "ol/proj";
 import { Capacitor } from "@capacitor/core";
 import OLMap from "ol/Map";
 
-const MAX_CACHE_SIZE = 200;
+const MAX_CACHE_SIZE = 250;
 
 interface UseMbTilesOptions {
   mapRef: React.MutableRefObject<OLMap | null>;

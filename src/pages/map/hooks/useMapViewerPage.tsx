@@ -39,12 +39,11 @@ import { insertParcelle } from "../../../shared/lib/db/DbSchema";
 
 import "../MapViewerPage.css";
 
-proj4.defs(
-  "EPSG:29702",
-  "+proj=omerc +lat_0=-18.9 +lonc=44.1 +alpha=18.9 +gamma=18.9 +k=0.9995 +x_0=400000 +y_0=800000 +ellps=intl +pm=paris +towgs84=-198.383,-240.517,-107.909,0,0,0,0 +units=m +no_defs +type=crs",
-);
-register(proj4);
+const EPGS = import.meta.env.VITE_EPSG;
+const PROJECTION = import.meta.env.VITE_PROJECTION;
 
+proj4.defs(EPGS, PROJECTION);
+register(proj4);
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
