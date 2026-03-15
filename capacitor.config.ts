@@ -12,12 +12,13 @@ const config: CapacitorConfig = {
     Geolocation: {
       permissions: ['android.permission.ACCESS_FINE_LOCATION']
     },
-    plugins: {
-      CapacitorSQLite: {
-        iosDatabaseLocation: "Library/CapacitorDatabase",
-        iosIsEncryption: false,
-        androidIsEncryption: false,
-      }
+    CapacitorSQLite: {
+      iosDatabaseLocation: "Library/CapacitorDatabase",
+      iosIsEncryption: false,
+      androidIsEncryption: false,
+    },
+    android: {
+      adjustMarginsForEdgeToEdge: true
     }
   }
 };

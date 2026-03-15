@@ -42,4 +42,13 @@ ion-content {
   --padding-bottom: var(--ion-safe-area-bottom);
   --padding-start: var(--ion-safe-area-left);
   --padding-end: var(--ion-safe-area-right);
+  --padding-bottom: var(--ion-safe-area-bottom);
+}
+
+:root {
+  --ion-font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  font-family: var(--ion-font-family) !important;
 }

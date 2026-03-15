@@ -53,7 +53,7 @@
 }
 
 .server-modal-field:focus-within {
-  border-color: #005eff;
+  border-color: rgb(27, 79, 114);
   background: #f0f4ff;
 }
 
@@ -125,7 +125,7 @@
 }
 
 .server-modal-field:focus-within {
-  border-color: #005eff;
+  border-color: rgb(27, 79, 114);
   background: #f0f4ff;
 }
 

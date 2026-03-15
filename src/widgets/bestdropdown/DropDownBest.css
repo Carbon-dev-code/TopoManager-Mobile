@@ -38,7 +38,7 @@
   flex-shrink: 0;
 }
 
-.dd-best-icon-blue   { background: #e8f0ff; color: #005eff; }
+.dd-best-icon-blue   { background: #e8f0ff; color: rgb(27, 79, 114); }
 .dd-best-icon-teal   { background: #e0f7f4; color: #00897b; }
 .dd-best-icon-indigo { background: #ede7f6; color: #5e35b1; }
 .dd-best-icon-red    { background: #ffebee; color: #e53935; }

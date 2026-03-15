@@ -38,7 +38,7 @@
   font-size: 18px;
 }
 
-.settings-row-icon.blue   { background: #e8f0ff; color: #005eff; }
+.settings-row-icon.blue   { background: #e8f0ff; color: rgb(27, 79, 114); }
 .settings-row-icon.purple { background: #f0e8ff; color: #7c3aed; }
 .settings-row-icon.green  { background: #e6f9f0; color: #00a854; }
 
@@ -69,7 +69,7 @@
 .settings-save-btn {
   width: 32px;
   height: 32px;
-  background: #005eff;
+  background: rgb(27, 79, 114);
   color: #fff;
   border-radius: 8px;
   display: flex;

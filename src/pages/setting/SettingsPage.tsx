@@ -19,6 +19,7 @@ import {
   IonText,
   IonProgressBar,
   useIonViewWillEnter,
+  IonFooter,
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
@@ -784,15 +785,6 @@ const SettingsPage: React.FC = () => {
 
       {isSyncing && <IonLoading isOpen message="Synchronisation..." />}
 
-      {isDownloadingTiles && (
-        <>
-          <IonProgressBar value={progression} />
-          <div className="ion-text-center">
-            Téléchargement des cartes: {Math.round(progression * 100)}%
-          </div>
-        </>
-      )}
-
       {isLoading && <IonLoading isOpen message="Chargement..." />}
       {error && (
         <IonAlert
@@ -915,6 +907,17 @@ const SettingsPage: React.FC = () => {
           },
         ]}
       />
+      {/* LE FOOTER EST ICI */}
+      {isDownloadingTiles && (
+        <IonFooter>
+          <IonToolbar className="ion-padding-bottom"> {/* Ajoute un petit espace de confort en bas */}
+            <IonProgressBar value={progression} />
+            <div className="ion-text-center ion-padding-top">
+              Téléchargement : {Math.round(progression * 100)}%
+            </div>
+          </IonToolbar>
+        </IonFooter>
+      )}
     </IonPage>
   );
 };

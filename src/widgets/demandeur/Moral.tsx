@@ -5,23 +5,16 @@ import {
   IonSelect,
   IonSelectOption,
   IonInput,
-  IonTextarea,
-  IonGrid,
-  IonButton,
-  IonCol,
-  IonRow,
-  IonLabel,
+  IonTextarea
 } from "@ionic/react";
 import { Preferences } from "@capacitor/preferences";
 import { TypeMoral } from "../../entities/reference";
-import {
-  PersonneMorale,
-  PersonnePhysique,
-  RepresentantMoral,
-} from "../../entities/demandeur";
+import { PersonneMorale, PersonnePhysique, RepresentantMoral } from "../../entities/demandeur";
 import SearchModal from "./SearchModal";
 import ModalDemandeur from "./ModalDemandeur";
 import DemandeurView from "./DemandeurView";
+import { addCircle, searchCircle } from "ionicons/icons";
+import { IonIcon } from "@ionic/react";
 
 interface MoralProps {
   personne: PersonneMorale;
@@ -36,9 +29,7 @@ const Moral: React.FC<MoralProps> = ({ personne, setPersonne, readonly = false }
   const [showPersonneModal, setShowPersonneModal] = useState(false);
   const [decomposed, setDecomposed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [newDirigeant, setNewDirigeant] = useState<PersonnePhysique>(
-    PersonnePhysique.init(),
-  );
+  const [newDirigeant, setNewDirigeant] = useState<PersonnePhysique>(PersonnePhysique.init());
   const [dummyMorale] = useState<PersonneMorale>(PersonneMorale.init());
 
   useEffect(() => {
@@ -70,13 +61,18 @@ const Moral: React.FC<MoralProps> = ({ personne, setPersonne, readonly = false }
   }, [personne.id, personne.representant]);
 
   return (
-    <IonList>
+    <IonList className="rounded-list">
+
+      {/* Informations de la personne morale */}
+      <div className="form-section-title">Informations</div>
+
       <IonItem>
         <IonSelect
-          label="Type :"
+          label="Type"
           value={personne.typeMorale}
           placeholder="Type de personne morale"
           disabled={readonly}
+          interface="alert"
           onIonChange={(e) => setPersonne({ ...personne, typeMorale: Number(e.detail.value) })}
         >
           {typeMoral.map((type, index) => (
@@ -89,7 +85,7 @@ const Moral: React.FC<MoralProps> = ({ personne, setPersonne, readonly = false }
 
       <IonItem>
         <IonInput
-          label="Dénomination :"
+          label="Dénomination"
           type="text"
           value={personne.denomination}
           readonly={readonly}
@@ -100,7 +96,7 @@ const Moral: React.FC<MoralProps> = ({ personne, setPersonne, readonly = false }
 
       <IonItem>
         <IonInput
-          label="Date de création :"
+          label="Date de création"
           type="date"
           value={personne.dateCreation}
           readonly={readonly}
@@ -110,7 +106,7 @@ const Moral: React.FC<MoralProps> = ({ personne, setPersonne, readonly = false }
 
       <IonItem>
         <IonInput
-          label="Siège :"
+          label="Siège"
           type="text"
           value={personne.siege}
           readonly={readonly}
@@ -130,66 +126,54 @@ const Moral: React.FC<MoralProps> = ({ personne, setPersonne, readonly = false }
         />
       </IonItem>
 
+      {/* Représentants */}
       {dirigeants.length > 0 && (
-        <IonItem lines="none">
-          <IonLabel>
-            <h3
-              style={{
-                fontWeight: "bold",
-                color: "var(--ion-color-primary)",
-                marginBottom: "8px",
-              }}
-            >
-              Représentant ({dirigeants.length})
-            </h3>
-          </IonLabel>
-        </IonItem>
+        <>
+          <div className="form-section-title">
+            Représentants ({dirigeants.length})
+          </div>
+          {dirigeants.map((d) => (
+            <div className="p-2" key={d.personnePhysique.id}>
+              <DemandeurView
+                personne={d.personnePhysique}
+                type={0}
+                representanType={d.role}
+                onDelete={() => {
+                  const updated = dirigeants.filter(
+                    (r) => r.personnePhysique.id !== d.personnePhysique.id,
+                  );
+                  setDirigeants(updated);
+                  setPersonne({ ...personne, representant: updated });
+                }}
+                swipeEnabled={!readonly}
+              />
+            </div>
+          ))}
+        </>
       )}
 
-      {dirigeants.map((d) => (
-        <div className="p-2 bg-light" key={d.personnePhysique.id}>
-          <DemandeurView
-            personne={d.personnePhysique}
-            type={0}
-            representanType={d.role}
-            onDelete={() => {
-              const updated = dirigeants.filter(
-                (r) => r.personnePhysique.id !== d.personnePhysique.id,
-              );
-              setDirigeants(updated);
-              setPersonne({ ...personne, representant: updated });
-            }}
-            swipeEnabled={!readonly}
-          />
-        </div>
-      ))}
-
+      {/* Boutons représentants */}
       {!readonly && (
         <IonItem lines="none">
-          <IonGrid>
-            <IonRow className="justify-content-between text-center">
-              <IonCol size="12" size-md="4">
-                <IonButton
-                  expand="full"
-                  onClick={() => {
-                    setNewDirigeant(PersonnePhysique.init());
-                    setShowPersonneModal(true);
-                  }}
-                >
-                  Ajout Représentant
-                </IonButton>
-              </IonCol>
-              <IonCol size="12" size-md="4">
-                <IonButton
-                  expand="full"
-                  color="tertiary"
-                  onClick={() => setShowSearchModal(true)}
-                >
-                  Recherche Représentant
-                </IonButton>
-              </IonCol>
-            </IonRow>
-          </IonGrid>
+          <div className="action-buttons-col">
+            <div className="action-buttons-row">
+              <button
+                className="action-btn btn-primary"
+                onClick={() => {
+                  setNewDirigeant(PersonnePhysique.init());
+                  setShowPersonneModal(true);
+                }}
+              >
+                <IonIcon icon={addCircle} /> Représentant
+              </button>
+              <button
+                className="action-btn btn-secondary"
+                onClick={() => setShowSearchModal(true)}
+              >
+                <IonIcon icon={searchCircle} /> Rechercher
+              </button>
+            </div>
+          </div>
         </IonItem>
       )}
 

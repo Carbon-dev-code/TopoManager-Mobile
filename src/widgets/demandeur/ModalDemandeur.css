@@ -1,5 +1,101 @@
-/* fichier CSS lié à ton Modal ou global */
-.alert-button-group {
-  display: flex !important;
-  justify-content: space-evenly !important; /* sépare les boutons aux extrémités */
+.dm-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgb(27, 79, 114);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 10px 10px 0px;
+}
+
+.fs-7 {
+  font-size: 13px;
+}
+
+.dm-type-card {
+  background: #f7f8fc;
+  border-radius: 12px;
+  padding: 4px 8px;
+  margin-bottom: 5px;
+  border: 1.5px solid #eef0f6;
+}
+
+.dm-radio-row {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.dm-type-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.dm-type-option.active {
+  background: #e8f0ff;
+  color: rgb(27, 79, 114);
+  font-weight: 600;
+}
+
+.dm-list {
+  margin: 0 0 8px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.radio-item-wrapper {
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid var(--ion-item-border-color, rgba(0, 0, 0, 0.13));
+}
+
+.radio-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  width: 100%;
+}
+
+.radio-pill {
+  flex: 1;
+  min-width: 70px;
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1.5px solid #eef0f6;
+  background: #f7f8fc;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radio-pill.active {
+  background: #e8f0ff;
+  border-color: rgb(27, 79, 114);
+  color: rgb(27, 79, 114);
+  font-weight: 600;
+}
+
+.radio-pill:active {
+  transform: scale(0.97);
+}
+
+.rounded-list {
+  border-radius: 12px;
 }

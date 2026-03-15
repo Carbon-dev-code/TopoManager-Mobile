@@ -11,8 +11,6 @@ import {
   IonIcon,
   IonList,
   IonItem,
-  IonLabel,
-  IonRadio,
   IonRadioGroup,
   IonSelect,
   IonSelectOption,
@@ -78,11 +76,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 }) => {
   const isReadOnly = mode === "view";
 
-  async function compressImage(
-    base64: string,
-    maxSize = 1024,
-    quality = 0.6,
-  ): Promise<string> {
+  async function compressImage(base64: string, maxSize = 1024, quality = 0.6): Promise<string> {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = `data:image/jpeg;base64,${base64}`;
@@ -127,11 +121,7 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
         directory: Directory.Data,
         recursive: true,
       });
-      setPersonnePhysique((prev) => ({
-        ...prev,
-        photos: [fileName],
-        indexPhoto: 0,
-      }));
+      setPersonnePhysique((prev) => ({ ...prev, photos: [fileName], indexPhoto: 0 }));
     } catch (err) {
       console.error(err);
       setToastMessage?.("Erreur lors de la capture");
@@ -159,38 +149,42 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
       </IonHeader>
 
       <IonContent className="ion-padding">
-        <IonList>
-          <IonItem>
-            <IonLabel className="me-3 truncate">Type :</IonLabel>
-            <IonRadioGroup
-              value={isPhysique.toString()}
-              onIonChange={(e) => {
-                if (isReadOnly || forcePhysique) return;
-                setIsPhysique(Number(e.detail.value));
-              }}
-            >
-              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                <IonItem lines="none">
-                  <IonRadio justify="end" value="0" disabled={isReadOnly || forcePhysique}>
-                    Physique
-                  </IonRadio>
-                </IonItem>
-                <IonItem lines="none">
-                  <IonRadio justify="end" value="1" disabled={isReadOnly || forcePhysique}>
-                    Morale
-                  </IonRadio>
-                </IonItem>
-              </div>
-            </IonRadioGroup>
-          </IonItem>
-        </IonList>
 
-        {isPhysique === 0 ? (
+        {/* Type Physique / Morale */}
+        <div className="dm-section-title">Type de personne</div>
+        <div className="dm-type-card">
+          <IonRadioGroup
+            value={isPhysique.toString()}
+            onIonChange={(e) => {
+              if (isReadOnly || forcePhysique) return;
+              setIsPhysique(Number(e.detail.value));
+            }}
+          >
+            <div className="dm-radio-row">
+              {[
+                { label: "Physique", value: 0 },
+                { label: "Morale", value: 1 },
+              ].map((opt) => (
+                <div
+                  key={opt.value}
+                  className={`radio-pill ${isPhysique === opt.value ? "active" : ""}`}
+                  onClick={() => { if (!isReadOnly && !forcePhysique) setIsPhysique(opt.value); }}
+                >
+                  {opt.label}
+                </div>
+              ))}
+            </div>
+          </IonRadioGroup>
+        </div>
+
+        {/* Rôle */}
+        {isPhysique === 0 && withRepresentants && (
           <>
-            {withRepresentants && (
+            <div className="dm-section-title">Rôle</div>
+            <IonList className="dm-list" lines="none">
               <IonItem>
                 <IonSelect
-                  label="Rôle :"
+                  label="Rôle"
                   interface="alert"
                   disabled={isReadOnly}
                   value={representanType ?? "proprietaire"}
@@ -200,40 +194,43 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
                   <IonSelectOption value="tuteurLegal">Tuteur légal</IonSelectOption>
                 </IonSelect>
               </IonItem>
-            )}
+            </IonList>
+          </>
+        )}
 
+        {/* Formulaire Physique ou Morale */}
+        {isPhysique === 0 ? (
+          <>
             <Physique
               physique={personnePhysique}
               setPhysique={setPersonnePhysique}
               readonly={isReadOnly}
             />
-            <IonItem lines="none">
-              <Photo
-                photos={personnePhysique.photos ?? []}
-                decomposed={decomposed}
-                setDecomposed={setDecomposed}
-                takePhoto={takePhoto}
-                viewOnly={isReadOnly}
-                maxPhotos={1}
-                clearPhotos={async () => {
-                  await deletePhotos(personnePhysique.photos ?? []);
-                  setPersonnePhysique((prev) => ({
-                    ...prev,
-                    photos: [],
-                    indexPhoto: null,
-                  }));
-                }}
-                onDeletePhoto={async (idx) => {
-                  await deletePhotos([personnePhysique.photos[idx]]);
-                  setPersonnePhysique((prev) => ({
-                    ...prev,
-                    photos: prev.photos.filter((_, i) => i !== idx),
-                    indexPhoto: null,
-                  }));
-                }}
-                name="Photo du demandeur"
-              />
-            </IonItem>
+            <IonList>
+              <IonItem lines="none">
+                <Photo
+                  photos={personnePhysique.photos ?? []}
+                  decomposed={decomposed}
+                  setDecomposed={setDecomposed}
+                  takePhoto={takePhoto}
+                  viewOnly={isReadOnly}
+                  maxPhotos={1}
+                  clearPhotos={async () => {
+                    await deletePhotos(personnePhysique.photos ?? []);
+                    setPersonnePhysique((prev) => ({ ...prev, photos: [], indexPhoto: null }));
+                  }}
+                  onDeletePhoto={async (idx) => {
+                    await deletePhotos([personnePhysique.photos[idx]]);
+                    setPersonnePhysique((prev) => ({
+                      ...prev,
+                      photos: prev.photos.filter((_, i) => i !== idx),
+                      indexPhoto: null,
+                    }));
+                  }}
+                  name="Photo du demandeur"
+                />
+              </IonItem>
+            </IonList>
           </>
         ) : (
           <Moral
@@ -259,4 +256,3 @@ const ModalDemandeur: React.FC<ModalDemandeurProps> = ({
 };
 
 export default ModalDemandeur;
-
