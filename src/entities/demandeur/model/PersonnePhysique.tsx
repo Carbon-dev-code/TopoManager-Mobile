@@ -3,18 +3,30 @@ import { CIN } from "../../parcelle/model/CIN";
 import { ActeNaissance } from "../../parcelle/model/ActeNaissance";
 
 export function checkPersonnePhysique(personne: PersonnePhysique): void {
-  if (!personne.nom?.trim())
-    throw new Error("Le nom est requis");
-  if (!personne.prenom?.trim())
-    throw new Error("Le prénom est requis");
-  if (!personne.dateNaissance && !personne.neVers)
+  if (!personne.nom?.trim()) throw new Error("Le nom est requis");
+  
+  if (!personne.neVers && !personne.dateNaissance?.trim()) {
     throw new Error("La date de naissance est requise");
-  if (!personne.lieuNaissance?.trim())
-    throw new Error("Le lieu de naissance est requis");
-  if (!personne.adresse?.trim())
-    throw new Error("l'adresse requis");
-  if (!personne.nomPere && !personne.nomMere)
-    throw new Error("Le nom de vos parent sont requis");
+  }
+
+  if (personne.neVers && !personne.dateNeVers?.trim()) {
+    throw new Error("L'année de naissance approximative est requise");
+  }
+  if (!personne.lieuNaissance?.trim()) throw new Error("Le lieu de naissance est requis");
+  if (!personne.adresse?.trim()) throw new Error("l'adresse requis");
+  if (!personne.nomPere && !personne.nomMere) throw new Error("Le nom de vos parent sont requis");
+
+  if (personne.cin) {
+    if (!personne.cin.numero?.trim()) throw new Error("Le numéro de CIN est requis");
+    if (!personne.cin.date) throw new Error("La date de délivrance du CIN est requise");
+    if (!personne.cin.lieu?.trim()) throw new Error("Le lieu de délivrance du CIN est requis");
+  }
+
+  if (personne.acte) {
+    if (!personne.acte.numero?.trim()) throw new Error("Le numéro d'acte de naissance est requis");
+    if (!personne.acte.date) throw new Error("La date de délivrance de l'acte de naissance est requise");
+    if (!personne.acte.lieu?.trim()) throw new Error("Le lieu de délivrance de l'acte de naissance est requis");
+  }
 }
 
 export class PersonnePhysique {
@@ -22,6 +34,7 @@ export class PersonnePhysique {
   nom: string | null;
   prenom: string | null;
   neVers: boolean;
+  dateNeVers: string | null;
   dateNaissance: string | null;
   lieuNaissance: string | null;
   sexe: number;
@@ -40,6 +53,7 @@ export class PersonnePhysique {
     nom: string | null,
     prenom: string | null,
     neVers: boolean,
+    dateNeVers: string | null,
     dateNaissance: string | null,
     lieuNaissance: string | null,
     sexe: number,
@@ -57,6 +71,7 @@ export class PersonnePhysique {
     this.nom = nom;
     this.prenom = prenom;
     this.neVers = neVers;
+    this.dateNeVers = dateNeVers;
     this.dateNaissance = dateNaissance;
     this.lieuNaissance = lieuNaissance;
     this.sexe = sexe;
@@ -73,22 +88,7 @@ export class PersonnePhysique {
 
   static init(): PersonnePhysique {
     return new PersonnePhysique(
-      uuidv4(),
-      null,
-      null,
-      false,
-      null,
-      null,
-      0,
-      "",
-      "",
-      "",
-      "0",
-      "",
-      null,
-      null,
-      [],
-      null,
+      uuidv4(), null, null, false, null, null, null, 0, "", "", "", "0", "", null,  null, [], null,
     );
   }
 }

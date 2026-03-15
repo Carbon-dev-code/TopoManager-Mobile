@@ -15,14 +15,22 @@ export async function checkParcelle(parcelle: Parcelle): Promise<void> {
 
     if (!parcelle.code) throw new Error("Code parcelle requis");
     if (!parcelle.dateCreation) throw new Error("Date de création vide");
-    
+
+    if (!parcelle.status) throw new Error("Status require !");
+
     if (!parcelle.origine) throw new Error("Origine require !");
+
+    if (!parcelle.anneeOccup)  throw new Error("Veuillez insérer l'année d'occupation");
+    if (parcelle.anneeOccup <= 1) throw new Error("L'année d'occupation doit être supérieure à 0");
     
-    if (!parcelle.anneeOccup) throw new Error("Veuillez insérer l'année d'occupation");
-    else if (parcelle.anneeOccup<= 1) throw new Error("l'année d'occupation doit etre superieur a 1 an minimun");
+    if (!parcelle.categorie) throw new Error("Catégorie require !");
+    if (!parcelle.consistance) throw new Error("Consistance require !");
+
+    if (parcelle.oppossition && !parcelle.observationOpposition?.trim()) throw new Error("Veuillez renseigner l'observation d'opposition");
+    if (parcelle.revandication && !parcelle.observationRevendication?.trim())throw new Error("Veuillez renseigner l'observation de revendication");
 
     if (parcelle.demandeurs.length <= 0) throw new Error("Veuillez sélectionner au moins 1 demandeur");
-    if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");  
+    if (parcelle.riverin.length <= 0) throw new Error("Veuillez sélectionner au moins 1 riverin");
 }
 
 export class Parcelle {
@@ -35,9 +43,9 @@ export class Parcelle {
     categorie: string | null;
     consistance: string | null;
     oppossition: boolean;
-    observationOpposition: string | null;;
+    observationOpposition: string | null;
     revandication: boolean;
-    observationRevendication: string | null;;
+    observationRevendication: string | null;
     observation: string;
     demandeurs: Demandeur[];
     parametreTerritoire: ParametreTerritoire | null;
@@ -50,7 +58,7 @@ export class Parcelle {
     photos: string[];
 
     constructor(code: string | null, dateCreation: string | null, status: number | null, origine: string | null,
-        anneeOccup: number | null, categorie: string | null, consistance: string | null, opposition: boolean, observationOpposition: string, revandication: boolean, observationRevendication: string, 
+        anneeOccup: number | null, categorie: string | null, consistance: string | null, opposition: boolean, observationOpposition: string, revandication: boolean, observationRevendication: string,
         observation: string, demandeurs: Demandeur[], parametreterritoire: ParametreTerritoire | null, riverin: Riverin[],
         synchronise: number, syncError: string, lastSync: string, syncing: boolean,
         polygone: Polygone[], photos: string[] = [], id_personne: string | null = null

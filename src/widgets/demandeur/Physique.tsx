@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   IonList,
   IonItem,
@@ -18,9 +18,14 @@ interface PhysiqueProps {
 }
 
 const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = false }) => {
-  const [pieceType, setPieceType] = useState<0 | 1 | 2>(
-    physique.cin ? 0 : physique.acte ? 1 : 2,
-  );
+  const cinStr = physique.cin?.numero ?? "";
+
+  const cinNumero = [
+    cinStr.substring(0, 3),
+    cinStr.substring(3, 6),
+    cinStr.substring(6, 9),
+    cinStr.substring(9, 12),
+  ];
 
   return (
     <IonList className="pt-0 rounded-list">
@@ -69,8 +74,8 @@ const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = f
             min="1500"
             max={new Date().getFullYear()}
             readonly={readonly}
-            value={physique.dateNaissance ? physique.dateNaissance : ""}
-            onIonInput={(e) => setPhysique({ ...physique, dateNaissance: e.detail.value ?? null })}
+            value={physique.dateNeVers ? physique.dateNeVers : ""}
+            onIonInput={(e) => setPhysique({ ...physique, dateNeVers: e.detail.value ?? null })}
           />
         ) : (
           <IonInput
@@ -193,27 +198,52 @@ const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = f
       <div className="form-section-title">Pièces d'identification</div>
       <div className="radio-item-wrapper">
         <div className="radio-inline-row">
-          {[
-            { label: "Néant", value: "2" },
-            { label: "CIN", value: "0" },
-            { label: "Acte naissance", value: "1" },
-          ].map((opt) => (
-            <div
-              key={opt.value}
-              className={`radio-pill ${pieceType.toString() === opt.value ? "active" : ""}`}
-              onClick={() => { if (!readonly) setPieceType(Number(opt.value) as 0 | 1 | 2); }}
-            >
-              {opt.label}
-            </div>
-          ))}
+          {/* Néant — désactive tout */}
+          <div
+            className={`radio-pill ${!physique.cin && !physique.acte ? "active" : ""}`}
+            onClick={() => {
+              if (readonly) return;
+              setPhysique({ ...physique, cin: null, acte: null });
+            }}
+          >
+            Néant
+          </div>
+
+          {/* CIN */}
+          <div
+            className={`radio-pill ${physique.cin ? "active" : ""}`}
+            onClick={() => {
+              if (readonly) return;
+              setPhysique({
+                ...physique,
+                cin: physique.cin ? null : { numero: "", date: null, lieu: "" },
+              });
+            }}
+          >
+            CIN
+          </div>
+
+          {/* Acte naissance */}
+          <div
+            className={`radio-pill ${physique.acte ? "active" : ""}`}
+            onClick={() => {
+              if (readonly) return;
+              setPhysique({
+                ...physique,
+                acte: physique.acte ? null : { numero: "", date: null, lieu: "" },
+              });
+            }}
+          >
+            Acte naissance
+          </div>
         </div>
       </div>
 
       {/* CIN */}
-      {pieceType === 0 && (
-        <>
+      {physique.cin && (
+        <IonList>
           <div className="form-section-title">CIN</div>
-          <IonItem>
+          <IonItem lines="none">
             <IonLabel position="stacked">Numéro</IonLabel>
             <div className="d-flex gap-2" style={{ width: "100%", paddingTop: "8px" }}>
               {[0, 1, 2, 3].map((index) => (
@@ -222,20 +252,22 @@ const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = f
                   className="form-control px-3"
                   style={{ width: "25%" }}
                   readonly={readonly}
-                  value={physique.cin?.numero?.[index] || ""}
+                  value={cinNumero[index] || ""}
                   onIonInput={(e) => {
                     const value = e.detail.value || "";
-                    const existingNumero = physique.cin?.numero ?? ["", "", "", ""];
-                    const newNumero = [...existingNumero];
+                    const newNumero = [...cinNumero];
                     newNumero[index] = value;
-                    setPhysique({ ...physique, cin: { ...physique.cin, numero: newNumero } });
+                    setPhysique({
+                      ...physique,
+                      cin: { ...physique.cin, numero: newNumero.join("") }
+                    });
                   }}
                   maxlength={3}
                 />
               ))}
             </div>
           </IonItem>
-          <IonItem>
+          <IonItem lines="inset">
             <IonGrid>
               <IonRow>
                 <IonCol size="12" sizeMd="6">
@@ -243,11 +275,11 @@ const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = f
                     type="date"
                     label="Date CIN"
                     readonly={readonly}
-                    value={physique.cin?.date ? physique.cin.date.toISOString().substring(0, 10) : ""}
+                    value={physique.cin?.date?.substring(0, 10) ?? ""}
                     onIonInput={(e) =>
                       setPhysique({
                         ...physique,
-                        cin: { ...physique.cin, date: e.detail.value ? new Date(e.detail.value) : null },
+                        cin: { ...physique.cin, date: e.detail.value || null },
                       })
                     }
                   />
@@ -267,12 +299,12 @@ const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = f
               </IonRow>
             </IonGrid>
           </IonItem>
-        </>
+        </IonList>
       )}
 
       {/* Acte de naissance */}
-      {pieceType === 1 && (
-        <>
+      {physique.acte && (
+        <IonList>
           <div className="form-section-title">Acte de naissance</div>
           <IonItem>
             <IonInput
@@ -304,11 +336,10 @@ const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = f
                     label="Date de l'acte"
                     type="date"
                     readonly={readonly}
-                    value={physique.acte?.date ? physique.acte.date.toISOString().substring(0, 10) : ""}
-                    onIonInput={(e) =>
+                    value={physique.acte?.date ? String(physique.acte.date).substring(0, 10) : ""} onIonInput={(e) =>
                       setPhysique({
                         ...physique,
-                        acte: { ...physique.acte, date: e.detail.value ? new Date(e.detail.value) : null },
+                        acte: { ...physique.acte, date: e.detail.value},
                       })
                     }
                   />
@@ -316,7 +347,7 @@ const Physique: React.FC<PhysiqueProps> = ({ physique, setPhysique, readonly = f
               </IonRow>
             </IonGrid>
           </IonItem>
-        </>
+        </IonList>
       )}
 
     </IonList>

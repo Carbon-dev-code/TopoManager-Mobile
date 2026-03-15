@@ -186,7 +186,7 @@ const ModalRiverin: React.FC<ModalRiverinProps> = ({
                     }
                     placeholder="Type de riverain"
                   >
-                    <IonSelectOption value="personne">Personne</IonSelectOption>
+                    <IonSelectOption value="personne">Personne (physique / moral)</IonSelectOption>
                     <IonSelectOption value="autre">Autre</IonSelectOption>
                   </IonSelect>
                 </IonCol>

@@ -131,6 +131,8 @@ const DemandeurManagementPage: React.FC = () => {
 
   const handleOpenViewPhysique = (p: PersonnePhysique) => {
     setPersonnePhysique(p);
+    console.log(p);
+    
     setIsPhysique(0);
     setModalMode("view");
     setShowCreateModal(true);

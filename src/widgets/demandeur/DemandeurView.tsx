@@ -83,9 +83,8 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
-  const triggerId = `demandeur-trigger-${
-    personne?.id ?? Math.random().toString(36).slice(2)
-  }`;
+  const triggerId = `demandeur-trigger-${personne?.id ?? Math.random().toString(36).slice(2)
+    }`;
 
   const profileFileName = pp
     ? pp.indexPhoto !== null && pp.photos?.length
@@ -159,7 +158,7 @@ const DemandeurView: React.FC<DemandeurViewProps> = ({
                   <IonIcon icon={calendar} />
                 </div>
                 <div className="col">
-                  <span>{formatDate(pp.dateNaissance)}</span>
+                  <span>{pp.neVers ? `Né vers ${pp.dateNeVers}` : formatDate(pp.dateNaissance)}</span>
                 </div>
               </IonChip>
               {representanType && (

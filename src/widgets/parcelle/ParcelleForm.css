@@ -7,10 +7,10 @@ ion-input.input-end::part(placeholder) {
 }
 
 .textarea-cool {
-  border-radius: 12px;
+  border-radius: 5px 12px 12px 5px;
   background: var(--ion-color-light);
   padding: 8px;
-  border-left: 3px solid var(--ion-color-primary);
+  border-left: 2px solid var(--ion-color-primary);
   animation: slideDown 0.2s ease;
 }
 
