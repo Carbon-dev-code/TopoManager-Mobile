@@ -11,7 +11,7 @@ import {
 } from "../../../entities/demandeur/model/PersonneMorale";
 import { Demandeur } from "../../../entities/demandeur/model/Demandeur";
 import { RepresentantMoral } from "../../../entities/demandeur/model/RepresentantMoral";
-import { Riverin } from "../../../entities/parcelle/model/Riverin";
+import { Riverin, TypeRiverin } from "../../../entities/parcelle/model/Riverin";
 
 // ─── Photos ───────────────────────────────────────────────────────────────────
 export async function deletePhotos(photos: string[]): Promise<void> {
@@ -110,10 +110,7 @@ export async function insertParcelle(parcelle: Parcelle): Promise<Parcelle> {
   }
 }
 
-export async function getAllParcelles(
-  page?: number,
-  limit: number = 10,
-): Promise<{ data: Parcelle[]; total: number }> {
+export async function getAllParcelles(page?: number, limit: number = 10,): Promise<{ data: Parcelle[]; total: number }> {
   try {
     const database = await initDatabase();
     const { value: sessionId } = await Preferences.get({ key: "id_session" });
@@ -125,12 +122,22 @@ export async function getAllParcelles(
     if (page !== undefined) {
       [docs, total] = await Promise.all([
         database.parcelle
-          .find({ selector, skip: (page - 1) * limit, limit })
+          .find({
+            selector,
+            sort: [{ dateCreation: "desc" }],  // ← ici
+            skip: (page - 1) * limit,
+            limit
+          })
           .exec(),
         database.parcelle.count({ selector }).exec(),
       ]);
     } else {
-      docs = await database.parcelle.find({ selector }).exec();
+      docs = await database.parcelle
+        .find({
+          selector,
+          sort: [{ dateCreation: "desc" }],  // ← et ici
+        })
+        .exec();
       total = docs.length;
     }
 
@@ -186,7 +193,7 @@ export async function getAllParcelles(
 
             return new Riverin(
               r.repere,
-              r.type,
+              r.type as TypeRiverin,
               r.nom,
               pp,
               pm,
